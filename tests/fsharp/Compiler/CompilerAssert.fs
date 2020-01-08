@@ -193,6 +193,20 @@ let main argv = 0"""
 
             Assert.IsEmpty(typeCheckResults.Errors, sprintf "Type Check errors: %A" typeCheckResults.Errors)
 
+    let PassWithOptions options (source: string) =
+        lock gate <| fun () ->
+            let options = { defaultProjectOptions with OtherOptions = Array.append options defaultProjectOptions.OtherOptions}
+
+            let parseResults, fileAnswer = checker.ParseAndCheckFileInProject("test.fs", 0, SourceText.ofString source, options) |> Async.RunSynchronously
+
+            Assert.IsEmpty(parseResults.Errors, sprintf "Parse errors: %A" parseResults.Errors)
+
+            match fileAnswer with
+            | FSharpCheckFileAnswer.Aborted _ -> Assert.Fail("Type Checker Aborted")
+            | FSharpCheckFileAnswer.Succeeded(typeCheckResults) ->
+
+            Assert.IsEmpty(typeCheckResults.Errors, sprintf "Type Check errors: %A" typeCheckResults.Errors)
+
     let TypeCheckWithErrorsAndOptionsAndAdjust options libAdjust (source: string) expectedTypeErrors =
         lock gate <| fun () ->
             let errors =
@@ -219,11 +233,10 @@ let main argv = 0"""
                     (info.Severity, info.ErrorNumber, (info.StartLineAlternate - libAdjust, info.StartColumn + 1, info.EndLineAlternate - libAdjust, info.EndColumn + 1), info.Message))
 
             let checkEqual k a b = 
-                if a = b then ()
-                else 
+                if a <> b then 
                     Assert.AreEqual(a, b, sprintf "Mismatch in %s, expected '%A', got '%A'.\nAll errors:\n%A" k a b errors)
 
-            checkEqual "Error count"  (Array.length expectedTypeErrors) errors.Length 
+            checkEqual "Type Check Errors"  (Array.length expectedTypeErrors) errors.Length 
 
             Array.zip errors expectedTypeErrors
             |> Array.iter (fun (actualError, expectedError) ->
@@ -247,19 +260,22 @@ let main argv = 0"""
     let TypeCheckSingleError (source: string) (expectedSeverity: FSharpErrorSeverity) (expectedErrorNumber: int) (expectedErrorRange: int * int * int * int) (expectedErrorMsg: string) =
         TypeCheckWithErrors source [| expectedSeverity, expectedErrorNumber, expectedErrorRange, expectedErrorMsg |]
 
-    let CompileExe (source: string) =
-        compile true [||] source (fun (errors, _) ->
+    let CompileExeWithOptions options (source: string) =
+        compile true options source (fun (errors, _) ->
             if errors.Length > 0 then
                 Assert.Fail (sprintf "Compile had warnings and/or errors: %A" errors))
 
+    let CompileExe (source: string) =
+        CompileExeWithOptions [||] source
+
     let CompileExeAndRunWithOptions options (source: string) =
-      compile true options source (fun (errors, outputExe) ->
+        compile true options source (fun (errors, outputExe) ->
 
-          if errors.Length > 0 then
-              Assert.Fail (sprintf "Compile had warnings and/or errors: %A" errors)
+            if errors.Length > 0 then
+                Assert.Fail (sprintf "Compile had warnings and/or errors: %A" errors)
 
-          executeBuiltApp outputExe
-      )
+            executeBuiltApp outputExe
+        )
 
     let CompileExeAndRun (source: string) =
         CompileExeAndRunWithOptions [||] source

@@ -6,21 +6,17 @@ module internal FSharp.Compiler.Features
 /// LanguageFeature enumeration
 [<RequireQualifiedAccess>]
 type LanguageFeature =
-    | PreviewVersion = 0
-    | SingleUnderscorePattern = 3
-    | WildCardInForLoop = 4
-    | RelaxWhitespace = 5
-    | NameOf = 6
-    | ImplicitYield = 7
-    | OpenStaticClasses = 8
-    | PackageManagement = 9
-    | FromEndSlicing = 11
-    | FixedIndexSlice3d4d = 12
-    | AndBang = 15
-    | LanguageVersion46 = 0x10046
-    | LanguageVersion47 = 0x10047
-    | LanguageVersion50 = 0x10050
-
+    | SingleUnderscorePattern
+    | WildCardInForLoop
+    | RelaxWhitespace
+    | NameOf
+    | ImplicitYield
+    | OpenStaticClasses
+    | DotlessFloat32Literal
+    | PackageManagement
+    | FromEndSlicing
+    | FixedIndexSlice3d4d
+    | AndBang
 
 /// LanguageVersion management
 type LanguageVersion =
@@ -31,7 +27,10 @@ type LanguageVersion =
     /// Get the list of valid versions
     member ContainsVersion: string -> bool
 
-    /// Does the specified LanguageVersion support the specified feature
+    /// Has preview been explicitly specified
+    member IsPreviewEnabled: bool
+
+    /// Does the selected LanguageVersion support the specified feature
     member SupportsFeature: LanguageFeature -> bool
 
     /// Get the list of valid versions
