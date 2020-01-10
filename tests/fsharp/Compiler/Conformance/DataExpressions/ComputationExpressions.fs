@@ -258,40 +258,35 @@ check "gwrhjkrwpoiwer2" (tracer.GetTrace ())  [|TraceOp.MonadicBind; TraceOp.Mon
             """
 
     [<Test>]
-    let ``AndBang TraceMultiBindingMonadicCustomOp`` () =
+    let ``AndBang TraceMultiBindingMonadicCustomOp A`` () =
         ApplicativeLibTest includeAll """
 
-module Test1 = 
-    let tracer = TraceBuilder()
-    let ceResult : Trace<int> =
-        tracer {
-            //let fb = Trace "foobar"
-            let! x = Trace 3
-            //and! y = Trace true
-            log (sprintf "%A" x)
-            return x
-            //return if y then x else -1
-        }
+let tracer = TraceMultiBindingMonadicCustomOp()
+let ceResult : Trace<int> =
+    tracer {
+        let! x = Trace 3
+        log (sprintf "%A" x)
+        return x
+    }
 
-    check "gwrhjkrwpoiwer1t4" ceResult.Value 3
-    check "gwrhjkrwpoiwer2t3" (tracer.GetTrace ())  [|TraceOp.MonadicBind; TraceOp.MonadicReturn; TraceOp.Log "3"; TraceOp.MonadicBind; TraceOp.MonadicReturn |]
-
-
-module Test2 = 
-    let tracer = TraceBuilder()
-    let ceResult : Trace<int> =
-        tracer {
-            let! x = Trace 3
-            and! y = Trace true
-            log (sprintf "%A" (x,y))
-            return x
-        }
-
-    check "gwrhjkrwpoiwer1t45" ceResult.Value 3
-    check "gwrhjkrwpoiwer2t36" (tracer.GetTrace ())  [|TraceOp.MonadicBind2; TraceOp.MonadicReturn; TraceOp.Log "(3, true)"; TraceOp.MonadicBind; TraceOp.MonadicReturn |]
+check "gwrhjkrwpoiwer1t4" ceResult.Value 3
             """
 
+    [<Test>]
+    let ``AndBang TraceMultiBindingMonadicCustomOp B`` () =
+        ApplicativeLibTest includeAll """
+let tracer = TraceMultiBindingMonadicCustomOp()
+let ceResult : Trace<int> =
+    tracer {
+        let! x = Trace 3
+        and! y = Trace true
+        log (sprintf "%A" (x,y))
+        return (ignore y; x)
+    }
 
+check "gwrhjkrwpoiwer1t45" ceResult.Value 3
+check "gwrhjkrwpoiwer2t36" (tracer.GetTrace ())  [|TraceOp.MonadicBind2; TraceOp.MonadicReturn; TraceOp.Log "(3, true)"; TraceOp.MonadicBind; TraceOp.MonadicReturn |]
+            """
 
     [<Test>]
     let ``AndBang TraceMultiBindingMonadic TwoBind`` () =
