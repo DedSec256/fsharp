@@ -2998,7 +2998,7 @@ namespace Microsoft.FSharp.Core
                 elif typeeq<'T, string> then convPrim<_,'U> (Decimal.Parse(convPrim<_,string> value, NumberStyles.Float,CultureInfo.InvariantCulture)) 
                 else UnaryOpDynamicImplTable<OpExplicitInfo, 'T, 'U>.Invoke "op_Explicit" value
             else
-                UnaryOpDynamicImplTable<OpExplicitInfo, 'T,U>.Invoke "op_Explicit" value
+                UnaryOpDynamicImplTable<OpExplicitInfo, 'T, 'U>.Invoke "op_Explicit" value
 
         type OpLessThanInfo = class end
         let LessThanDynamic<'T1, 'T2, 'U> (x: 'T1) (y: 'T2) : 'U =
