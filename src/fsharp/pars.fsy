@@ -3388,15 +3388,6 @@ declExpr:
        let m = unionRanges (rhs parseState 1) $8.Range
        SynExpr.LetOrUseBang(spBind, ($1 = "use"), true, $2, $4, $7, $8, m) }
 
-/*
-  | OBINDER headBindingPattern EQUALS typedSeqExprBlock hardwhiteDefnBindingsTerminator opt_OBLOCKSEP morebinders error %prec expr_let
-     { // error recovery that allows intellisense when writing incomplete computation expressions
-       let spBind = SequencePointAtBinding(unionRanges (rhs parseState 1) $4.Range)
-       let mAll = unionRanges (rhs parseState 1) (rhs parseState 7) // TODO Check this range
-       let m = $4.Range.EndRange // zero-width range
-       SynExpr.LetOrUseBang(spBind, ($1 = "use"), true, $2, $4, $7, SynExpr.ImplicitZero m, mAll) }
-*/
-
   | OBINDER headBindingPattern EQUALS typedSeqExprBlock hardwhiteDefnBindingsTerminator opt_OBLOCKSEP error %prec expr_let 
      { // error recovery that allows intellisense when writing incomplete computation expressions 
        let spBind = SequencePointAtBinding(unionRanges (rhs parseState 1) $4.Range) 
