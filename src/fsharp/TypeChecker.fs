@@ -8466,8 +8466,9 @@ and TcComputationExpression cenv env overallTy mWhole (interpExpr: Expr) builder
         //     build.BindNReturn(expr1, expr2, ...)
         // or
         //     build.Bind(build.MergeSources(expr1, expr2), ...)
-        | SynExpr.LetOrUseBang(letSpBind, false, isFromSource, letPat, letRhsExpr, andBangBindings, innerComp, _letBindRange) ->
+        | SynExpr.LetOrUseBang(letSpBind, false, isFromSource, letPat, letRhsExpr, andBangBindings, innerComp, letBindRange) ->
             if cenv.g.langVersion.SupportsFeature LanguageFeature.AndBang then
+                if isQuery then error(Error(FSComp.SR.tcBindMayNotBeUsedInQueries(), letBindRange))
                 let bindRange = match letSpBind with SequencePointAtBinding m -> m | _ -> letRhsExpr.Range
                 let sources = (letRhsExpr :: [for (_, _, _, _, andExpr, _) in andBangBindings -> andExpr ]) |> List.map (mkSourceExprConditional isFromSource)
                 let pats = letPat :: [for (_, _, _, andPat, _, _) in andBangBindings -> andPat ]
@@ -8485,63 +8486,78 @@ and TcComputationExpression cenv env overallTy mWhole (interpExpr: Expr) builder
 
                 else
 
-                // Check if this is a Bind2 etc.
-                let hasBindN = not (isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad bindNName builderTy))
-                if hasBindN then 
-                    let consumePat = SynPat.Tuple(false, pats, letPat.Range)
-                    Some (transBind q varSpace bindRange bindNName sources consumePat letSpBind innerComp translatedCtxt)
-                else
+                    // Check if this is a Bind2 etc.
+                    let hasBindN = not (isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad bindNName builderTy))
+                    if hasBindN then 
+                        let consumePat = SynPat.Tuple(false, pats, letPat.Range)
 
-                    // Look for the maximum supported MergeSources, MergeSources3, ... 
-                    let mkMergeSourcesName n = if n = 2 then "MergeSources" else "MergeSources"+(string n)
+                        // Add the variables to the query variable space, on demand
+                        let varSpace = 
+                            addVarsToVarSpace varSpace (fun _mCustomOp env -> 
+                                    use _holder = TemporarilySuspendReportingTypecheckResultsToSink cenv.tcSink
+                                    let _, _, vspecs, envinner, _ = TcMatchPattern cenv (NewInferenceType()) env tpenv (consumePat, None) 
+                                    vspecs, envinner)
 
-                    let maxMergeSources =
-                        let rec loop (n: int) = 
-                            let mergeSourcesName = mkMergeSourcesName n
-                            if isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad mergeSourcesName builderTy) then
-                                (n-1)
+                        Some (transBind q varSpace bindRange bindNName sources consumePat letSpBind innerComp translatedCtxt)
+                    else
+
+                        // Look for the maximum supported MergeSources, MergeSources3, ... 
+                        let mkMergeSourcesName n = if n = 2 then "MergeSources" else "MergeSources"+(string n)
+
+                        let maxMergeSources =
+                            let rec loop (n: int) = 
+                                let mergeSourcesName = mkMergeSourcesName n
+                                if isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad mergeSourcesName builderTy) then
+                                    (n-1)
+                                else
+                                    loop (n+1)
+                            loop 2
+
+                        if maxMergeSources = 1 then error(Error(FSComp.SR.tcRequireMergeSourcesOrBindN(bindNName), bindRange))
+
+                        let rec mergeSources (sourcesAndPats: (SynExpr * SynPat) list) = 
+                            let numSourcesAndPats = sourcesAndPats.Length
+                            assert (numSourcesAndPats <> 0)
+                            if numSourcesAndPats = 1 then 
+                                sourcesAndPats.[0]
+
+                            elif numSourcesAndPats <= maxMergeSources then 
+
+                                // Call MergeSources2(e1, e2), MergeSources3(e1, e2, e3) etc
+                                let mergeSourcesName = mkMergeSourcesName numSourcesAndPats
+
+                                if isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad mergeSourcesName builderTy) then
+                                    error(Error(FSComp.SR.tcRequireMergeSourcesOrBindN(bindNName), bindRange))
+
+                                let source = mkSynCall mergeSourcesName sourcesRange (List.map fst sourcesAndPats)
+                                let pat = SynPat.Tuple(false, List.map snd sourcesAndPats, letPat.Range)
+                                source, pat
+
                             else
-                                loop (n+1)
-                        loop 2
 
-                    if maxMergeSources = 1 then error(Error(FSComp.SR.tcRequireMergeSourcesOrBindN(bindNName), bindRange))
+                                // Call MergeSourcesMax(e1, e2, e3, e4, (...))
+                                let nowSourcesAndPats, laterSourcesAndPats = List.splitAt (maxMergeSources - 1) sourcesAndPats
+                                let mergeSourcesName = mkMergeSourcesName maxMergeSources
 
-                    let rec mergeSources (sourcesAndPats: (SynExpr * SynPat) list) = 
-                        let numSourcesAndPats = sourcesAndPats.Length
-                        assert (numSourcesAndPats <> 0)
-                        if numSourcesAndPats = 1 then 
-                            sourcesAndPats.[0]
+                                if isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad mergeSourcesName builderTy) then
+                                    error(Error(FSComp.SR.tcRequireMergeSourcesOrBindN(bindNName), bindRange))
 
-                        elif numSourcesAndPats <= maxMergeSources then 
+                                let laterSource, laterPat = mergeSources laterSourcesAndPats
+                                let source = mkSynCall mergeSourcesName sourcesRange (List.map fst nowSourcesAndPats @ [laterSource])
+                                let pat = SynPat.Tuple(false, List.map snd nowSourcesAndPats @ [laterPat], letPat.Range)
+                                source, pat
 
-                            // Call MergeSources2(e1, e2), MergeSources3(e1, e2, e3) etc
-                            let mergeSourcesName = mkMergeSourcesName numSourcesAndPats
-
-                            if isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad mergeSourcesName builderTy) then
-                                error(Error(FSComp.SR.tcRequireMergeSourcesOrBindN(bindNName), bindRange))
-
-                            let source = mkSynCall mergeSourcesName sourcesRange (List.map fst sourcesAndPats)
-                            let pat = SynPat.Tuple(false, List.map snd sourcesAndPats, letPat.Range)
-                            source, pat
-
-                        else
-
-                            // Call MergeSourcesMax(e1, e2, e3, e4, (...))
-                            let nowSourcesAndPats, laterSourcesAndPats = List.splitAt (maxMergeSources - 1) sourcesAndPats
-                            let mergeSourcesName = mkMergeSourcesName maxMergeSources
-
-                            if isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad mergeSourcesName builderTy) then
-                                error(Error(FSComp.SR.tcRequireMergeSourcesOrBindN(bindNName), bindRange))
-
-                            let laterSource, laterPat = mergeSources laterSourcesAndPats
-                            let source = mkSynCall mergeSourcesName sourcesRange (List.map fst nowSourcesAndPats @ [laterSource])
-                            let pat = SynPat.Tuple(false, List.map snd nowSourcesAndPats @ [laterPat], letPat.Range)
-                            source, pat
-
-                    let mergedSources, consumePat = mergeSources (List.zip sources pats)
+                        let mergedSources, consumePat = mergeSources (List.zip sources pats)
                     
-                    // Build the 'Bind' or 'BindReturn' call
-                    Some (transBind q varSpace bindRange "Bind" [mergedSources] consumePat letSpBind innerComp translatedCtxt)
+                        // Add the variables to the query variable space, on demand
+                        let varSpace = 
+                            addVarsToVarSpace varSpace (fun _mCustomOp env -> 
+                                    use _holder = TemporarilySuspendReportingTypecheckResultsToSink cenv.tcSink
+                                    let _, _, vspecs, envinner, _ = TcMatchPattern cenv (NewInferenceType()) env tpenv (consumePat, None) 
+                                    vspecs, envinner)
+
+                        // Build the 'Bind' call
+                        Some (transBind q varSpace bindRange "Bind" [mergedSources] consumePat letSpBind innerComp translatedCtxt)
             else
                 error(Error(FSComp.SR.tcAndBangNotSupported(), comp.Range))
 
@@ -8648,7 +8664,12 @@ and TcComputationExpression cenv env overallTy mWhole (interpExpr: Expr) builder
 
         let innerRange = innerComp.Range
         
-        match (if cenv.g.langVersion.SupportsFeature LanguageFeature.AndBang then convertSimpleReturnToExpr varSpace innerComp else None) with 
+        let innerCompReturn = 
+            if cenv.g.langVersion.SupportsFeature LanguageFeature.AndBang then
+                convertSimpleReturnToExpr varSpace innerComp
+            else None
+
+        match innerCompReturn with 
         | Some innerExpr when 
               (let bindName = bindName + "Return"
                not (isNil (TryFindIntrinsicOrExtensionMethInfo ResultCollectionSettings.AtMostOneResult cenv env bindRange ad bindName  builderTy))) ->
@@ -8699,17 +8720,43 @@ and TcComputationExpression cenv env overallTy mWhole (interpExpr: Expr) builder
 
         | SynExpr.Sequential (sp, true, innerComp1, innerComp2, m) -> 
 
-            // Check the second part is a simple return
-            match convertSimpleReturnToExpr varSpace innerComp2 with
-            | None -> None
-            | Some innerExpr2 -> 
             // Check the first part isn't a computation expression construct
-            match tryTrans true false varSpace innerComp1 id with 
-            | Some _ -> None
-            | None -> 
-            Some (SynExpr.Sequential (sp, true, innerComp1, innerExpr2, m))
+            if isSimpleExpr innerComp1 then
+                // Check the second part is a simple return
+                match convertSimpleReturnToExpr varSpace innerComp2 with
+                | None -> None
+                | Some innerExpr2 -> Some (SynExpr.Sequential (sp, true, innerComp1, innerExpr2, m))
+            else
+                None
 
         | _ -> None
+
+    /// Check is an expression has no computation expression constructs
+    and isSimpleExpr comp =
+
+        match comp with 
+        | ForEachThenJoinOrGroupJoinOrZipClause _ -> false
+        | SynExpr.ForEach _ -> false
+        | SynExpr.For _ -> false
+        | SynExpr.While _ -> false
+        | SynExpr.TryFinally _ -> false
+        | SynExpr.ImplicitZero _ -> false
+        | OptionalSequential (JoinOrGroupJoinOrZipClause _, _) -> false
+        | OptionalSequential (CustomOperationClause _, _) -> false
+        | SynExpr.Sequential (_, _, innerComp1, innerComp2, _) -> isSimpleExpr innerComp1 && isSimpleExpr innerComp2
+        | SynExpr.IfThenElse (_, thenComp, elseCompOpt, _, _, _, _) -> 
+             isSimpleExpr thenComp && (match elseCompOpt with None -> true | Some c -> isSimpleExpr c)
+        | SynExpr.LetOrUse (_, _, _, innerComp, _) -> isSimpleExpr innerComp
+        | SynExpr.LetOrUseBang _ -> false
+        | SynExpr.Match (_, _, clauses, _) ->
+            clauses |> List.forall (fun (Clause(_, _, innerComp, _, _)) -> isSimpleExpr innerComp)
+        | SynExpr.MatchBang _ -> false
+        | SynExpr.TryWith (innerComp, _, clauses, _, _, _, _) -> 
+            isSimpleExpr innerComp && 
+            clauses |> List.forall (fun (Clause(_, _, clauseComp, _, _)) -> isSimpleExpr clauseComp)
+        | SynExpr.YieldOrReturnFrom _ -> false
+        | SynExpr.YieldOrReturn _ -> false
+        | _ -> true
 
     let basicSynExpr = 
         trans true (hasCustomOperations ()) (LazyWithContext.NotLazy ([], env)) comp (fun holeFill -> holeFill) 

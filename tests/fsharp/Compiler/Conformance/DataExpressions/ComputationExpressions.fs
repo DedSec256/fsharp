@@ -29,6 +29,7 @@ type TraceOp =
     | MonadicReturn
     | Run
     | Delay
+    | Log of string
 
 /// A pseudo identity functor
 type Trace<'T>(v: 'T) =
@@ -154,6 +155,13 @@ type TraceApplicativeNoBindReturn() =
         builder.Trace TraceOp.MergeSources
         Trace (x1.Value, x2.Value) 
 
+type TraceMultiBindingMonadicCustomOp() =
+    inherit TraceMultiBindingMonadic()
+
+    [<CustomOperation("log", MaintainsVariableSpaceUsingBind = true)>]
+    member builder.Log(boundValues : Trace<'T>, [<ProjectionParameter>] messageFunc: 'T -> string) =
+        builder.Trace (TraceOp.Log (messageFunc boundValues.Value))
+        boundValues
 
 let check msg actual expected = if actual <> expected then failwithf "FAILED %s, expected %A, got %A" msg expected actual
         """
@@ -169,6 +177,12 @@ let check msg actual expected = if actual <> expected then failwithf "FAILED %s,
         // Adjust the expected errors for the number of lines in the library
         let libLineAdjust = lib |> Seq.filter (fun c -> c = '\n') |> Seq.length
         CompilerAssert.TypeCheckWithErrorsAndOptionsAndAdjust [| "/langversion:preview" |] libLineAdjust (lib + source) errors
+
+    let ApplicativeLibErrorTestFeatureDisabled opts source errors =
+        let lib = applicativeLib opts
+        // Adjust the expected errors for the number of lines in the library
+        let libLineAdjust = lib |> Seq.filter (fun c -> c = '\n') |> Seq.length
+        CompilerAssert.TypeCheckWithErrorsAndOptionsAndAdjust [| "/langversion:4.7" |] libLineAdjust (lib + source) errors
 
     [<Test>]
     let ``AndBang TraceApplicative`` () =
@@ -186,6 +200,21 @@ let ceResult : Trace<int> =
 check "fewljvwerjl1" ceResult.Value 3
 check "fewljvwerj12" (tracer.GetTrace ()) [|TraceOp.ApplicativeBind2Return|]
             """
+
+    [<Test>]
+    let ``AndBang TraceApplicative Disable`` () =
+        ApplicativeLibErrorTestFeatureDisabled includeAll 
+            """
+let tracer = TraceApplicative()
+
+let ceResult : Trace<int> =
+    tracer {
+        let! x = Trace 3
+        and! y = Trace true
+        return if y then x else -1
+    }
+            """
+            [| FSharpErrorSeverity.Error, 3344, (6, 9, 8, 35), "This feature is not supported in this version of F#. You may need to add /langversion:preview to use this feature." |]
 
     [<Test>]
     let ``AndBang TraceMultiBindingMonoid`` () =
@@ -227,6 +256,41 @@ let ceResult : Trace<int> =
 check "gwrhjkrwpoiwer1" ceResult.Value 3
 check "gwrhjkrwpoiwer2" (tracer.GetTrace ())  [|TraceOp.MonadicBind; TraceOp.MonadicBind2; TraceOp.MonadicReturn|]
             """
+
+    [<Test>]
+    let ``AndBang TraceMultiBindingMonadicCustomOp`` () =
+        ApplicativeLibTest includeAll """
+
+module Test1 = 
+    let tracer = TraceBuilder()
+    let ceResult : Trace<int> =
+        tracer {
+            //let fb = Trace "foobar"
+            let! x = Trace 3
+            //and! y = Trace true
+            log (sprintf "%A" x)
+            return x
+            //return if y then x else -1
+        }
+
+    check "gwrhjkrwpoiwer1t4" ceResult.Value 3
+    check "gwrhjkrwpoiwer2t3" (tracer.GetTrace ())  [|TraceOp.MonadicBind; TraceOp.MonadicReturn; TraceOp.Log "3"; TraceOp.MonadicBind; TraceOp.MonadicReturn |]
+
+
+module Test2 = 
+    let tracer = TraceBuilder()
+    let ceResult : Trace<int> =
+        tracer {
+            let! x = Trace 3
+            and! y = Trace true
+            log (sprintf "%A" (x,y))
+            return x
+        }
+
+    check "gwrhjkrwpoiwer1t45" ceResult.Value 3
+    check "gwrhjkrwpoiwer2t36" (tracer.GetTrace ())  [|TraceOp.MonadicBind2; TraceOp.MonadicReturn; TraceOp.Log "(3, true)"; TraceOp.MonadicBind; TraceOp.MonadicReturn |]
+            """
+
 
 
     [<Test>]
