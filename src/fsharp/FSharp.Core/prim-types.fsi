@@ -1065,106 +1065,106 @@ namespace Microsoft.FSharp.Core
         [<CompilerMessage("This function is for use by compiled F# code and should not be used directly", 1204, IsHidden=true)>]
         val GenericOneDynamic : unit -> 'T 
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '+' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '+' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val AdditionDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked '+' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked '+' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val CheckedAdditionDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '-' operator when used in quotations.</summary>
-        [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
-        val SubtractionDynamic : x:'T1 -> y:'T2 -> 'U
-
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '*' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '*' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val MultiplyDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked '*' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked '*' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val CheckedMultiplyDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '/' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '-' operator.</summary>
+        [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
+        val SubtractionDynamic : x:'T1 -> y:'T2 -> 'U
+
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '/' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val DivisionDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the unary '-' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the unary '-' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val UnaryNegationDynamic : value:'T -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '%' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '%' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val ModulusDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked '-' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked '-' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val CheckedSubtractionDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked unary '-' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the checked unary '-' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val CheckedUnaryNegationDynamic : value:'T -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '&lt;&lt;&lt;' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '&lt;&lt;&lt;' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val LeftShiftDynamic : value:'T1 -> shift:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '&gt;&gt;&gt;' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '&gt;&gt;&gt;' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val RightShiftDynamic : value:'T1 -> shift:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '&&&' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '&&&' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val BitwiseAndDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations to the '|||' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations to the '|||' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val BitwiseOrDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '^^^' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '^^^' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val ExclusiveOrDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '~~~' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '~~~' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val LogicalNotDynamic : value:'T -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to conversion operators when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to conversion operators.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val ExplicitDynamic : value:'T -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&lt;' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&lt;' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val LessThanDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&gt;' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&gt;' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val GreaterThanDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&lt;=' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&lt;=' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val LessThanOrEqualDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&gt;=' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '&gt;=' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val GreaterThanOrEqualDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '=' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '=' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val EqualityDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '=' operator when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations related to the '=' operator.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val InequalityDynamic : x:'T1 -> y:'T2 -> 'U
 
-        /// <summary>A compiler intrinsic that implements dynamic invocations for the DivideByInt primitive when used in quotations.</summary>
+        /// <summary>A compiler intrinsic that implements dynamic invocations for the DivideByInt primitive.</summary>
         [<CompilerMessage("This function is for use by dynamic invocations of F# code and should not be used directly", 1204, IsHidden=true)>]
         val DivideByIntDynamic : x:'T -> y:int -> 'T
 
         /// <summary>Resolves to the zero value for any primitive numeric type or any type with a static member called 'Zero'</summary>
         val inline GenericZero< ^T > : ^T when ^T : (static member Zero : ^T) 
 
-        /// <summary>Resolves to the value one for any primitive numeric type or any type with a static member called One</summary>
+        /// <summary>Resolves to the value 'one' for any primitive numeric type or any type with a static member called 'One'</summary>
         val inline GenericOne< ^T > : ^T when ^T : (static member One : ^T) 
         
         val internal anyToStringShowingNull : 'T -> string

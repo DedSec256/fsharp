@@ -216,6 +216,9 @@ type ConstraintSolverState =
       /// The function used to freshen values we encounter during trait constraint solving
       TcVal: TcValF
 
+      /// Indicates if the constraint solver is being run after type checking is complete,
+      /// e.g. during codegen to determine solutions and witnesses for trait constraints.
+      /// Suppresses the generation of certain errors such as missing constraint warnings.
       codegen: bool
 
       /// This table stores all unsolved, ungeneralized trait constraints, indexed by free type variable.
@@ -2866,7 +2869,7 @@ let CodegenWitnessForTraitConstraint tcVal g amap m (traitInfo:TraitConstraintIn
     return sln
   }
 
-/// Generate the arguments passed when using a generic construct that accepts traits witnesses
+/// Generate the arguments passed for a use of a generic construct that accepts trait witnesses
 let CodegenWitnessesForTyparInst tcVal g amap m typars tyargs = trackErrors {
     let css = CreateCodegenState tcVal g amap
     let csenv = MakeConstraintSolverEnv ContextInfo.NoContext css m (DisplayEnv.Empty g)

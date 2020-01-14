@@ -307,13 +307,13 @@ namespace Microsoft.FSharp.Core
 
     [<AttributeUsage(AttributeTargets.Method ||| AttributeTargets.Property, AllowMultiple=false)>]
     [<Sealed>]
-    type NoDynamicInvocationAttribute(legacy: bool) =
+    type NoDynamicInvocationAttribute(isLegacy: bool) =
 
         inherit System.Attribute()
 
         new () = NoDynamicInvocationAttribute(false)
 
-        member x.IsLegacy = legacy
+        member x.IsLegacy = isLegacy
 
     [<AttributeUsage(AttributeTargets.Parameter,AllowMultiple=false)>]
     [<Sealed>]
@@ -390,12 +390,9 @@ namespace Microsoft.FSharp.Core
         type System.Type with
             
             // Note, this differs slightly from the nettstandard1.6 FX_RESHAPED_REFLECTION case as it looks for non-public methods.
-            member inline this.GetSingleStaticMethodByTypes(name:string, parameterTypes: Type[]) =
+            member inline this.GetSingleStaticMethodByTypes(name: string, parameterTypes: Type[]) =
                let staticBindingFlags = (# "" 0b111000 : BindingFlags #) // BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic
                this.GetMethod(name, staticBindingFlags, null, parameterTypes, null )
-
-            member inline this.GetSingleMethod(name:string, bindingFlags: System.Reflection.BindingFlags) =
-               this.GetTypeInfo().GetMethod(name, bindingFlags)
 
     open PrimReflectionAdapters
 
@@ -2044,22 +2041,22 @@ namespace Microsoft.FSharp.Core
         type FastGenericEqualityComparerTable<'T>() = 
             static let f : System.Collections.Generic.IEqualityComparer<'T> = 
                 match typeof<'T> with 
-                | ty when ty.Equals(typeof<bool>)       -> convPrim BoolIEquality
-                | ty when ty.Equals(typeof<byte>)       -> convPrim ByteIEquality
-                | ty when ty.Equals(typeof<int32>)      -> convPrim Int32IEquality
-                | ty when ty.Equals(typeof<uint32>)     -> convPrim UInt32IEquality
-                | ty when ty.Equals(typeof<char>)       -> convPrim CharIEquality
-                | ty when ty.Equals(typeof<sbyte>)      -> convPrim SByteIEquality
-                | ty when ty.Equals(typeof<int16>)      -> convPrim Int16IEquality
-                | ty when ty.Equals(typeof<int64>)      -> convPrim Int64IEquality
-                | ty when ty.Equals(typeof<nativeint>)  -> convPrim IntPtrIEquality
-                | ty when ty.Equals(typeof<uint16>)     -> convPrim UInt16IEquality
-                | ty when ty.Equals(typeof<uint64>)     -> convPrim UInt64IEquality
-                | ty when ty.Equals(typeof<unativeint>) -> convPrim UIntPtrIEquality
-                | ty when ty.Equals(typeof<float>)      -> convPrim FloatIEquality
-                | ty when ty.Equals(typeof<float32>)    -> convPrim Float32IEquality
-                | ty when ty.Equals(typeof<decimal>)    -> convPrim DecimalIEquality
-                | ty when ty.Equals(typeof<string>)     -> convPrim StringIEquality
+                | ty when ty.Equals(typeof<bool>)       -> unboxPrim (box BoolIEquality)
+                | ty when ty.Equals(typeof<byte>)       -> unboxPrim (box ByteIEquality)
+                | ty when ty.Equals(typeof<int32>)      -> unboxPrim (box Int32IEquality)
+                | ty when ty.Equals(typeof<uint32>)     -> unboxPrim (box UInt32IEquality)
+                | ty when ty.Equals(typeof<char>)       -> unboxPrim (box CharIEquality)
+                | ty when ty.Equals(typeof<sbyte>)      -> unboxPrim (box SByteIEquality)
+                | ty when ty.Equals(typeof<int16>)      -> unboxPrim (box Int16IEquality)
+                | ty when ty.Equals(typeof<int64>)      -> unboxPrim (box Int64IEquality)
+                | ty when ty.Equals(typeof<nativeint>)  -> unboxPrim (box IntPtrIEquality)
+                | ty when ty.Equals(typeof<uint16>)     -> unboxPrim (box UInt16IEquality)
+                | ty when ty.Equals(typeof<uint64>)     -> unboxPrim (box UInt64IEquality)
+                | ty when ty.Equals(typeof<unativeint>) -> unboxPrim (box UIntPtrIEquality)
+                | ty when ty.Equals(typeof<float>)      -> unboxPrim (box FloatIEquality)
+                | ty when ty.Equals(typeof<float32>)    -> unboxPrim (box Float32IEquality)
+                | ty when ty.Equals(typeof<decimal>)    -> unboxPrim (box DecimalIEquality)
+                | ty when ty.Equals(typeof<string>)     -> unboxPrim (box StringIEquality)
                 | _ -> MakeGenericEqualityComparer<'T>()
             static member Function : System.Collections.Generic.IEqualityComparer<'T> = f
 
@@ -2140,8 +2137,8 @@ namespace Microsoft.FSharp.Core
             // REVIEW: in a future version we could extend this to include additional types 
             static let fCanBeNull : System.Collections.Generic.IComparer<'T>  = 
                 match typeof<'T> with 
-                | ty when ty.Equals(typeof<nativeint>)  -> convPrim IntPtrComparer
-                | ty when ty.Equals(typeof<unativeint>) -> convPrim UIntPtrComparer
+                | ty when ty.Equals(typeof<nativeint>)  -> unboxPrim (box IntPtrComparer)
+                | ty when ty.Equals(typeof<unativeint>) -> unboxPrim (box UIntPtrComparer)
                 | ty when ty.Equals(typeof<byte>)       -> null    
                 | ty when ty.Equals(typeof<char>)       -> null    
                 | ty when ty.Equals(typeof<sbyte>)      -> null     
@@ -2154,28 +2151,28 @@ namespace Microsoft.FSharp.Core
                 | ty when ty.Equals(typeof<float>)      -> null    
                 | ty when ty.Equals(typeof<float32>)    -> null    
                 | ty when ty.Equals(typeof<decimal>)    -> null    
-                | ty when ty.Equals(typeof<string>)     -> convPrim StringComparer
+                | ty when ty.Equals(typeof<string>)     -> unboxPrim (box StringComparer)
                 | ty when ty.Equals(typeof<bool>)       -> null
                 | _ -> MakeGenericComparer<'T>()
 
             static let f : System.Collections.Generic.IComparer<'T>  = 
                 match typeof<'T> with 
-                | ty when ty.Equals(typeof<byte>)       -> convPrim ByteComparer
-                | ty when ty.Equals(typeof<char>)       -> convPrim CharComparer
-                | ty when ty.Equals(typeof<sbyte>)      -> convPrim SByteComparer
-                | ty when ty.Equals(typeof<int16>)      -> convPrim Int16Comparer
-                | ty when ty.Equals(typeof<int32>)      -> convPrim Int32Comparer
-                | ty when ty.Equals(typeof<int64>)      -> convPrim Int64Comparer
-                | ty when ty.Equals(typeof<nativeint>)  -> convPrim IntPtrComparer
-                | ty when ty.Equals(typeof<uint16>)     -> convPrim UInt16Comparer
-                | ty when ty.Equals(typeof<uint32>)     -> convPrim UInt32Comparer
-                | ty when ty.Equals(typeof<uint64>)     -> convPrim UInt64Comparer
-                | ty when ty.Equals(typeof<unativeint>) -> convPrim UIntPtrComparer
-                | ty when ty.Equals(typeof<float>)      -> convPrim FloatComparer
-                | ty when ty.Equals(typeof<float32>)    -> convPrim Float32Comparer
-                | ty when ty.Equals(typeof<decimal>)    -> convPrim DecimalComparer
-                | ty when ty.Equals(typeof<string>)     -> convPrim StringComparer
-                | ty when ty.Equals(typeof<bool>)       -> convPrim BoolComparer
+                | ty when ty.Equals(typeof<byte>)       -> unboxPrim (box ByteComparer)
+                | ty when ty.Equals(typeof<char>)       -> unboxPrim (box CharComparer)
+                | ty when ty.Equals(typeof<sbyte>)      -> unboxPrim (box SByteComparer)
+                | ty when ty.Equals(typeof<int16>)      -> unboxPrim (box Int16Comparer)
+                | ty when ty.Equals(typeof<int32>)      -> unboxPrim (box Int32Comparer)
+                | ty when ty.Equals(typeof<int64>)      -> unboxPrim (box Int64Comparer)
+                | ty when ty.Equals(typeof<nativeint>)  -> unboxPrim (box IntPtrComparer)
+                | ty when ty.Equals(typeof<uint16>)     -> unboxPrim (box UInt16Comparer)
+                | ty when ty.Equals(typeof<uint32>)     -> unboxPrim (box UInt32Comparer)
+                | ty when ty.Equals(typeof<uint64>)     -> unboxPrim (box UInt64Comparer)
+                | ty when ty.Equals(typeof<unativeint>) -> unboxPrim (box UIntPtrComparer)
+                | ty when ty.Equals(typeof<float>)      -> unboxPrim (box FloatComparer)
+                | ty when ty.Equals(typeof<float32>)    -> unboxPrim (box Float32Comparer)
+                | ty when ty.Equals(typeof<decimal>)    -> unboxPrim (box DecimalComparer)
+                | ty when ty.Equals(typeof<string>)     -> unboxPrim (box StringComparer)
+                | ty when ty.Equals(typeof<bool>)       -> unboxPrim (box BoolComparer)
                 | _ -> 
                     // Review: There are situations where we should be able
                     // to return System.Collections.Generic.Comparer<'T>.Default here.
@@ -2225,15 +2222,15 @@ namespace Microsoft.FSharp.Core
         //------------------------------------------------------------------------- 
 
         let inline EnumOfValue (value : 'T) : 'Enum when 'Enum : enum<'T> = 
-            convPrim<'T, 'Enum> value
+            unboxPrim<'Enum>(box value)
              // According to the somewhat subtle rules of static optimizations,
-             // this condition is used whenever 'Enum is resolved to a nominal type or witnesses are available
+             // this condition is used whenever 'Enum is resolved to a nominal
             when 'Enum : 'Enum = (retype value : 'Enum)
 
         let inline EnumToValue (enum : 'Enum) : 'T when 'Enum : enum<'T> = 
-            convPrim<'Enum, 'T>(enum)
+            unboxPrim<'T>(box enum)
              // According to the somewhat subtle rules of static optimizations,
-             // this condition is used whenever 'Enum is resolved to a nominal type or witnesses are available
+             // this condition is used whenever 'Enum is resolved to a nominal type
             when 'Enum : 'Enum = (retype enum : 'T)
 
         //-------------------------------------------------------------------------
@@ -2381,22 +2378,22 @@ namespace Microsoft.FSharp.Core
             static let result : 'T = 
                 // The dynamic implementation
                 let aty = typeof<'T>
-                if   aty.Equals(typeof<sbyte>)      then convPrim<_,'T> (box 0y)
-                elif aty.Equals(typeof<int16>)      then convPrim<_,'T> (box 0s)
-                elif aty.Equals(typeof<int32>)      then convPrim<_,'T> (box 0)
-                elif aty.Equals(typeof<int64>)      then convPrim<_,'T> (box 0L)
-                elif aty.Equals(typeof<nativeint>)  then convPrim<_,'T> (box 0n)
-                elif aty.Equals(typeof<byte>)       then convPrim<_,'T> (box 0uy)
-                elif aty.Equals(typeof<uint16>)     then convPrim<_,'T> (box 0us)
-                elif aty.Equals(typeof<uint32>)     then convPrim<_,'T> (box 0u)
-                elif aty.Equals(typeof<uint64>)     then convPrim<_,'T> (box 0UL)
-                elif aty.Equals(typeof<unativeint>) then convPrim<_,'T> (box 0un)
-                elif aty.Equals(typeof<decimal>)    then convPrim<_,'T> (box 0M)
-                elif aty.Equals(typeof<float>)      then convPrim<_,'T> (box 0.0)
-                elif aty.Equals(typeof<float32>)    then convPrim<_,'T> (box 0.0f)
+                if   aty.Equals(typeof<sbyte>)      then unboxPrim<'T> (box 0y)
+                elif aty.Equals(typeof<int16>)      then unboxPrim<'T> (box 0s)
+                elif aty.Equals(typeof<int32>)      then unboxPrim<'T> (box 0)
+                elif aty.Equals(typeof<int64>)      then unboxPrim<'T> (box 0L)
+                elif aty.Equals(typeof<nativeint>)  then unboxPrim<'T> (box 0n)
+                elif aty.Equals(typeof<byte>)       then unboxPrim<'T> (box 0uy)
+                elif aty.Equals(typeof<uint16>)     then unboxPrim<'T> (box 0us)
+                elif aty.Equals(typeof<uint32>)     then unboxPrim<'T> (box 0u)
+                elif aty.Equals(typeof<uint64>)     then unboxPrim<'T> (box 0UL)
+                elif aty.Equals(typeof<unativeint>) then unboxPrim<'T> (box 0un)
+                elif aty.Equals(typeof<decimal>)    then unboxPrim<'T> (box 0M)
+                elif aty.Equals(typeof<float>)      then unboxPrim<'T> (box 0.0)
+                elif aty.Equals(typeof<float32>)    then unboxPrim<'T> (box 0.0f)
                 else 
                    let pinfo = aty.GetProperty("Zero")
-                   convPrim<_,'T> (pinfo.GetValue(null,null))
+                   unboxPrim<'T> (pinfo.GetValue(null,null))
             static member Result : 'T = result
                    
         [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
@@ -2404,23 +2401,23 @@ namespace Microsoft.FSharp.Core
             static let result : 'T = 
                 // The dynamic implementation
                 let aty = typeof<'T>
-                if   aty.Equals(typeof<sbyte>)      then convPrim<_,'T> 1y
-                elif aty.Equals(typeof<int16>)      then convPrim<_,'T> 1s
-                elif aty.Equals(typeof<int32>)      then convPrim<_,'T> 1
-                elif aty.Equals(typeof<int64>)      then convPrim<_,'T> 1L
-                elif aty.Equals(typeof<nativeint>)  then convPrim<_,'T> 1n
-                elif aty.Equals(typeof<byte>)       then convPrim<_,'T> 1uy
-                elif aty.Equals(typeof<uint16>)     then convPrim<_,'T> 1us
-                elif aty.Equals(typeof<char>)       then convPrim<_,'T> (retype 1us : char)
-                elif aty.Equals(typeof<uint32>)     then convPrim<_,'T> 1u
-                elif aty.Equals(typeof<uint64>)     then convPrim<_,'T> 1UL
-                elif aty.Equals(typeof<unativeint>) then convPrim<_,'T> 1un
-                elif aty.Equals(typeof<decimal>)    then convPrim<_,'T> 1M
-                elif aty.Equals(typeof<float>)      then convPrim<_,'T> 1.0
-                elif aty.Equals(typeof<float32>)    then convPrim<_,'T> 1.0f
+                if   aty.Equals(typeof<sbyte>)      then unboxPrim<'T> (box 1y)
+                elif aty.Equals(typeof<int16>)      then unboxPrim<'T> (box 1s)
+                elif aty.Equals(typeof<int32>)      then unboxPrim<'T> (box 1)
+                elif aty.Equals(typeof<int64>)      then unboxPrim<'T> (box 1L)
+                elif aty.Equals(typeof<nativeint>)  then unboxPrim<'T> (box 1n)
+                elif aty.Equals(typeof<byte>)       then unboxPrim<'T> (box 1uy)
+                elif aty.Equals(typeof<uint16>)     then unboxPrim<'T> (box 1us)
+                elif aty.Equals(typeof<char>)       then unboxPrim<'T> (box (retype 1us : char))
+                elif aty.Equals(typeof<uint32>)     then unboxPrim<'T> (box 1u)
+                elif aty.Equals(typeof<uint64>)     then unboxPrim<'T> (box 1UL)
+                elif aty.Equals(typeof<unativeint>) then unboxPrim<'T> (box 1un)
+                elif aty.Equals(typeof<decimal>)    then unboxPrim<'T> (box 1M)
+                elif aty.Equals(typeof<float>)      then unboxPrim<'T> (box 1.0)
+                elif aty.Equals(typeof<float32>)    then unboxPrim<'T> (box 1.0f)
                 else 
                    let pinfo = aty.GetProperty("One")
-                   convPrim<_,'T> (pinfo.GetValue(null,null))
+                   unboxPrim<'T> (pinfo.GetValue(null,null))
 
             static member Result : 'T = result
 
@@ -2443,7 +2440,7 @@ namespace Microsoft.FSharp.Core
             when ^T : byte        = 0uy
             when ^T : decimal     = 0M
              // According to the somewhat subtle rules of static optimizations,
-             // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
+             // this condition is used whenever ^T is resolved to a nominal type
             when ^T : ^T = (^T : (static member Zero : ^T) ())
 
 
@@ -2464,7 +2461,7 @@ namespace Microsoft.FSharp.Core
             when ^T : byte        = 1uy
             when ^T : decimal     = 1M
              // According to the somewhat subtle rules of static optimizations,
-             // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
+             // this condition is used whenever ^T is resolved to a nominal type
              // That is, not in the generic implementation of '+'
             when ^T : ^T = (^T : (static member One : ^T) ())
 
@@ -3865,6 +3862,7 @@ namespace Microsoft.FSharp.Core
         [<CompiledName("DefaultValueArg")>]
         let defaultValueArg arg defaultValue = match arg with ValueNone -> defaultValue | ValueSome v -> v
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (~-) (n: ^T) : ^T = 
              UnaryNegationDynamic<(^T), (^T)> n
              when ^T : int32     = (# "neg" n  : int32 #)
@@ -3874,7 +3872,7 @@ namespace Microsoft.FSharp.Core
              when ^T : int16     = (# "neg" n  : int16 #)
              when ^T : nativeint = (# "neg" n  : nativeint #)
              when ^T : sbyte     = (# "neg" n  : sbyte #)
-             when ^T : decimal   = (# "" (Decimal.op_UnaryNegation((# "" n : decimal #))) : ^T #)
+             when ^T : decimal   = (# "" (System.Decimal.op_UnaryNegation((# "" n : decimal #))) : ^T #)
              // According to the somewhat subtle rules of static optimizations,
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              // That is, not in the generic implementation of '*'
@@ -3901,6 +3899,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = ((^T or ^U): (static member (+) : ^T * ^U -> ^V) (x,y))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (-) (x: ^T) (y: ^U) : ^V = 
              SubtractionDynamic<(^T),(^U),(^V)>  x y 
              when ^T : int32      and ^U : int32      = (# "sub" x y : int32 #)
@@ -3939,6 +3938,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = ((^T or ^U): (static member (*) : ^T * ^U -> ^V) (x,y))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline ( / ) (x: ^T) (y: ^U) : ^V = 
              DivisionDynamic<(^T),(^U),(^V)>  x y 
              when ^T : int32       and ^U : int32      = (# "div" x y : int32 #)
@@ -3958,6 +3958,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = ((^T or ^U): (static member (/) : ^T * ^U -> ^V) (x,y))
         
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline ( % ) (x: ^T) (y: ^U) : ^V = 
              ModulusDynamic<(^T),(^U),(^V)>  x y 
              when ^T : int32       and ^U : int32      = (# "rem" x y : int32 #)
@@ -3977,6 +3978,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = ((^T or ^U): (static member (%) : ^T * ^U -> ^V) (x,y))
         
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (~+) (value: ^T) : ^T =
              value
              when ^T : int32      = value
@@ -3994,6 +3996,7 @@ namespace Microsoft.FSharp.Core
              when ^T : decimal    = value
              when ^T : ^T = (^T: (static member (~+) : ^T -> ^T) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (<<<) (value: ^T) (shift:int) : ^T = 
              LeftShiftDynamic<(^T),int,(^T)> value shift
              when ^T : int32      = (# "shl" value (mask shift 31) : int #)
@@ -4010,6 +4013,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T: (static member (<<<) : ^T * int -> ^T) (value,shift))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (>>>) (value: ^T) (shift:int) : ^T = 
              RightShiftDynamic<(^T),int,(^T)> value shift
              when ^T : int32      = (# "shr"    value (mask shift 31) : int32 #)
@@ -4026,6 +4030,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T: (static member (>>>) : ^T * int -> ^T) (value, shift))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (&&&) (x: ^T) (y: ^T) : ^T = 
              BitwiseAndDynamic<(^T),(^T),(^T)> x y
              when ^T : int32      = (# "and" x y : int32 #)
@@ -4042,6 +4047,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T: (static member (&&&) : ^T * ^T -> ^T) (x, y))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (|||) (x: ^T) (y: ^T) : ^T = 
              BitwiseOrDynamic<(^T),(^T),(^T)> x y
              when ^T : int32      = (# "or" x y : int32 #)
@@ -4058,6 +4064,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T: (static member (|||) : ^T * ^T -> ^T) (x, y))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (^^^) (x: ^T) (y: ^T) : ^T = 
              ExclusiveOrDynamic<(^T),(^T),(^T)> x y
              when ^T : int32      = (# "xor" x y : int32 #)
@@ -4074,6 +4081,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T: (static member (^^^) : ^T * ^T -> ^T) (x, y))
         
+        [<NoDynamicInvocation(isLegacy=true)>]
         let inline (~~~) (value: ^T) : ^T = 
              LogicalNotDynamic<(^T),(^T)> value
              when ^T : int32      = (# "not" value : int32 #)
@@ -4117,6 +4125,7 @@ namespace Microsoft.FSharp.Core
         [<CompiledName("Exit")>]
         let exit (exitcode:int) = System.Environment.Exit(exitcode); failwith "System.Environment.Exit did not exit!"
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToByte")>]
         let inline byte (value: ^T) = 
              ExplicitDynamic<(^T), byte> value
@@ -4138,6 +4147,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> byte) (value))
             
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToSByte")>]
         let inline sbyte (value: ^T) = 
              ExplicitDynamic<(^T), sbyte> value
@@ -4159,6 +4169,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> sbyte) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToUInt16")>]
         let inline uint16 (value: ^T) = 
              ExplicitDynamic<(^T), uint16> value
@@ -4180,6 +4191,7 @@ namespace Microsoft.FSharp.Core
              // this condition is used whenever ^T is resolved to a nominal type or witnesses are available
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> uint16) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToInt16")>]
         let inline int16 (value: ^T) = 
              ExplicitDynamic<(^T), int16> value
@@ -4199,6 +4211,7 @@ namespace Microsoft.FSharp.Core
              when ^T : byte     = (# "conv.i2" value  : int16 #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> int16) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToUInt32")>]
         let inline uint32 (value: ^T) = 
              ExplicitDynamic<(^T), uint32> value
@@ -4222,6 +4235,7 @@ namespace Microsoft.FSharp.Core
              when ^T : byte     = (# "conv.u4" value  : uint32 #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> uint32) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToInt32")>]
         let inline int32 (value: ^T) = 
              ExplicitDynamic<(^T), int32> value
@@ -4264,6 +4278,7 @@ namespace Microsoft.FSharp.Core
         [<CompiledName("NaNSingle")>]
         let nanf = System.Single.NaN 
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToUInt64")>]
         let inline uint64 (value: ^T) = 
              ExplicitDynamic<(^T), uint64> value
@@ -4287,6 +4302,7 @@ namespace Microsoft.FSharp.Core
              when ^T : byte     = (# "conv.u8" value  : uint64 #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> uint64) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToInt64")>]
         let inline int64 (value: ^T) = 
              ExplicitDynamic<(^T), int64> value
@@ -4309,6 +4325,7 @@ namespace Microsoft.FSharp.Core
              when ^T : byte     = (# "conv.u8" value  : int64 #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> int64) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToSingle")>]
         let inline float32 (value: ^T) = 
              ExplicitDynamic<(^T), float32> value
@@ -4329,6 +4346,7 @@ namespace Microsoft.FSharp.Core
              when ^T : byte     = (# "conv.r.un conv.r4" value  : float32 #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> float32) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToDouble")>]
         let inline float (value: ^T) = 
              ExplicitDynamic<(^T), float> value
@@ -4350,25 +4368,27 @@ namespace Microsoft.FSharp.Core
              when ^T : decimal    = (Convert.ToDouble((# "" value : decimal #))) 
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> float) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToDecimal")>]
         let inline decimal (value: ^T) = 
              ExplicitDynamic<(^T), decimal> value
-             when ^T : string     = (Decimal.Parse(castToString value,NumberStyles.Float,CultureInfo.InvariantCulture))
-             when ^T : float      = (Convert.ToDecimal((# "" value : float #))) 
-             when ^T : float32    = (Convert.ToDecimal((# "" value : float32 #))) 
-             when ^T : int64      = (Convert.ToDecimal((# "" value : int64 #))) 
-             when ^T : int32      = (Convert.ToDecimal((# "" value : int32 #))) 
-             when ^T : int16      = (Convert.ToDecimal((# "" value : int16 #))) 
-             when ^T : nativeint  = (Convert.ToDecimal(int64 (# "" value : nativeint #))) 
-             when ^T : sbyte      = (Convert.ToDecimal((# "" value : sbyte #))) 
-             when ^T : uint64     = (Convert.ToDecimal((# "" value : uint64 #))) 
-             when ^T : uint32     = (Convert.ToDecimal((# "" value : uint32 #))) 
-             when ^T : uint16     = (Convert.ToDecimal((# "" value : uint16 #))) 
-             when ^T : unativeint = (Convert.ToDecimal(uint64 (# "" value : unativeint #))) 
-             when ^T : byte       = (Convert.ToDecimal((# "" value : byte #))) 
+             when ^T : string     = (System.Decimal.Parse(castToString value,NumberStyles.Float,CultureInfo.InvariantCulture))
+             when ^T : float      = (System.Convert.ToDecimal((# "" value : float #))) 
+             when ^T : float32    = (System.Convert.ToDecimal((# "" value : float32 #))) 
+             when ^T : int64      = (System.Convert.ToDecimal((# "" value : int64 #))) 
+             when ^T : int32      = (System.Convert.ToDecimal((# "" value : int32 #))) 
+             when ^T : int16      = (System.Convert.ToDecimal((# "" value : int16 #))) 
+             when ^T : nativeint  = (System.Convert.ToDecimal(int64 (# "" value : nativeint #))) 
+             when ^T : sbyte      = (System.Convert.ToDecimal((# "" value : sbyte #))) 
+             when ^T : uint64     = (System.Convert.ToDecimal((# "" value : uint64 #))) 
+             when ^T : uint32     = (System.Convert.ToDecimal((# "" value : uint32 #))) 
+             when ^T : uint16     = (System.Convert.ToDecimal((# "" value : uint16 #))) 
+             when ^T : unativeint = (System.Convert.ToDecimal(uint64 (# "" value : unativeint #))) 
+             when ^T : byte       = (System.Convert.ToDecimal((# "" value : byte #))) 
              when ^T : decimal    = (# "" value : decimal #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> decimal) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToUIntPtr")>]
         let inline unativeint (value: ^T) = 
              ExplicitDynamic<(^T), unativeint> value
@@ -4392,6 +4412,7 @@ namespace Microsoft.FSharp.Core
              when ^T : byte       = (# "conv.u" value  : unativeint #)
              when ^T : ^T = (^T : (static member op_Explicit: ^T -> unativeint) (value))
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToIntPtr")>]
         let inline nativeint (value: ^T) = 
              ExplicitDynamic<(^T), nativeint> value
@@ -4434,6 +4455,7 @@ namespace Microsoft.FSharp.Core
              when ^T : unativeint = (# "" value : unativeint #).ToString()
              when ^T : byte       = (# "" value : byte       #).ToString("g",CultureInfo.InvariantCulture)
 
+        [<NoDynamicInvocation(isLegacy=true)>]
         [<CompiledName("ToChar")>]
         let inline char (value: ^T) = 
              ExplicitDynamic<(^T), char> value
@@ -4606,7 +4628,7 @@ namespace Microsoft.FSharp.Core
                                      else (# "ceq" e1 e1 : int #)
                  when ^T : char   = if (# "clt.un" e1 e2 : bool #) then (-1) else (# "cgt.un" e1 e2 : int #)
                  when ^T : string = 
-                     // NOTE: we don't have to null check here because String.CompareOrdinal
+                     // NOTE: we don't have to null check here because System.String.CompareOrdinal
                      // gives reliable results on null values.
                      System.String.CompareOrdinal((# "" e1 : string #),(# "" e2 : string #))
                  when ^T : decimal     = System.Decimal.Compare((# "" e1:decimal #), (# "" e2:decimal #))
@@ -4748,6 +4770,9 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte        and ^U : byte       = (# "conv.ovf.u1.un" (# "add.ovf.un" x y : uint32 #) : byte #)
                  when ^T : string      and ^U : string     = (# "" (System.String.Concat((# "" x : string #),(# "" y : string #))) : ^T #)
                  when ^T : decimal     and ^U : decimal    = (# "" (System.Decimal.op_Addition((# "" x : decimal #),(# "" y : decimal #))) : ^V #)
+                 // According to the somewhat subtle rules of static optimizations,
+                 // this condition is used whenever ^T is resolved to a nominal type
+                 // That is, not in the generic implementation of '+'
                  when ^T : ^T = ((^T or ^U): (static member (+) : ^T * ^U -> ^V) (x,y))
 
             let inline (-) (x: ^T) (y: ^U) : ^V = 
@@ -4767,6 +4792,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : decimal     and ^U : decimal    = (# "" (System.Decimal.op_Subtraction((# "" x : decimal #),(# "" y : decimal #))) : ^V #)
                  when ^T : ^T = ((^T or ^U): (static member (-) : ^T * ^U -> ^V) (x,y))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline (~-) (value: ^T) : ^T = 
                  CheckedUnaryNegationDynamic<(^T),(^T)>  value 
                  when ^T : int32     = (# "sub.ovf" 0 value  : int32 #)
@@ -4793,9 +4819,13 @@ namespace Microsoft.FSharp.Core
                  when ^T : unativeint and ^U : unativeint = (# "mul.ovf.un" x y : unativeint #)
                  when ^T : float      and ^U : float      = (# "mul" x y : float #)
                  when ^T : float32    and ^U : float32    = (# "mul" x y : float32 #)
-                 when ^T : decimal     and ^U : decimal    = (# "" (Decimal.op_Multiply((# "" x : decimal #),(# "" y : decimal #))) : ^V #)
+                 when ^T : decimal     and ^U : decimal    = (# "" (System.Decimal.op_Multiply((# "" x : decimal #),(# "" y : decimal #))) : ^V #)
+                 // According to the somewhat subtle rules of static optimizations,
+                 // this condition is used whenever ^T is resolved to a nominal type
+                 // That is, not in the generic implementation of '*'
                  when ^T : ^T = ((^T or ^U): (static member (*) : ^T * ^U -> ^V) (x,y))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToByte")>]
             let inline byte (value: ^T) = 
                  ExplicitDynamic<(^T),byte> value 
@@ -4815,6 +4845,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.u1.un" value  : byte #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> byte) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToSByte")>]
             let inline sbyte (value: ^T) = 
                  ExplicitDynamic<(^T),sbyte> value 
@@ -4834,6 +4865,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.i1.un" value  : sbyte #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> sbyte) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToUInt16")>]
             let inline uint16 (value: ^T) = 
                  ExplicitDynamic<(^T),uint16> value 
@@ -4853,6 +4885,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte       = (# "conv.ovf.u2.un" value  : uint16 #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> uint16) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToChar")>]
             let inline char (value: ^T) = 
                  ExplicitDynamic<(^T), char> value 
@@ -4872,6 +4905,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte       = (# "conv.ovf.u2.un" value  : char #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> char) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToInt16")>]
             let inline int16 (value: ^T) = 
                  ExplicitDynamic<(^T), int16> value 
@@ -4891,6 +4925,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.i2.un" value  : int16 #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> int16) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToUInt32")>]
             let inline uint32 (value: ^T) = 
                  ExplicitDynamic<(^T), uint32> value 
@@ -4910,6 +4945,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.u4.un" value  : uint32 #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> uint32) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToInt32")>]
             let inline int32 (value: ^T) = 
                  ExplicitDynamic<(^T), int32> value 
@@ -4932,6 +4968,7 @@ namespace Microsoft.FSharp.Core
             [<CompiledName("ToInt")>]
             let inline int value = int32 value
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToUInt64")>]
             let inline uint64 (value: ^T) = 
                  ExplicitDynamic<(^T), uint64> value 
@@ -4951,6 +4988,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.u8.un" value  : uint64 #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> uint64) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToInt64")>]
             let inline int64 (value: ^T) = 
                  ExplicitDynamic<(^T), int64> value 
@@ -4970,6 +5008,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.i8.un" value  : int64 #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> int64) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToUIntPtr")>]
             let inline unativeint (value: ^T) = 
                  ExplicitDynamic<(^T), unativeint> value 
@@ -4989,6 +5028,7 @@ namespace Microsoft.FSharp.Core
                  when ^T : byte     = (# "conv.ovf.u.un" value  : unativeint #)
                  when ^T : ^T = (^T : (static member op_Explicit: ^T -> unativeint) (value))
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             [<CompiledName("ToIntPtr")>]
             let inline nativeint (value: ^T) = 
                  ExplicitDynamic<(^T), nativeint> value 
@@ -5886,6 +5926,7 @@ namespace Microsoft.FSharp.Core
                 if len <= 0 then String.Empty
                 else source.Substring(start, len)
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline absImpl (x: ^T) : ^T = 
                  (^T: (static member Abs : ^T -> ^T) (x))
                  when ^T : int32       = let x : int32     = retype x in System.Math.Abs(x)
@@ -5893,60 +5934,70 @@ namespace Microsoft.FSharp.Core
                  when ^T : float32     = let x : float32   = retype x in System.Math.Abs(x)
                  when ^T : int64       = let x : int64     = retype x in System.Math.Abs(x)
                  when ^T : nativeint   = 
-                   (let x : nativeint = retype x 
+                    let x : nativeint = retype x in 
                     if x >= 0n then x else 
-                    let res = -x in
+                    let res = -x in 
                     if res < 0n then raise (System.OverflowException(ErrorStrings.NoNegateMinValueString))
-                    res)
+                    res
                  when ^T : int16       = let x : int16     = retype x in System.Math.Abs(x)
                  when ^T : sbyte       = let x : sbyte     = retype x in System.Math.Abs(x)
                  when ^T : decimal     = System.Math.Abs(retype x : decimal) 
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  acosImpl(x: ^T) : ^T = 
                  (^T: (static member Acos : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Acos(retype x)
                  when ^T : float32     = System.Math.Acos(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  asinImpl(x: ^T) : ^T = 
                  (^T: (static member Asin : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Asin(retype x)
                  when ^T : float32     = System.Math.Asin(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  atanImpl(x: ^T) : ^T = 
                  (^T: (static member Atan : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Atan(retype x)
                  when ^T : float32     = System.Math.Atan(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  atan2Impl(x: ^T) (y: ^T) : 'U = 
                  (^T: (static member Atan2 : ^T * ^T -> 'U) (x,y))
                  when ^T : float       = System.Math.Atan2(retype x, retype y)
                  when ^T : float32     = System.Math.Atan2(toFloat (retype x), toFloat(retype y)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  ceilImpl(x: ^T) : ^T = 
                  (^T: (static member Ceiling : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Ceiling(retype x : float)
                  when ^T : float32     = System.Math.Ceiling(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  expImpl(x: ^T) : ^T = 
                  (^T: (static member Exp : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Exp(retype x)
                  when ^T : float32     = System.Math.Exp(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline floorImpl (x: ^T) : ^T = 
                  (^T: (static member Floor : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Floor(retype x : float)
                  when ^T : float32     = System.Math.Floor(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline truncateImpl (x: ^T) : ^T = 
                  (^T: (static member Truncate : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Truncate(retype x : float) 
                  when ^T : float32     = System.Math.Truncate(toFloat (retype x))  |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline roundImpl (x: ^T) : ^T = 
                  (^T: (static member Round : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Round(retype x : float)
                  when ^T : float32     = System.Math.Round(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline signImpl (x: ^T) : int = 
                  (^T: (member Sign : int) (x))
                  when ^T : int32       = System.Math.Sign(retype x : int32)
@@ -5958,56 +6009,67 @@ namespace Microsoft.FSharp.Core
                  when ^T : float32     = System.Math.Sign(toFloat (retype x)) 
                  when ^T : decimal     = System.Math.Sign(retype x : decimal) 
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  logImpl(x: ^T) : ^T = 
                  (^T: (static member Log : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Log(retype x)
                  when ^T : float32     = System.Math.Log(toFloat (retype x)) |> toFloat32
             
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  log10Impl(x: ^T) : ^T = 
                  (^T: (static member Log10 : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Log10(retype x)
                  when ^T : float32     = System.Math.Log10(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  sqrtImpl(x: ^T) : ^U = 
                  (^T: (static member Sqrt : ^T -> ^U) (x))
                  when ^T : float       = System.Math.Sqrt(retype x : float)
                  when ^T : float32     = System.Math.Sqrt(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  cosImpl(x: ^T) : ^T = 
                  (^T: (static member Cos : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Cos(retype x)
                  when ^T : float32     = System.Math.Cos(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  coshImpl(x: ^T) : ^T = 
                  (^T: (static member Cosh : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Cosh(retype x)
                  when ^T : float32     = System.Math.Cosh(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  sinImpl(x: ^T) : ^T = 
                  (^T: (static member Sin : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Sin(retype x)
                  when ^T : float32     = System.Math.Sin(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  sinhImpl(x: ^T) : ^T = 
                  (^T: (static member Sinh : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Sinh(retype x)
                  when ^T : float32     = System.Math.Sinh(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  tanImpl(x: ^T) : ^T = 
                  (^T: (static member Tan : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Tan(retype x)
                  when ^T : float32     = System.Math.Tan(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  tanhImpl(x: ^T) : ^T = 
                  (^T: (static member Tanh : ^T -> ^T) (x))
                  when ^T : float       = System.Math.Tanh(retype x)
                  when ^T : float32     = System.Math.Tanh(toFloat (retype x)) |> toFloat32
 
+            [<NoDynamicInvocation(isLegacy=true)>]
             let inline  powImpl (x: ^T) (y: ^U) : ^T = 
                  (^T: (static member Pow : ^T * ^U -> ^T) (x,y))
                  when ^T : float       = System.Math.Pow((retype x : float), (retype y: float))
                  when ^T : float32     = System.Math.Pow(toFloat (retype x), toFloat(retype y)) |> toFloat32
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type AbsDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6022,6 +6084,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Abs" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type AcosDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6030,6 +6093,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Acos" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type AsinDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6038,6 +6102,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Asin" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type AtanDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6046,6 +6111,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Atan" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type Atan2DynamicImplTable<'T,'U>() = 
                 static let result : ('T -> 'T -> 'U) = 
                     let aty = typeof<'T>
@@ -6054,6 +6120,7 @@ namespace Microsoft.FSharp.Core
                     else BinaryDynamicImpl "Atan2"
                 static member Result : ('T -> 'T -> 'U) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type CeilingDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6062,6 +6129,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Ceiling" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type ExpDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6070,6 +6138,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Exp" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type FloorDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6078,6 +6147,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Floor" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type TruncateDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6086,6 +6156,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Truncate" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type RoundDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6094,6 +6165,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Round" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type SignDynamicImplTable<'T>() = 
                 static let result : ('T -> int) = 
                     let aty = typeof<'T>
@@ -6108,6 +6180,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Sign" 
                 static member Result : ('T -> int) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type LogDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6116,6 +6189,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Log" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type Log10DynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6124,6 +6198,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Log10" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type SqrtDynamicImplTable<'T,'U>() = 
                 static let result : ('T -> 'U) = 
                     let aty = typeof<'T>
@@ -6132,6 +6207,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Sqrt" 
                 static member Result : ('T -> 'U) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type CosDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6140,6 +6216,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Cos" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type CoshDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6148,6 +6225,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Cosh" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type SinDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6156,6 +6234,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Sin" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type SinhDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6164,6 +6243,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Sinh" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type TanDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6172,6 +6252,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Tan" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type TanhDynamicImplTable<'T>() = 
                 static let result : ('T -> 'T) = 
                     let aty = typeof<'T>
@@ -6180,6 +6261,7 @@ namespace Microsoft.FSharp.Core
                     else UnaryDynamicImpl "Tanh" 
                 static member Result : ('T -> 'T) = result
 
+            [<CodeAnalysis.SuppressMessage("Microsoft.Performance","CA1812:AvoidUninstantiatedInternalClasses")>]
             type PowDynamicImplTable<'T,'U>() = 
                 static let result : ('T -> 'U -> 'T) = 
                     let aty = typeof<'T>

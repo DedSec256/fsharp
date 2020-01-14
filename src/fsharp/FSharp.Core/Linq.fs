@@ -276,7 +276,6 @@ module LeafExpressionConverter =
 
     let (|MakeDecimalQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun (a1, a2, a3, a4, a5) -> LanguagePrimitives.IntrinsicFunctions.MakeDecimal a1 a2 a3 a4 a5))
 
-
     let (|NullablePlusQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun (x, y) -> NullableOperators.( ?+ ) x y))
     let (|NullablePlusNullableQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun (x, y) -> NullableOperators.( ?+? ) x y))
     let (|PlusNullableQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun (x, y) -> NullableOperators.( +? ) x y))
@@ -330,17 +329,10 @@ module LeafExpressionConverter =
     let (|ConvUInt32Q|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Operators.uint32 x))
     let (|ConvUInt64Q|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Operators.uint64 x))
 
-    /// Get the version of the method that does not carry witnesses
-    let nonWitnessMethodInfo nm (ms: MethodInfo[]) = 
-        ms |> Array.pick (fun m -> if m.Name = nm && m.GetParameters().Length = 1 then Some m else None)
-
-    let ExtraOperatorsTy = typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators")
-    let ExtraOperatorsCheckedTy = typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators+Checked")
-
-    let (|ConvInt8Q|_|) = SpecificCallToMethodInfo (ExtraOperatorsTy.GetMethods() |> nonWitnessMethodInfo "ToSByte")
-    let (|ConvUInt8Q|_|) = SpecificCallToMethodInfo (ExtraOperatorsTy.GetMethods() |> nonWitnessMethodInfo "ToByte")
-    let (|ConvDoubleQ|_|) = SpecificCallToMethodInfo (ExtraOperatorsTy.GetMethods() |> nonWitnessMethodInfo "ToDouble")
-    let (|ConvSingleQ|_|) = SpecificCallToMethodInfo (ExtraOperatorsTy.GetMethods() |> nonWitnessMethodInfo "ToSingle")
+    let (|ConvInt8Q|_|) = SpecificCallToMethodInfo (typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators").GetMethod("ToSByte"))
+    let (|ConvUInt8Q|_|) = SpecificCallToMethodInfo (typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators").GetMethod("ToByte"))
+    let (|ConvDoubleQ|_|) = SpecificCallToMethodInfo (typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators").GetMethod("ToDouble"))
+    let (|ConvSingleQ|_|) = SpecificCallToMethodInfo (typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators").GetMethod("ToSingle"))
 
     let (|ConvNullableCharQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Nullable.char x))
     let (|ConvNullableDecimalQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Nullable.decimal x))
@@ -368,8 +360,8 @@ module LeafExpressionConverter =
     let (|TypeTestGeneric|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> LanguagePrimitives.IntrinsicFunctions.TypeTestGeneric x))
     let (|CheckedConvCharQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Checked.char x))
     let (|CheckedConvSByteQ|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Checked.sbyte x))
-    let (|CheckedConvInt8Q|_|) = SpecificCallToMethodInfo (ExtraOperatorsCheckedTy.GetMethods() |> nonWitnessMethodInfo "ToSByte")
-    let (|CheckedConvUInt8Q|_|) = SpecificCallToMethodInfo (ExtraOperatorsCheckedTy.GetMethods() |> nonWitnessMethodInfo "ToByte")
+    let (|CheckedConvInt8Q|_|) = SpecificCallToMethodInfo (typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators+Checked").GetMethod("ToSByte"))
+    let (|CheckedConvUInt8Q|_|) = SpecificCallToMethodInfo (typeof<ConvEnv>.Assembly.GetType("Microsoft.FSharp.Core.ExtraTopLevelOperators+Checked").GetMethod("ToByte"))
     let (|CheckedConvInt16Q|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Checked.int16 x))
     let (|CheckedConvInt32Q|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Checked.int32 x))
     let (|CheckedConvInt64Q|_|) = (|SpecificCallToMethod|_|) (methodhandleof (fun x -> Checked.int64 x))
@@ -549,7 +541,7 @@ module LeafExpressionConverter =
             
             // Detect the F# quotation encoding of decimal literals
             | MakeDecimalQ (_, _, [Int32 lo; Int32 med; Int32 hi; Bool isNegative; Byte scale]) -> 
-                Expression.Constant(new System.Decimal(lo,med,hi,isNegative,scale)) |> asExpr
+                Expression.Constant (new System.Decimal(lo, med, hi, isNegative, scale)) |> asExpr
 
             | NegQ (_, _, [x1])    -> Expression.Negate(ConvExprToLinqInContext env x1) |> asExpr
             | PlusQ _ -> transBinOp env false args false Expression.Add
@@ -647,6 +639,7 @@ module LeafExpressionConverter =
             // or type T to an argument expecting Expression<T>.
             | ImplicitExpressionConversionHelperQ (_, [_], [x1]) -> ConvExprToLinqInContext env x1
              
+            /// Use witnesses if they are available
             | CallWithWitnesses (objArgOpt, _, minfo2, witnessArgs, args) -> 
                 let fullArgs = witnessArgs @ args
                 let replacementExpr =

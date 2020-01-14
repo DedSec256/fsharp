@@ -282,7 +282,7 @@ and [<CompiledName("FSharpExpr"); StructuredFormatDisplay("{DebugText}")>]
         | CombTerm(WithValueOp(v, _), [defn]) -> combL "WithValue" [objL v; expr defn]
 
         | CombTerm(InstanceMethodCallOp(minfo), obj::args) ->
-            combL "Call"     [someL obj; minfoL minfo; listL (exprs args)]
+            combL "Call" [someL obj; minfoL minfo; listL (exprs args)]
         
         | CombTerm(StaticMethodCallOp(minfo), args) ->
             combL "Call" [noneL; minfoL minfo; listL (exprs args)]
@@ -295,14 +295,30 @@ and [<CompiledName("FSharpExpr"); StructuredFormatDisplay("{DebugText}")>]
             let argsWithoutWitnesses = List.skip nWitnesses args
             combL "Call" [noneL; minfoL minfo; listL (exprs argsWithoutWitnesses)]
 
-        | CombTerm(InstancePropGetOp(pinfo), (obj::args)) -> combL "PropertyGet"  [someL obj; pinfoL pinfo; listL (exprs args)]
-        | CombTerm(StaticPropGetOp(pinfo), args) -> combL "PropertyGet"  [noneL;     pinfoL pinfo; listL (exprs args)]
-        | CombTerm(InstancePropSetOp(pinfo), (obj::args)) -> combL "PropertySet"  [someL obj; pinfoL pinfo; listL (exprs args)]
-        | CombTerm(StaticPropSetOp(pinfo), args) -> combL "PropertySet"  [noneL;     pinfoL pinfo; listL (exprs args)]
-        | CombTerm(InstanceFieldGetOp(finfo), [obj]) -> combL "FieldGet" [someL obj; finfoL finfo]
-        | CombTerm(StaticFieldGetOp(finfo), []) -> combL "FieldGet" [noneL;     finfoL finfo]
-        | CombTerm(InstanceFieldSetOp(finfo), [obj;v]) -> combL "FieldSet" [someL obj; finfoL finfo; expr v;]
-        | CombTerm(StaticFieldSetOp(finfo), [v]) -> combL "FieldSet" [noneL;     finfoL finfo; expr v;]
+        | CombTerm(InstancePropGetOp(pinfo), (obj::args)) ->
+            combL "PropertyGet"  [someL obj; pinfoL pinfo; listL (exprs args)]
+
+        | CombTerm(StaticPropGetOp(pinfo), args) ->
+            combL "PropertyGet"  [noneL; pinfoL pinfo; listL (exprs args)]
+
+        | CombTerm(InstancePropSetOp(pinfo), (obj::args)) ->
+            combL "PropertySet" [someL obj; pinfoL pinfo; listL (exprs args)]
+
+        | CombTerm(StaticPropSetOp(pinfo), args) ->
+            combL "PropertySet"  [noneL; pinfoL pinfo; listL (exprs args)]
+
+        | CombTerm(InstanceFieldGetOp(finfo), [obj]) ->
+            combL "FieldGet" [someL obj; finfoL finfo]
+
+        | CombTerm(StaticFieldGetOp(finfo), []) ->
+            combL "FieldGet" [noneL; finfoL finfo]
+
+        | CombTerm(InstanceFieldSetOp(finfo), [obj;v]) ->
+            combL "FieldSet" [someL obj; finfoL finfo; expr v;]
+
+        | CombTerm(StaticFieldSetOp(finfo), [v]) ->
+            combL "FieldSet" [noneL; finfoL finfo; expr v;]
+
         | CombTerm(CoerceOp(ty), [arg]) -> combL "Coerce"  [ expr arg; typeL ty]
         | CombTerm(NewObjectOp cinfo, args) -> combL "NewObject" ([ cinfoL cinfo ] @ exprs args)
         | CombTerm(DefaultValueOp ty, args) -> combL "DefaultValue" ([ typeL ty ] @ exprs args)
@@ -316,6 +332,7 @@ and [<CompiledName("FSharpExpr"); StructuredFormatDisplay("{DebugText}")>]
         | CombTerm(TryFinallyOp, args) -> combL "TryFinally" (exprs args)
         | CombTerm(TryWithOp, [e1;Lambda(v1, e2);Lambda(v2, e3)]) -> combL "TryWith" [expr e1; varL v1; expr e2; varL v2; expr e3]
         | CombTerm(SequentialOp, args) -> combL "Sequential" (exprs args)
+
         | CombTerm(NewDelegateOp ty, [e]) ->
             let nargs = (getDelegateInvoke ty).GetParameters().Length
             if nargs = 0 then
@@ -1475,34 +1492,44 @@ module Patterns =
     let rec u_Expr st =
         let tag = u_byte_as_int st
         match tag with
-        | 0 -> u_tup3 u_opSpec u_dtypes (u_list u_Expr) st
-                |> (fun (a, b, args) (env:BindingEnv) ->
-                    let args = List.map (fun e -> e env) args
-                    let a =
-                        match a with
-                        | Unique v -> v
-                        | Ambiguous f ->
-                            let argTys = List.map typeOf args
-                            f argTys
-                    let tyargs = b env.typeInst
-                    E(CombTerm(a tyargs, args )))
-        | 1 -> let x = u_VarRef st
-               (fun env -> E(VarTerm (x env)))
-        | 2 -> let a = u_VarDecl st
-               let b = u_Expr st
-               (fun env -> let v = a env in E(LambdaTerm(v, b (addVar env v))))
-        | 3 -> let a = u_dtype st
-               let idx = u_int st
-               (fun env -> E(HoleTerm(a env.typeInst, idx)))
-        | 4 -> let a = u_Expr st
-               (fun env -> mkQuote(a env, true))
-        | 5 -> let a = u_Expr st
-               let attrs = u_list u_Expr st
-               (fun env -> let e = (a env) in EA(e.Tree, (e.CustomAttributes @ List.map (fun attrf -> attrf env) attrs)))
-        | 6 -> let a = u_dtype st
-               (fun env -> mkVar(Var.Global("this", a env.typeInst)))
-        | 7 -> let a = u_Expr st
-               (fun env -> mkQuote(a env, false))
+        | 0 ->
+            let a = u_constSpec st
+            let b = u_dtypes st
+            let args = u_list u_Expr st
+            (fun (env:BindingEnv) ->
+                let args = List.map (fun e -> e env) args
+                let a =
+                    match a with
+                    | Unique v -> v
+                    | Ambiguous f ->
+                        let argTys = List.map typeOf args
+                        f argTys
+                let tyargs = b env.typeInst
+                E(CombTerm(a tyargs, args )))
+        | 1 ->
+            let x = u_VarRef st
+            (fun env -> E(VarTerm (x env)))
+        | 2 ->
+            let a = u_VarDecl st
+            let b = u_Expr st
+            (fun env -> let v = a env in E(LambdaTerm(v, b (addVar env v))))
+        | 3 ->
+            let a = u_dtype st
+            let idx = u_int st
+            (fun env -> E(HoleTerm(a env.typeInst, idx)))
+        | 4 ->
+            let a = u_Expr st
+            (fun env -> mkQuote(a env, true))
+        | 5 ->
+            let a = u_Expr st
+            let attrs = u_list u_Expr st
+            (fun env -> let e = (a env) in EA(e.Tree, (e.CustomAttributes @ List.map (fun attrf -> attrf env) attrs)))
+        | 6 ->
+            let a = u_dtype st
+            (fun env -> mkVar(Var.Global("this", a env.typeInst)))
+        | 7 ->
+            let a = u_Expr st
+            (fun env -> mkQuote(a env, false))
         | _ -> failwith "u_Expr"
 
     and u_VarDecl st =
@@ -1573,8 +1600,8 @@ module Patterns =
         match tag with
         | 0 ->
             match u_ModuleDefn None st with
-            | Unique (StaticMethodCallOp minfo) -> (minfo :> MethodBase)
-            | Unique (StaticPropGetOp pinfo) -> (pinfo.GetGetMethod(true) :> MethodBase)
+            | Unique(StaticMethodCallOp minfo) -> (minfo :> MethodBase)
+            | Unique(StaticPropGetOp pinfo) -> (pinfo.GetGetMethod true :> MethodBase)
             | Ambiguous(_) -> raise (System.Reflection.AmbiguousMatchException())
             | _ -> failwith "unreachable"
         | 1 ->
@@ -1608,7 +1635,7 @@ module Patterns =
         // OK to throw away the tyargs here since this only non-generic values in modules get represented by static properties
         | x -> x
 
-    and u_opSpec st =
+    and u_constSpec st =
         let tag = u_byte_as_int st
         if tag = 1 then
             match u_ModuleDefn None st with
@@ -1626,7 +1653,7 @@ module Patterns =
             | 0 -> u_void st |> (fun () NoTyArgs -> IfThenElseOp)
             // 1 taken above
             | 2 -> u_void st |> (fun () NoTyArgs -> LetRecOp)
-            | 3 -> u_NamedType st |> (fun x tyargs -> NewRecordOp (mkNamedType(x, tyargs)))
+            | 3 -> u_NamedType st |> (fun x tyargs -> NewRecordOp (mkNamedType (x, tyargs)))
             | 4 -> u_RecdField st |> (fun prop tyargs -> InstancePropGetOp(prop tyargs))
             | 5 -> u_UnionCaseInfo st |> (fun unionCase tyargs -> NewUnionCaseOp(unionCase tyargs))
             | 6 -> u_UnionCaseField st |> (fun prop tyargs -> InstancePropGetOp(prop tyargs) )
@@ -1648,9 +1675,9 @@ module Patterns =
             | 22 -> u_int64 st |> (fun a (OneTyArg tyarg) -> mkLiftedValueOpG (a, tyarg))
             | 23 -> u_uint64 st |> (fun a (OneTyArg tyarg) -> mkLiftedValueOpG (a, tyarg))
             | 24 -> u_void st |> (fun () NoTyArgs -> mkLiftedValueOpG ((), typeof<unit>))
-            | 25 -> u_PropInfoData st |> (fun (a, b, c, d) tyargs -> let pinfo = bindProp (a, b, c, d, tyargs) in if pinfoIsStatic pinfo then StaticPropGetOp(pinfo) else InstancePropGetOp(pinfo))
-            | 26 -> u_CtorInfoData st |> (fun (a, b) tyargs -> NewObjectOp (bindCtor (a, b, tyargs)))
-            | 28 -> u_void st |> (fun () (OneTyArg(ty)) -> CoerceOp ty)
+            | 25 -> u_PropInfoData st |> (fun (a, b, c, d) tyargs -> let pinfo = bindProp(a, b, c, d, tyargs) in if pinfoIsStatic pinfo then StaticPropGetOp(pinfo) else InstancePropGetOp(pinfo))
+            | 26 -> u_CtorInfoData st |> (fun (a, b) tyargs  -> NewObjectOp (bindCtor (a, b, tyargs)))
+            | 28 -> u_void st |> (fun () (OneTyArg ty) -> CoerceOp ty)
             | 29 -> u_void st |> (fun () NoTyArgs -> SequentialOp)
             | 30 -> u_void st |> (fun () NoTyArgs -> ForIntegerRangeLoopOp)
             | 31 -> u_MethodInfoData st |> (fun p tyargs -> let minfo = bindMeth(p, tyargs) in if minfo.IsStatic then StaticMethodCallOp minfo else InstanceMethodCallOp minfo)
@@ -1673,13 +1700,16 @@ module Patterns =
             | 48 -> u_void st |> (fun () NoTyArgs -> TryWithOp)
             | 49 -> u_void st |> (fun () NoTyArgs -> VarSetOp)
             | 50 ->
-                u_tup3 u_MethodInfoData u_MethodInfoData u_int st |> (fun (m1, m2, n) tyargs ->
+                let m1 = u_MethodInfoData st
+                let m2 = u_MethodInfoData st
+                let n = u_int st
+                (fun tyargs ->
                     let minfo = bindMeth (m1, tyargs)
                     let minfoW = bindMeth (m2, tyargs)
                     if minfo.IsStatic then StaticMethodCallWOp(minfo, minfoW, n)
                     else InstanceMethodCallWOp(minfo, minfoW, n))
             // 51 taken above
-            | _ -> failwithf "u_opSpec, unrecognized tag %d" tag
+            | _ -> failwithf "u_constSpec, unrecognized tag %d" tag
         Unique constSpec
 
     let u_ReflectedDefinition = u_tup2 u_MethodBase u_Expr
@@ -1788,6 +1818,7 @@ module Patterns =
                 reflectedDefinitionTable.Add(key, Entry exprBuilder)))
         decodedTopResources.Add((assem, resourceName), 0)
 
+    /// Get the reflected definition at the given (always generic) instantiation
     let tryGetReflectedDefinition (methodBase: MethodBase, tyargs: Type []) =
         checkNonNull "methodBase" methodBase
         let data =
@@ -1852,7 +1883,8 @@ module Patterns =
             Some(exprBuilder (envClosed tyargs))
         | None -> None
 
-    let tryGetReflectedDefinitionInstantiated (methodBase:MethodBase) =
+    /// Get the reflected definition at the generic instantiation
+    let tryGetReflectedDefinitionGeneric (methodBase:MethodBase) =
         checkNonNull "methodBase" methodBase
         match methodBase with
         | :? MethodInfo as minfo ->
@@ -2048,7 +2080,7 @@ type Expr with
 
     static member TryGetReflectedDefinition(methodBase:MethodBase) =
         checkNonNull "methodBase" methodBase
-        tryGetReflectedDefinitionInstantiated methodBase
+        tryGetReflectedDefinitionGeneric methodBase
 
     static member Cast(source:Expr) = cast source
 
@@ -2235,7 +2267,7 @@ module ExprShape =
             | NewObjectOp minfo, _ -> mkCtorCall(minfo, arguments)
             | DefaultValueOp ty, _ -> mkDefaultValue ty
             | StaticMethodCallOp minfo, _ -> mkStaticMethodCall(minfo, arguments)
-            | InstanceMethodCallOp minfo, obj::args -> mkInstanceMethodCall(obj, minfo, args)
+            | InstanceMethodCallOp minfo, obj :: args -> mkInstanceMethodCall(obj, minfo, args)
             | StaticMethodCallWOp (minfo, minfoW, n), _ -> mkStaticMethodCallW(minfo, minfoW, n, arguments)
             | InstanceMethodCallWOp (minfo, minfoW, n), obj::args -> mkInstanceMethodCallW(obj, minfo, minfoW, n, args)
             | CoerceOp ty, [arg] -> mkCoerce(ty, arg)
