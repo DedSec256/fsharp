@@ -1503,7 +1503,7 @@
         <note />
       </trans-unit>
       <trans-unit id="crefQuotationsCantCallTraitMembers">
-        <source>Quotations cannot contain expressions that make member constraint calls, or uses of operators that implicitly resolve to a member constraint call</source>
+        <source>Quotations cannot contain generic code expressions that make member constraint calls, or uses of operators that implicitly resolve to a member constraint call</source>
         <target state="translated">В кавычки нельзя заключать выражения, выполняющие вызовы ограничения элементов или использующие операторы, которые явным образом разрешаются в вызовы элементов ограничения</target>
         <note />
       </trans-unit>

@@ -131,7 +131,7 @@ let BindFormalTypars (env: QuotationTranslationEnv) vs =
     { env with tyvs = Map.empty }.BindTypars vs
 
 let BindVal env v =
-    let n = env.witnessesInScope.Count + env.numValsInScope
+    let n = env.numValsInScope
     { env with
        vs = env.vs.Add v n
        numValsInScope = env.numValsInScope + 1 }
@@ -240,11 +240,14 @@ and GetWitnessArgs cenv (env : QuotationTranslationEnv) m tps tyargs =
         witnessExprs |> List.map (fun arg -> 
             match arg with 
             | Choice1Of2 witnessInfo -> 
+                let ty = GenWitnessTy cenv.g witnessInfo
+                let tyR = ConvType cenv env m  ty
                 if env.witnessesInScope.ContainsKey witnessInfo then 
-                    QP.mkVar env.witnessesInScope.[witnessInfo]
+                    let pos = env.witnessesInScope.[witnessInfo]
+                    QP.mkImplicitArg (tyR, pos)
                 else
                     System.Diagnostics.Debug.Assert(false, "unexpected missing witness representation")
-                    QP.mkVar 0
+                    QP.mkImplicitArg (tyR, 0)
             | Choice2Of2 arg -> 
                 ConvExpr cenv env arg) 
     else
@@ -645,17 +648,58 @@ and private ConvExprCore cenv (env : QuotationTranslationEnv) (expr: Expr) : QP.
             QP.mkTryWith(ConvExpr cenv env e1, vfR, ConvExpr cenv envf ef, vhR, ConvExpr cenv envh eh)
 
         | TOp.Bytes bytes, [], [] ->
-              ConvExpr cenv env (Expr.Op (TOp.Array, [cenv.g.byte_ty], List.ofArray (Array.map (mkByte cenv.g m) bytes), m))
+            ConvExpr cenv env (Expr.Op (TOp.Array, [cenv.g.byte_ty], List.ofArray (Array.map (mkByte cenv.g m) bytes), m))
 
         | TOp.UInt16s arr, [], [] ->
-              ConvExpr cenv env (Expr.Op (TOp.Array, [cenv.g.uint16_ty], List.ofArray (Array.map (mkUInt16 cenv.g m) arr), m))
+            ConvExpr cenv env (Expr.Op (TOp.Array, [cenv.g.uint16_ty], List.ofArray (Array.map (mkUInt16 cenv.g m) arr), m))
 
-        | TOp.UnionCaseProof _, _, [e]       -> ConvExpr cenv env e  // Note: we erase the union case proof conversions when converting to quotations
-        | TOp.UnionCaseTagGet _tycr, _tinst, [_cx]          -> wfail(Error(FSComp.SR.crefQuotationsCantFetchUnionIndexes(), m))
-        | TOp.UnionCaseFieldSet (_c, _i), _tinst, [_cx;_x]     -> wfail(Error(FSComp.SR.crefQuotationsCantSetUnionFields(), m))
-        | TOp.ExnFieldSet (_tcref, _i), [], [_ex;_x] -> wfail(Error(FSComp.SR.crefQuotationsCantSetExceptionFields(), m))
-        | TOp.RefAddrGet _, _, _                       -> wfail(Error(FSComp.SR.crefQuotationsCantRequireByref(), m))
-        | TOp.TraitCall (_ss), _, _                    -> wfail(Error(FSComp.SR.crefQuotationsCantCallTraitMembers(), m))
+        | TOp.UnionCaseProof _, _, [e] ->
+            ConvExpr cenv env e  // Note: we erase the union case proof conversions when converting to quotations
+
+        | TOp.UnionCaseTagGet _tycr, _tinst, [_cx] ->
+            wfail(Error(FSComp.SR.crefQuotationsCantFetchUnionIndexes(), m))
+
+        | TOp.UnionCaseFieldSet (_c, _i), _tinst, [_cx;_x] ->
+            wfail(Error(FSComp.SR.crefQuotationsCantSetUnionFields(), m))
+
+        | TOp.ExnFieldSet (_tcref, _i), [], [_ex;_x] ->
+            wfail(Error(FSComp.SR.crefQuotationsCantSetExceptionFields(), m))
+
+        | TOp.RefAddrGet _, _, _ ->
+            wfail(Error(FSComp.SR.crefQuotationsCantRequireByref(), m))
+
+        | TOp.TraitCall traitInfo, _, args ->
+            let g = cenv.g
+            let inWitnessPassingScope = not env.witnessesInScope.IsEmpty
+            let witness = 
+                if g.generateWitnesses && inWitnessPassingScope then 
+                    match env.witnessesInScope.TryGetValue traitInfo.TraitKey with 
+                    | true, storage -> Some storage
+                    | _ -> None // failwithf "no storage for witness %s found in scope" w.MemberName
+                else
+                    None
+
+            match witness with 
+            | Some storage -> 
+        
+                let ty = GenWitnessTy g traitInfo.TraitKey
+                let tyR = ConvType cenv env m ty
+                let witnessR = QP.mkImplicitArg (tyR, storage)
+                let args = if args.Length = 0 then [ mkUnit g m ] else args
+                let argsR = ConvExprs cenv env args
+                (witnessR, argsR) ||> List.fold (fun fR argR -> QP.mkApp (fR, argR))
+        
+            | None ->     
+                // If witnesses are available, we should now always find trait witnesses in scope
+                assert not inWitnessPassingScope
+        
+                let minfoOpt = ConstraintSolver.CodegenWitnessForTraitConstraint cenv.tcVal g cenv.amap m traitInfo args |> CommitOperationResult 
+                match minfoOpt with
+                | None ->
+                    wfail(Error(FSComp.SR.crefQuotationsCantCallTraitMembers(), m))
+                | Some expr ->
+                    ConvExpr cenv env expr             
+
         | _ ->
             wfail(InternalError( "Unexpected expression shape", m))
 

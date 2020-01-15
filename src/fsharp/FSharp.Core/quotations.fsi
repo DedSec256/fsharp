@@ -665,6 +665,12 @@ module Patterns =
     [<CompiledName("VarSetPattern")>]
     val (|VarSet|_|)          : input:Expr -> (Var * Expr) option
     
+    /// <summary>An active pattern to recognize expressions that represent calls to static and instance methods, and functions defined in modules</summary>
+    /// <param name="input">The input expression to match against.</param>
+    /// <returns>(Expr option * MethodInfo * Expr list) option</returns>
+    [<CompiledName("ImplicitArgPattern")>]
+    val (|ImplicitArg|_|) : input:Expr -> int option
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 /// <summary>Contains a set of derived F# active patterns to analyze F# expression objects</summary>

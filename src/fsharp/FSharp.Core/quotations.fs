@@ -185,6 +185,7 @@ and
     | ValueOp of obj * Type * string option
     | WithValueOp of obj * Type
     | DefaultValueOp of Type
+    | ImplicitArgOp of Type * int
 
 and [<CompiledName("FSharpExpr"); StructuredFormatDisplay("{DebugText}")>]
     Expr(term:Tree, attribs:Expr list) =
@@ -322,6 +323,7 @@ and [<CompiledName("FSharpExpr"); StructuredFormatDisplay("{DebugText}")>]
         | CombTerm(CoerceOp(ty), [arg]) -> combL "Coerce"  [ expr arg; typeL ty]
         | CombTerm(NewObjectOp cinfo, args) -> combL "NewObject" ([ cinfoL cinfo ] @ exprs args)
         | CombTerm(DefaultValueOp ty, args) -> combL "DefaultValue" ([ typeL ty ] @ exprs args)
+        | CombTerm(ImplicitArgOp (_ty, n), []) -> combL "ImplicitArg" [objL n]
         | CombTerm(NewArrayOp ty, args) -> combL "NewArray" ([ typeL ty ] @ exprs args)
         | CombTerm(TypeTestOp ty, args) -> combL "TypeTest" ([ typeL ty] @ exprs args)
         | CombTerm(AddressOfOp, args) -> combL "AddressOf" (exprs args)
@@ -561,7 +563,14 @@ module Patterns =
     [<CompiledName("NewObjectPattern")>]
     let (|NewObject|_|) input =
         match input with
-        | E(CombTerm(NewObjectOp ty, e)) -> Some(ty, e) | _ -> None
+        | E(CombTerm(NewObjectOp ty, e)) -> Some(ty, e)
+        | _ -> None
+
+    [<CompiledName("ImplicitArgPattern")>]
+    let (|ImplicitArg|_|) input =
+        match input with
+        | E(CombTerm(ImplicitArgOp (_ty, n), [])) -> Some n
+        | _ -> None
 
     [<CompiledName("CallPattern")>]
     let (|Call|_|) input =
@@ -721,6 +730,7 @@ module Patterns =
             | QuoteOp false, [_] -> rawExprTy
             | TryFinallyOp, [e1;_] -> typeOf e1
             | TryWithOp, [e1;_;_] -> typeOf e1
+            | ImplicitArgOp (ty, _), _ -> ty
             | WhileLoopOp, _
             | VarSetOp, _
             | AddressSetOp, _ -> typeof<Unit>
@@ -815,6 +825,7 @@ module Patterns =
     let mkLambda(var, body) = E(LambdaTerm(var, (body:>Expr)))
     let mkTryWith(e1, v1, e2, v2, e3) = mkFE3 TryWithOp (e1, mkLambda(v1, e2), mkLambda(v2, e3))
     let mkTryFinally(e1, e2) = mkFE2 TryFinallyOp (e1, e2)
+    let mkImplicitArg(ty, n) = mkFE0 (ImplicitArgOp(ty, n))
 
     let mkCoerce      (ty, x) = mkFE1 (CoerceOp ty) x
     let mkNull        (ty) = mkFE0 (ValueOp(null, ty, None))
@@ -1709,6 +1720,9 @@ module Patterns =
                     if minfo.IsStatic then StaticMethodCallWOp(minfo, minfoW, n)
                     else InstanceMethodCallWOp(minfo, minfoW, n))
             // 51 taken above
+            | 52 ->
+                let argPos = u_int st
+                (fun (OneTyArg ty) -> ImplicitArgOp(ty, argPos))
             | _ -> failwithf "u_constSpec, unrecognized tag %d" tag
         Unique constSpec
 
@@ -2286,8 +2300,8 @@ module ExprShape =
             | ValueOp(v, ty, None), [] -> mkValue(v, ty)
             | ValueOp(v, ty, Some nm), [] -> mkValueWithName(v, ty, nm)
             | WithValueOp(v, ty), [e] -> mkValueWithDefn(v, ty, e)
+            | ImplicitArgOp(ty, n), [] -> mkImplicitArg(ty, n)
             | _ -> raise <| System.InvalidOperationException (SR.GetString(SR.QillFormedAppOrLet))
-
 
         EA(e.Tree, attrs)
 

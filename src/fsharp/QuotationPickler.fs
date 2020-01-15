@@ -98,6 +98,7 @@ type CombOp =
     | TypeTestOp 
     | TryFinallyOp
     | TryWithOp 
+    | ImplicitArgOp of int
 
 
 /// Represents specifications of a subset of F# expressions 
@@ -228,6 +229,8 @@ let mkCtorCall   (d, tyargs, args) = CombExpr(CtorCallOp(d), tyargs, args)
 let mkMethodCall (d, tyargs, args) = CombExpr(MethodCallOp(d), tyargs, args)
 
 let mkMethodCallW (d1, d2, d3, tyargs, args) = CombExpr(MethodCallWOp(d1, d2, d3), tyargs, args)
+
+let mkImplicitArg (ty, n) = CombExpr(ImplicitArgOp(n), [ty], [])
 
 let mkAttributedExpression(e, attr) = AttrExpr(e, [attr])
 
@@ -478,6 +481,9 @@ let p_CombOp x st =
         p_NamedType x st 
         p_string y st 
         p_bool z st
+    | ImplicitArgOp n ->
+        p_byte 52 st
+        p_int n st
 
 let rec p_expr x st =
     match x with 

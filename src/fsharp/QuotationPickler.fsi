@@ -108,6 +108,10 @@ val mkFieldSet : NamedTypeData * string * TypeData list * ExprData list -> ExprD
 val mkCtorCall : CtorData * TypeData list * ExprData list -> ExprData 
 val mkMethodCall : MethodData * TypeData list * ExprData list -> ExprData 
 val mkMethodCallW : MethodData * MethodData * int * TypeData list * ExprData list -> ExprData 
+
+/// Make the pre-pickle data for a quotation node the represents getting a hidden witnesss parameter
+val mkImplicitArg : TypeData * int -> ExprData 
+
 val mkAttributedExpression : ExprData * ExprData -> ExprData 
 val pickle : (ExprData -> byte[]) 
 val isAttributedExpression : ExprData -> bool

@@ -3633,6 +3633,105 @@ module MoreWitnessTests =
             check "ewlknweknl6" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q5 with :? int as x -> x) 6
             check "ewlknweknl7" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q6 with :? int as x -> x) 7
 
+// Check we can take ReflectedDefinition of things involving witness and trait calls
+module QuotationsOfGenericTraitCalls =
+    [<ReflectedDefinition>]
+    let inline f1 (x: ^T) = x + x // ( ^T : (static member Foo: int -> int) (3))
+
+    match <@ f1 1 @> with
+    | Quotations.Patterns.Call(_, mi, _) -> 
+        let mi1 = mi.GetGenericMethodDefinition() 
+        let q1 = Quotations.Expr.TryGetReflectedDefinition(mi1)
+        check "vwehwevrwv" q1 None
+    | q -> report_failure (sprintf "gfwhoewvioh - unexpected %A" q)
+
+
+    match <@ f1 1 @> with
+    | Quotations.Patterns.CallWithWitnesses(_, mi, mi2, _, _) -> 
+        let mi2w = mi2.GetGenericMethodDefinition() 
+        let q2 = Quotations.Expr.TryGetReflectedDefinition(mi2w)
+
+        match q2 with 
+        | Some (Lambda(v, CallWithWitnesses(None, mi, mi2, [ImplicitArg w2], [a2;b2]))) -> 
+        
+            check "cewlkjwvw" mi2.Name "op_Addition$W"
+            check "evwnjkvwe" w2 0
+            check "vjnvwiowve" a2 b2 
+
+        | q -> report_failure (sprintf "gfwhoewvioh32 - unexpected %A" q)
+            
+    | q -> report_failure (sprintf "gfwhoewvioh37 - unexpected %A" q)
+    
+    
+    type C() = 
+        static member Foo (x:int) = x
+
+    [<ReflectedDefinition>]
+    let inline f3 (x: ^T) =
+        ( ^T : (static member Foo: int -> int) (3))
+
+    match <@ f3 (C()) @> with
+    | Quotations.Patterns.Call(_, mi, _) -> 
+        let mi3 = mi.GetGenericMethodDefinition()
+        let q3 = Quotations.Expr.TryGetReflectedDefinition(mi3)
+        check "fekjevwlw" q3 None
+    | q -> report_failure (sprintf "3kjhhjkkjhe9 - %A unexpected"  q)
+
+    match <@ f3 (C()) @> with 
+    | Quotations.Patterns.CallWithWitnesses(_, mi, miw, [w], _) -> 
+        let mi4w, w4 = miw.GetGenericMethodDefinition(), w 
+        let q4 = Quotations.Expr.TryGetReflectedDefinition(mi4w)
+
+        check "vwroirvjkn" mi4w.Name "f3$W"
+
+        match q4 with 
+        | Some (Lambda(v, Application(ImplicitArg 0, Int32 3))) -> ()
+        | _ -> report_failure (sprintf "3kjhhjkkjhe1 - %A unexpected"  q4)
+
+        match w4 with 
+        | Lambda(v, Call(None, miFoo, [Var v2])) -> 
+           check "vewhjwveoi1" miFoo.Name "Foo"
+           check "vewhjwveoi2" v v2
+        | _ -> report_failure (sprintf "3kjhhjkkjhe2 - %A unexpected"  w4)
+
+    | q -> report_failure (sprintf "3kjhhjkkjhe0 - %A unexpected"  q)
+
+/// Check we can take quotations of implicit operator trait calls
+
+module QuotationOfConcreteTraitCalls =
+    
+    type Foo(s: string) =
+         member _.S = s
+         static member (?) (foo : Foo, name : string) = foo.S + name
+         static member (++) (foo : Foo, name : string) = foo.S + name
+         static member (?<-) (foo : Foo, name : string, v : string) = ()
+
+    let foo = Foo("hello, ")
+
+    // Desugared form is ok, but ? desugars to a method with constraints which aren't allowed in quotes
+    let q1 = <@ Foo.op_Dynamic(foo, "uhh") @>
+    let q2 = <@ foo ? uhh @>
+
+    let q3 = <@ Foo.op_DynamicAssignment(foo, "uhh", "hm") @>
+    let q4 = <@ foo ? uhh <- "hm" @>
+    let q5 = <@ foo ++ "uhh" @>
+
+    let cleanup (s:string) = s.Replace(" ","").Replace("\n","").Replace("\r","")
+    check "wekncjeck112a" (cleanup (sprintf "%0A" q1)) "Call(None,op_Dynamic,[PropertyGet(None,foo,[]),Value(\"uhh\")])"
+    check "wekncjeck112b" (cleanup (sprintf "%0A" q2)) "Application(Application(Lambda(arg0,Lambda(arg1,Call(None,op_Dynamic,[arg0,arg1]))),PropertyGet(None,foo,[])),Value(\"uhh\"))"
+    check "wekncjeck112c" (cleanup (sprintf "%0A" q3)) "Call(None,op_DynamicAssignment,[PropertyGet(None,foo,[]),Value(\"uhh\"),Value(\"hm\")])"
+    check "wekncjeck112d" (cleanup (sprintf "%0A" q4)) "Application(Application(Application(Lambda(arg0,Lambda(arg1,Lambda(arg2,Call(None,op_DynamicAssignment,[arg0,arg1,arg2])))),PropertyGet(None,foo,[])),Value(\"uhh\")),Value(\"hm\"))"
+    check "wekncjeck112e" (cleanup (sprintf "%0A" q5)) "Application(Application(Lambda(arg0,Lambda(arg1,Call(None,op_PlusPlus,[arg0,arg1]))),PropertyGet(None,foo,[])),Value(\"uhh\"))"
+
+    // Let bound functions handle this ok
+    let (?) o s =
+        printfn "%s" s
+
+    // No error here because it binds to the let bound version
+    let q8 = <@ foo ? uhh @>
+
+    exit 0
+
 module TestAssemblyAttributes = 
     let attributes = System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttributes(false)
 

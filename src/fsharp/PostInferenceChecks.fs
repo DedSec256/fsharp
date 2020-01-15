@@ -973,15 +973,15 @@ and CheckExpr (cenv: cenv) (env: env) origExpr (context: PermitByRefExpr) : Limi
         if cenv.reportErrors then 
             cenv.usesQuotations <- true
 
-            // Translate to quotation data
+            // Translate the quotation to quotation data
             try 
                 let qscope = QuotationTranslator.QuotationGenerationScope.Create (g, cenv.amap, cenv.viewCcu, cenv.tcVal, QuotationTranslator.IsReflectedDefinition.No) 
                 let qenv = QuotationTranslator.QuotationTranslationEnv.CreateEmpty g
                 // TODO: do we need to bind witnesses here
                 let qdata = QuotationTranslator.ConvExprPublic qscope qenv ast  
-                let typeDefs, spliceTypes, spliceExprs = qscope.Close()
+                let typeDefs, typeSplices, exprSplices = qscope.Close()
                 match savedConv.Value with 
-                | None -> savedConv:= Some (typeDefs, List.map fst spliceTypes, List.map fst spliceExprs, qdata)
+                | None -> savedConv:= Some (typeDefs, List.map fst typeSplices, List.map fst exprSplices, qdata)
                 | Some _ -> ()
             with QuotationTranslator.InvalidQuotedTerm e -> 
                 errorRecovery e m
@@ -1768,8 +1768,8 @@ and CheckBinding cenv env alwaysCheckNoReraise context (TBind(v, bindRhs, _) as 
                     let qenv = qenv.BindWitnessInfos witnessInfos
                     let qscope = QuotationTranslator.QuotationGenerationScope.Create (g, cenv.amap, cenv.viewCcu, cenv.tcVal, QuotationTranslator.IsReflectedDefinition.Yes) 
                     QuotationTranslator.ConvExprPublic qscope qenv taue  |> ignore
-                    let _, _, argExprs = qscope.Close()
-                    if not (isNil argExprs) then 
+                    let _, _, exprSplices = qscope.Close()
+                    if not (isNil exprSplices) then 
                         errorR(Error(FSComp.SR.chkReflectedDefCantSplice(), v.Range))
                     QuotationTranslator.ConvMethodBase qscope qenv (v.CompiledName g.CompilerGlobalState, v) |> ignore
                 with 

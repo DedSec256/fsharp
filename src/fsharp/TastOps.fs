@@ -8385,7 +8385,9 @@ and rewriteExprStructure env expr =
       else Expr.App (f0', f0ty, tyargs, args', m)
 
   | Expr.Quote (ast, {contents=Some(typeDefs, argTypes, argExprs, data)}, isFromQueryExpression, m, ty) -> 
-      Expr.Quote ((if env.IsUnderQuotations then RewriteExpr env ast else ast), {contents=Some(typeDefs, argTypes, rewriteExprs env argExprs, data)}, isFromQueryExpression, m, ty)
+      Expr.Quote ((if env.IsUnderQuotations then RewriteExpr env ast else ast), 
+                  {contents=Some(typeDefs, argTypes, rewriteExprs env argExprs, data)}, 
+                  isFromQueryExpression, m, ty)
 
   | Expr.Quote (ast, {contents=None}, isFromQueryExpression, m, ty) -> 
       Expr.Quote ((if env.IsUnderQuotations then RewriteExpr env ast else ast), {contents=None}, isFromQueryExpression, m, ty)

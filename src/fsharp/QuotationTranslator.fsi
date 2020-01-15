@@ -38,7 +38,7 @@ type QuotationSerializationFormat =
 [<Sealed>]
 type QuotationGenerationScope  =
     static member Create: TcGlobals * ImportMap * CcuThunk * ConstraintSolver.TcValF * IsReflectedDefinition -> QuotationGenerationScope
-    member Close: unit -> ILTypeRef list * (TType * range) list * (Expr * range) list 
+    member Close: unit -> ILTypeRef list * (TType * range) list * (Expr * range) list
     static member ComputeQuotationFormat : TcGlobals -> QuotationSerializationFormat
 
 val ConvExprPublic : QuotationGenerationScope -> QuotationTranslationEnv -> Expr -> QuotationPickler.ExprData 

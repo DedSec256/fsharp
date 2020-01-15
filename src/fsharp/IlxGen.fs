@@ -3912,8 +3912,8 @@ and GenQuotation cenv cgbuf eenv (ast, conv, m, ety) sequel =
                 let qscope = QuotationTranslator.QuotationGenerationScope.Create (cenv.g, cenv.amap, cenv.viewCcu, cenv.tcVal, QuotationTranslator.IsReflectedDefinition.No)
                 let qenv = QuotationTranslator.QuotationTranslationEnv.CreateEmpty cenv.g
                 let astSpec = QuotationTranslator.ConvExprPublic qscope qenv ast
-                let referencedTypeDefs, spliceTypes, spliceArgExprs = qscope.Close()
-                referencedTypeDefs, List.map fst spliceTypes, List.map fst spliceArgExprs, astSpec
+                let referencedTypeDefs, typeSplices, exprSplices = qscope.Close()
+                referencedTypeDefs, List.map fst typeSplices, List.map fst exprSplices, astSpec
             with
                 QuotationTranslator.InvalidQuotedTerm e -> error e
 
@@ -7918,12 +7918,12 @@ let GenerateCode (cenv, anonTypeTable, eenv, TypedAssemblyAfterOptimization file
                     with
                     | QuotationTranslator.InvalidQuotedTerm e -> warning e; None)
 
-            let referencedTypeDefs, freeTypes, spliceArgExprs = qscope.Close()
+            let referencedTypeDefs, typeSplices, exprSplices = qscope.Close()
 
-            for (_freeType, m) in freeTypes do
+            for (_typeSplice, m) in typeSplices do
                 error(InternalError("A free type variable was detected in a reflected definition", m))
 
-            for (_spliceArgExpr, m) in spliceArgExprs do
+            for (_exprSplice, m) in exprSplices do
                 error(Error(FSComp.SR.ilReflectedDefinitionsCannotUseSliceOperator(), m))
 
             let defnsResourceBytes = defns |> QuotationPickler.PickleDefns
