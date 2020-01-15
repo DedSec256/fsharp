@@ -1764,7 +1764,8 @@ and CheckBinding cenv env alwaysCheckNoReraise context (TBind(v, bindRhs, _) as 
                       | _ -> [], bindRhs, ety
                     let qenv = QuotationTranslator.QuotationTranslationEnv.CreateEmpty g
                     let qenv = qenv.BindTypars tps
-                    let witnessInfos = GetTraitWitnessInfosOfTypars g [] tps
+                    let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+                    let witnessInfos = GetTraitWitnessInfosOfTypars g numEnclosingTypars tps
                     let qenv = qenv.BindWitnessInfos witnessInfos
                     let qscope = QuotationTranslator.QuotationGenerationScope.Create (g, cenv.amap, cenv.viewCcu, cenv.tcVal, QuotationTranslator.IsReflectedDefinition.Yes) 
                     QuotationTranslator.ConvExprPublic qscope qenv taue  |> ignore

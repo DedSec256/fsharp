@@ -470,7 +470,7 @@ module Patterns =
     /// <param name="input">The input expression to match against.</param>
     /// <returns>(Expr option * MethodInfo * MethodInfo * Expr list) option</returns>
     [<CompiledName("CallWithWitnessesPattern")>]
-    val (|CallWithWitnesses|_|)            : input:Expr -> (Expr option * MethodInfo * MethodInfo * Expr list * Expr list) option
+    val (|CallWithWitnesses|_|) : input:Expr -> (Expr option * MethodInfo * MethodInfo * Expr list * Expr list) option
 
     /// <summary>An active pattern to recognize expressions that represent coercions from one type to another</summary>
     /// <param name="input">The input expression to match against.</param>

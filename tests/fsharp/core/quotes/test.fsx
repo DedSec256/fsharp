@@ -3730,7 +3730,21 @@ module QuotationOfConcreteTraitCalls =
     // No error here because it binds to the let bound version
     let q8 = <@ foo ? uhh @>
 
-    exit 0
+
+module TestOuterConstrainedClass =
+    // This example where there is an outer constrained class caused numerous failures
+    // because it was trying to pass witnesses for the constraint in the type 
+    //
+    // No witnesses are passed for these
+    type hoop< ^a when ^a : (static member (+) : ^a * ^a -> ^a) > =
+        { Group1 : ^a
+          Group2 : ^a } 
+        static member inline (+) (x, y) = x.Group1 + y.Group2
+        //member inline this.Sum = this.Group1 + this.Group2 
+
+    let z = { Group1 = 1; Group2 = 2 } + { Group1 = 2; Group2 = 3 } // ok
+
+
 
 module TestAssemblyAttributes = 
     let attributes = System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttributes(false)

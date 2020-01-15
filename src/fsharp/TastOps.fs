@@ -2259,14 +2259,23 @@ let GetTraitConstraintInfosOfTypars g (tps: Typars) =
     cxs
 
 // Get information about the runtime witnesses needed for a set of generalized typars
-let GetTraitWitnessInfosOfTypars g parentTypars tps = 
-    let tps = tps |> List.filter (fun tp -> not (parentTypars |> List.exists (typarEq tp))) 
+let GetTraitWitnessInfosOfTypars g numParentTypars tps = 
+    let tps = tps |> List.drop numParentTypars
     let cxs = GetTraitConstraintInfosOfTypars g tps
     cxs |> List.map (fun cx -> cx.TraitKey)
 
-let GetTopValTypeInCompiledForm g topValInfo ty m =
+/// Count the number of type parameters on the enclosing type
+let CountEnclosingTyparsOfActualParentOfVal (v: Val) = 
+    match v.ValReprInfo with 
+    | None -> 0
+    | Some _ -> 
+        if v.IsExtensionMember then 0
+        elif not v.IsMember then 0
+        else v.MemberApparentEntity.TyparsNoRange.Length
+
+let GetTopValTypeInCompiledForm g topValInfo numEnclosingTypars ty m =
     let tps, paramArgInfos, rty, retInfo = GetTopValTypeInFSharpForm g topValInfo ty m
-    let witnessInfos = GetTraitWitnessInfosOfTypars g [] tps // TODO: parentTypars
+    let witnessInfos = GetTraitWitnessInfosOfTypars g numEnclosingTypars tps // TODO: parentTypars
     // Eliminate lone single unit arguments
     let paramArgInfos = 
         match paramArgInfos, topValInfo.ArgInfos with 
@@ -2291,9 +2300,9 @@ let GetTopValTypeInCompiledForm g topValInfo ty m =
 // This is used not only for the compiled form - it's also used for all type checking and object model
 // logic such as determining if abstract methods have been implemented or not, and how
 // many arguments the method takes etc.
-let GetMemberTypeInMemberForm g memberFlags topValInfo ty m =
+let GetMemberTypeInMemberForm g memberFlags topValInfo numEnclosingTypars ty m =
     let tps, paramArgInfos, rty, retInfo = GetMemberTypeInFSharpForm g memberFlags topValInfo ty m
-    let witnessInfos = GetTraitWitnessInfosOfTypars g [] tps // TODO: parentTypars
+    let witnessInfos = GetTraitWitnessInfosOfTypars g numEnclosingTypars tps
     // Eliminate lone single unit arguments
     let paramArgInfos = 
         match paramArgInfos, topValInfo.ArgInfos with 
@@ -2313,7 +2322,8 @@ let GetMemberTypeInMemberForm g memberFlags topValInfo ty m =
 let GetTypeOfMemberInMemberForm g (vref: ValRef) =
     //assert (not vref.IsExtensionMember)
     let membInfo, topValInfo = checkMemberValRef vref
-    GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo vref.Type vref.Range
+    let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal vref.Deref
+    GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo numEnclosingTypars vref.Type vref.Range
 
 let GetTypeOfMemberInFSharpForm g (vref: ValRef) =
     let membInfo, topValInfo = checkMemberValRef vref
@@ -2350,7 +2360,8 @@ let PartitionValRefTypars g (vref: ValRef) = PartitionValTypars g vref.Deref
 /// Get the arguments for an F# value that represents an object model method 
 let ArgInfosOfMemberVal g (v: Val) = 
     let membInfo, topValInfo = checkMemberVal v.MemberInfo v.ValReprInfo v.Range
-    let _, _cxs, arginfos, _, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo v.Type v.Range
+    let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+    let _, _, arginfos, _, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo numEnclosingTypars v.Type v.Range
     arginfos
 
 let ArgInfosOfMember g (vref: ValRef) = 
@@ -2368,13 +2379,15 @@ let ReturnTypeOfPropertyVal g (v: Val) =
     let membInfo, topValInfo = checkMemberVal v.MemberInfo v.ValReprInfo v.Range
     match membInfo.MemberFlags.MemberKind with 
     | MemberKind.PropertySet ->
-        let _, _cxs, arginfos, _, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo v.Type v.Range
+        let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+        let _, _, arginfos, _, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo numEnclosingTypars v.Type v.Range
         if not arginfos.IsEmpty && not arginfos.Head.IsEmpty then
             arginfos.Head |> List.last |> fst 
         else
             error(Error(FSComp.SR.tastValueDoesNotHaveSetterType(), v.Range))
     | MemberKind.PropertyGet ->
-        let _, _cxs, _, rty, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo v.Type v.Range
+        let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+        let _, _, _, rty, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo numEnclosingTypars v.Type v.Range
         GetFSharpViewOfReturnType g rty
     | _ -> error(InternalError("ReturnTypeOfPropertyVal", v.Range))
 
@@ -2387,7 +2400,8 @@ let ArgInfosOfPropertyVal g (v: Val) =
     | MemberKind.PropertyGet ->
         ArgInfosOfMemberVal g v |> List.concat
     | MemberKind.PropertySet ->
-        let _, _cxs, arginfos, _, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo v.Type v.Range
+        let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+        let _, _, arginfos, _, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags topValInfo numEnclosingTypars v.Type v.Range
         if not arginfos.IsEmpty && not arginfos.Head.IsEmpty then
             arginfos.Head |> List.frontAndBack |> fst 
         else
@@ -7941,7 +7955,8 @@ let XmlDocSigOfVal g full path (v: Val) =
     match v.MemberInfo with 
     | Some membInfo when not v.IsExtensionMember -> 
         // Methods, Properties etc.
-        let tps, cxs, argInfos, rty, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags (Option.get v.ValReprInfo) v.Type v.Range
+        let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+        let tps, witnessInfos, argInfos, rty, _ = GetMemberTypeInMemberForm g membInfo.MemberFlags (Option.get v.ValReprInfo) numEnclosingTypars v.Type v.Range
         let prefix, name = 
           match membInfo.MemberFlags.MemberKind with 
           | MemberKind.ClassConstructor 
@@ -7955,16 +7970,17 @@ let XmlDocSigOfVal g full path (v: Val) =
           match PartitionValTypars g v with
           | Some(_, memberParentTypars, memberMethodTypars, _, _) -> memberParentTypars, memberMethodTypars
           | None -> [], tps
-        parentTypars, methTypars, cxs, argInfos, rty, prefix, path, name
+        parentTypars, methTypars, witnessInfos, argInfos, rty, prefix, path, name
     | _ ->
         // Regular F# values and extension members 
         let w = arityOfVal v
-        let tps, cxs, argInfos, rty, _ = GetTopValTypeInCompiledForm g w v.Type v.Range
+        let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+        let tps, witnessInfos, argInfos, rty, _ = GetTopValTypeInCompiledForm g w numEnclosingTypars v.Type v.Range
         let name = v.CompiledName g.CompilerGlobalState
         let prefix =
           if w.NumCurriedArgs = 0 && isNil tps then "P:"
           else "M:"
-        [], tps, cxs, argInfos, rty, prefix, path, name
+        [], tps, witnessInfos, argInfos, rty, prefix, path, name
 
   let witnessArgTys = GenWitnessTys g cxs
   let argTys = argInfos |> List.concat |> List.map fst

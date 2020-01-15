@@ -950,9 +950,10 @@ let IsValRefIsDllImport g (vref: ValRef) =
 /// as a method.
 let GetMethodSpecForMemberVal amap g (memberInfo: ValMemberInfo) (vref: ValRef) =
     let m = vref.Range
-    let tps, cxs, curriedArgInfos, returnTy, retInfo =
+    let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal vref.Deref
+    let tps, witnessInfos, curriedArgInfos, returnTy, retInfo =
          assert(vref.ValReprInfo.IsSome)
-         GetTopValTypeInCompiledForm g vref.ValReprInfo.Value vref.Type m
+         GetTopValTypeInCompiledForm g vref.ValReprInfo.Value numEnclosingTypars vref.Type m
     let tyenvUnderTypars = TypeReprEnv.ForTypars tps
     let flatArgInfos = List.concat curriedArgInfos
     let isCtor = (memberInfo.MemberFlags.MemberKind = MemberKind.Constructor)
@@ -999,28 +1000,28 @@ let GetMethodSpecForMemberVal amap g (memberInfo: ValMemberInfo) (vref: ValRef) 
         let ilMethodInst = GenTypeArgs amap m tyenvUnderTypars (List.map mkTyparTy mtps)
         let mspec = mkILInstanceMethSpecInTy (ilTy, nm, ilMethodArgTys, ilActualRetTy, ilMethodInst)
         let mspecW = 
-            if not g.generateWitnesses || cxs.IsEmpty then
+            if not g.generateWitnesses || witnessInfos.IsEmpty then
                 mspec 
             else
-                let ilWitnessArgTys = GenTypes amap m tyenvUnderTypars (GenWitnessTys g cxs)
+                let ilWitnessArgTys = GenTypes amap m tyenvUnderTypars (GenWitnessTys g witnessInfos)
                 let nmW = ExtraWitnessMethodName nm
                 mkILInstanceMethSpecInTy (ilTy, nmW, ilWitnessArgTys @ ilMethodArgTys, ilActualRetTy, ilMethodInst)
     
-        mspec, mspecW, ctps, mtps, curriedArgInfos, paramInfos, retInfo, cxs, methodArgTys
+        mspec, mspecW, ctps, mtps, curriedArgInfos, paramInfos, retInfo, witnessInfos, methodArgTys
     else
         let methodArgTys, paramInfos = List.unzip flatArgInfos
         let ilMethodArgTys = GenParamTypes amap m tyenvUnderTypars false methodArgTys
         let ilMethodInst = GenTypeArgs amap m tyenvUnderTypars (List.map mkTyparTy mtps)
         let mspec = mkILStaticMethSpecInTy (ilTy, nm, ilMethodArgTys, ilActualRetTy, ilMethodInst)
         let mspecW =
-            if not g.generateWitnesses || cxs.IsEmpty then
+            if not g.generateWitnesses || witnessInfos.IsEmpty then
                 mspec 
             else
-                let ilWitnessArgTys = GenTypes amap m tyenvUnderTypars (GenWitnessTys g cxs)
+                let ilWitnessArgTys = GenTypes amap m tyenvUnderTypars (GenWitnessTys g witnessInfos)
                 let nmW = ExtraWitnessMethodName nm
                 mkILStaticMethSpecInTy (ilTy, nmW, ilWitnessArgTys @ ilMethodArgTys, ilActualRetTy, ilMethodInst)
     
-        mspec, mspecW, ctps, mtps, curriedArgInfos, paramInfos, retInfo, cxs, methodArgTys
+        mspec, mspecW, ctps, mtps, curriedArgInfos, paramInfos, retInfo, witnessInfos, methodArgTys
 
 /// Determine how a top-level value is represented, when representing as a field, by computing an ILFieldSpec
 let ComputeFieldSpecForVal(optIntraAssemblyInfo: IlxGenIntraAssemblyInfo option, isInteractive, g, ilTyForProperty, vspec: Val, nm, m, cloc, ilTy, ilGetterMethRef) =
@@ -1065,7 +1066,8 @@ let ComputeStorageForFSharpMember amap g topValInfo memberInfo (vref: ValRef) m 
 /// rationalized.
 let ComputeStorageForFSharpFunctionOrFSharpExtensionMember amap (g: TcGlobals) cloc topValInfo (vref: ValRef) m =
     let nm = vref.CompiledName g.CompilerGlobalState
-    let (tps, cxs, curriedArgInfos, returnTy, retInfo) = GetTopValTypeInCompiledForm g topValInfo vref.Type m
+    let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal vref.Deref
+    let (tps, witnessInfos, curriedArgInfos, returnTy, retInfo) = GetTopValTypeInCompiledForm g topValInfo numEnclosingTypars vref.Type m
     let tyenvUnderTypars = TypeReprEnv.ForTypars tps
     let (argTys, paramInfos) = curriedArgInfos |> List.concat |> List.unzip
     let ilMethodArgTys = GenParamTypes amap m tyenvUnderTypars false argTys
@@ -1074,12 +1076,12 @@ let ComputeStorageForFSharpFunctionOrFSharpExtensionMember amap (g: TcGlobals) c
     let ilMethodInst = GenTypeArgs amap m tyenvUnderTypars (List.map mkTyparTy tps)
     let mspec = mkILStaticMethSpecInTy (ilLocTy, nm, ilMethodArgTys, ilRetTy, ilMethodInst)
     let mspecW =
-        if not g.generateWitnesses || cxs.IsEmpty then
+        if not g.generateWitnesses || witnessInfos.IsEmpty then
             mspec 
         else
-            let ilWitnessArgTys = GenTypes amap m tyenvUnderTypars (GenWitnessTys g cxs)
+            let ilWitnessArgTys = GenTypes amap m tyenvUnderTypars (GenWitnessTys g witnessInfos)
             mkILStaticMethSpecInTy (ilLocTy, ExtraWitnessMethodName nm, (ilWitnessArgTys @ ilMethodArgTys), ilRetTy, ilMethodInst)
-    Method (topValInfo, vref, mspec, mspecW, m, [], tps, curriedArgInfos, paramInfos, cxs, argTys, retInfo)
+    Method (topValInfo, vref, mspec, mspecW, m, [], tps, curriedArgInfos, paramInfos, witnessInfos, argTys, retInfo)
 
 /// Determine if an F#-declared value, method or function is compiled as a method.
 let IsFSharpValCompiledAsMethod g (v: Val) =
@@ -3241,14 +3243,13 @@ and GenApp (cenv: cenv) cgbuf eenv (f, fty, tyargs, curriedArgs, m) sequel =
 
           let actualRetTy = applyTys cenv.g vref.Type (tyargs, nowArgs)
 
-          let _, cxs, curriedArgInfos, returnTy, _ = GetTopValTypeInCompiledForm cenv.g topValInfo vref.Type m
+          let _, witnessInfos, curriedArgInfos, returnTy, _ = GetTopValTypeInCompiledForm cenv.g topValInfo ctps.Length vref.Type m
 
           let mspec = 
-              if not cenv.g.generateWitnesses || cxs.IsEmpty then
+              if not cenv.g.generateWitnesses || witnessInfos.IsEmpty then
                   mspec 
               else 
                   mspecW
-
 
           let ilTyArgs = GenTypeArgs cenv.amap m eenv.tyenv tyargs
 
@@ -3309,7 +3310,7 @@ and GenApp (cenv: cenv) cgbuf eenv (f, fty, tyargs, curriedArgs, m) sequel =
 
           // We currently should never have any class-quantified witnesses
           //assert cwitnesses.IsEmpty
-          if not cenv.g.generateWitnesses || cxs.IsEmpty then
+          if not cenv.g.generateWitnesses || witnessInfos.IsEmpty then
               () // not witness args
           else
               let _ctyargs, mtyargs = List.splitAt ctps.Length tyargs
@@ -4676,7 +4677,7 @@ and GetIlxClosureFreeVars cenv m selfv eenvouter takenNames expr =
     let cloWitnessInfos = 
         let inWitnessPassingScope = not eenvouter.witnessesInScope.IsEmpty
         if g.generateWitnesses && inWitnessPassingScope then 
-            GetTraitWitnessInfosOfTypars g [] cloFreeTyvars
+            GetTraitWitnessInfosOfTypars g 0 cloFreeTyvars // TODO: 0 may be wrong here
         else
             []
 
@@ -5997,8 +5998,7 @@ and GenMethodForBinding
 
     let methLambdaWitnessInfos = 
         if hasWitnessArgs then 
-            let methLambdaParentTypars, methLambdaMethTypars = List.splitAt ctps.Length  methLambdaTypars
-            GetTraitWitnessInfosOfTypars cenv.g methLambdaParentTypars methLambdaMethTypars
+            GetTraitWitnessInfosOfTypars cenv.g ctps.Length methLambdaTypars
         else
             []
 
@@ -7909,7 +7909,8 @@ let GenerateCode (cenv, anonTypeTable, eenv, TypedAssemblyAfterOptimization file
                         | _ -> [], e, ety
                       let qenv = QuotationTranslator.QuotationTranslationEnv.CreateEmpty(g)
                       let qenv = qenv.BindTypars tps
-                      let witnessInfos = GetTraitWitnessInfosOfTypars g [] tps
+                      let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal v
+                      let witnessInfos = GetTraitWitnessInfosOfTypars g numEnclosingTypars tps
                       let qenv = qenv.BindWitnessInfos witnessInfos
                       let astExpr = QuotationTranslator.ConvExprPublic qscope qenv taue
                       let mbaseR = QuotationTranslator.ConvMethodBase qscope qenv (methName, v)

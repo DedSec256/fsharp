@@ -738,7 +738,7 @@ val IsCompiledAsStaticProperty    : TcGlobals -> Val -> bool
 
 val IsCompiledAsStaticPropertyWithField : TcGlobals -> Val -> bool
 
-val GetTopValTypeInCompiledForm   : TcGlobals -> ValReprInfo -> TType -> range -> Typars * TraitWitnessInfos * CurriedArgInfos * TType option * ArgReprInfo
+val GetTopValTypeInCompiledForm   : TcGlobals -> ValReprInfo -> int -> TType -> range -> Typars * TraitWitnessInfos * CurriedArgInfos * TType option * ArgReprInfo
 
 val GetFSharpViewOfReturnType     : TcGlobals -> TType option -> TType
 
@@ -897,7 +897,7 @@ val GetTypeOfMemberInMemberForm : TcGlobals -> ValRef -> Typars * TraitWitnessIn
 
 val GetTypeOfIntrinsicMemberInCompiledForm : TcGlobals -> ValRef -> Typars * TraitWitnessInfos * CurriedArgInfos * TType option * ArgReprInfo
 
-val GetMemberTypeInMemberForm : TcGlobals -> MemberFlags -> ValReprInfo -> TType -> range -> Typars * TraitWitnessInfos * CurriedArgInfos * TType option * ArgReprInfo
+val GetMemberTypeInMemberForm : TcGlobals -> MemberFlags -> ValReprInfo -> int -> TType -> range -> Typars * TraitWitnessInfos * CurriedArgInfos * TType option * ArgReprInfo
 
 /// Returns (parentTypars,memberParentTypars,memberMethodTypars,memberToParentInst,tinst)
 val PartitionValTyparsForApparentEnclosingType : TcGlobals -> Val -> (Typars * Typars * Typars * TyparInst * TType list) option
@@ -907,6 +907,9 @@ val PartitionValTypars : TcGlobals -> Val -> (Typars * Typars * Typars * TyparIn
 
 /// Returns (parentTypars,memberParentTypars,memberMethodTypars,memberToParentInst,tinst)
 val PartitionValRefTypars : TcGlobals -> ValRef -> (Typars * Typars * Typars * TyparInst * TType list) option
+
+/// Count the number of type parameters on the enclosing type
+val CountEnclosingTyparsOfActualParentOfVal: Val -> int
 
 val ReturnTypeOfPropertyVal : TcGlobals -> Val -> TType
 
@@ -2327,6 +2330,6 @@ val GenWitnessTy: TcGlobals -> TraitWitnessInfo -> TType
 
 val GetTraitConstraintInfosOfTypars: TcGlobals -> Typars -> TraitConstraintInfo list
 
-val GetTraitWitnessInfosOfTypars: TcGlobals -> parentTypars: Typars -> typars: Typars -> TraitWitnessInfos
+val GetTraitWitnessInfosOfTypars: TcGlobals -> numParentTypars: int -> typars: Typars -> TraitWitnessInfos
 
 val isStaticClass: g: TcGlobals -> tcref: TyconRef -> bool

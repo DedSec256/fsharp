@@ -296,30 +296,14 @@ and [<CompiledName("FSharpExpr"); StructuredFormatDisplay("{DebugText}")>]
             let argsWithoutWitnesses = List.skip nWitnesses args
             combL "Call" [noneL; minfoL minfo; listL (exprs argsWithoutWitnesses)]
 
-        | CombTerm(InstancePropGetOp(pinfo), (obj::args)) ->
-            combL "PropertyGet"  [someL obj; pinfoL pinfo; listL (exprs args)]
-
-        | CombTerm(StaticPropGetOp(pinfo), args) ->
-            combL "PropertyGet"  [noneL; pinfoL pinfo; listL (exprs args)]
-
-        | CombTerm(InstancePropSetOp(pinfo), (obj::args)) ->
-            combL "PropertySet" [someL obj; pinfoL pinfo; listL (exprs args)]
-
-        | CombTerm(StaticPropSetOp(pinfo), args) ->
-            combL "PropertySet"  [noneL; pinfoL pinfo; listL (exprs args)]
-
-        | CombTerm(InstanceFieldGetOp(finfo), [obj]) ->
-            combL "FieldGet" [someL obj; finfoL finfo]
-
-        | CombTerm(StaticFieldGetOp(finfo), []) ->
-            combL "FieldGet" [noneL; finfoL finfo]
-
-        | CombTerm(InstanceFieldSetOp(finfo), [obj;v]) ->
-            combL "FieldSet" [someL obj; finfoL finfo; expr v;]
-
-        | CombTerm(StaticFieldSetOp(finfo), [v]) ->
-            combL "FieldSet" [noneL; finfoL finfo; expr v;]
-
+        | CombTerm(InstancePropGetOp(pinfo), (obj::args)) -> combL "PropertyGet"  [someL obj; pinfoL pinfo; listL (exprs args)]
+        | CombTerm(StaticPropGetOp(pinfo), args) -> combL "PropertyGet"  [noneL; pinfoL pinfo; listL (exprs args)]
+        | CombTerm(InstancePropSetOp(pinfo), (obj::args)) -> combL "PropertySet" [someL obj; pinfoL pinfo; listL (exprs args)]
+        | CombTerm(StaticPropSetOp(pinfo), args) -> combL "PropertySet"  [noneL; pinfoL pinfo; listL (exprs args)]
+        | CombTerm(InstanceFieldGetOp(finfo), [obj]) -> combL "FieldGet" [someL obj; finfoL finfo]
+        | CombTerm(StaticFieldGetOp(finfo), []) -> combL "FieldGet" [noneL; finfoL finfo]
+        | CombTerm(InstanceFieldSetOp(finfo), [obj;v]) -> combL "FieldSet" [someL obj; finfoL finfo; expr v;]
+        | CombTerm(StaticFieldSetOp(finfo), [v]) -> combL "FieldSet" [noneL; finfoL finfo; expr v;]
         | CombTerm(CoerceOp(ty), [arg]) -> combL "Coerce"  [ expr arg; typeL ty]
         | CombTerm(NewObjectOp cinfo, args) -> combL "NewObject" ([ cinfoL cinfo ] @ exprs args)
         | CombTerm(DefaultValueOp ty, args) -> combL "DefaultValue" ([ typeL ty ] @ exprs args)
@@ -563,8 +547,7 @@ module Patterns =
     [<CompiledName("NewObjectPattern")>]
     let (|NewObject|_|) input =
         match input with
-        | E(CombTerm(NewObjectOp ty, e)) -> Some(ty, e)
-        | _ -> None
+        | E(CombTerm(NewObjectOp ty, e)) -> Some(ty, e) | _ -> None
 
     [<CompiledName("ImplicitArgPattern")>]
     let (|ImplicitArg|_|) input =
@@ -1516,7 +1499,7 @@ module Patterns =
                         let argTys = List.map typeOf args
                         f argTys
                 let tyargs = b env.typeInst
-                E(CombTerm(a tyargs, args )))
+                E (CombTerm (a tyargs, args)))
         | 1 ->
             let x = u_VarRef st
             (fun env -> E(VarTerm (x env)))
@@ -1613,7 +1596,7 @@ module Patterns =
             match u_ModuleDefn None st with
             | Unique(StaticMethodCallOp minfo) -> (minfo :> MethodBase)
             | Unique(StaticPropGetOp pinfo) -> (pinfo.GetGetMethod true :> MethodBase)
-            | Ambiguous(_) -> raise (System.Reflection.AmbiguousMatchException())
+            | Ambiguous _ -> raise (System.Reflection.AmbiguousMatchException())
             | _ -> failwith "unreachable"
         | 1 ->
             let ((tc, _, _, methName, _) as data) = u_MethodInfoData st
@@ -1898,7 +1881,7 @@ module Patterns =
         | None -> None
 
     /// Get the reflected definition at the generic instantiation
-    let tryGetReflectedDefinitionGeneric (methodBase:MethodBase) =
+    let tryGetReflectedDefinitionInstantiated (methodBase:MethodBase) =
         checkNonNull "methodBase" methodBase
         match methodBase with
         | :? MethodInfo as minfo ->
@@ -2094,7 +2077,7 @@ type Expr with
 
     static member TryGetReflectedDefinition(methodBase:MethodBase) =
         checkNonNull "methodBase" methodBase
-        tryGetReflectedDefinitionGeneric methodBase
+        tryGetReflectedDefinitionInstantiated methodBase
 
     static member Cast(source:Expr) = cast source
 
@@ -2302,6 +2285,7 @@ module ExprShape =
             | WithValueOp(v, ty), [e] -> mkValueWithDefn(v, ty, e)
             | ImplicitArgOp(ty, n), [] -> mkImplicitArg(ty, n)
             | _ -> raise <| System.InvalidOperationException (SR.GetString(SR.QillFormedAppOrLet))
+
 
         EA(e.Tree, attrs)
 
