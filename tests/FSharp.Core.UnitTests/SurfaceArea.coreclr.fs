@@ -2677,6 +2677,8 @@ Microsoft.FSharp.Quotations.PatternsModule: Microsoft.FSharp.Core.FSharpOption`1
 Microsoft.FSharp.Quotations.PatternsModule: Microsoft.FSharp.Core.FSharpOption`1[System.Tuple`4[Microsoft.FSharp.Quotations.FSharpVar,Microsoft.FSharp.Quotations.FSharpExpr,Microsoft.FSharp.Quotations.FSharpExpr,Microsoft.FSharp.Quotations.FSharpExpr]] ForIntegerRangeLoopPattern(Microsoft.FSharp.Quotations.FSharpExpr)
 Microsoft.FSharp.Quotations.PatternsModule: Microsoft.FSharp.Core.FSharpOption`1[System.Tuple`5[Microsoft.FSharp.Quotations.FSharpExpr,Microsoft.FSharp.Quotations.FSharpVar,Microsoft.FSharp.Quotations.FSharpExpr,Microsoft.FSharp.Quotations.FSharpVar,Microsoft.FSharp.Quotations.FSharpExpr]] TryWithPattern(Microsoft.FSharp.Quotations.FSharpExpr)
 Microsoft.FSharp.Quotations.PatternsModule: Microsoft.FSharp.Core.FSharpOption`1[System.Type] DefaultValuePattern(Microsoft.FSharp.Quotations.FSharpExpr)
+Microsoft.FSharp.Quotations.FSharpExpr: Microsoft.FSharp.Quotations.FSharpExpr ImplicitArg(System.Type,System.Int32)
+Microsoft.FSharp.Quotations.PatternsModule: Microsoft.FSharp.Core.FSharpOption`1[System.Int32] ImplicitArgPattern(Microsoft.FSharp.Quotations.FSharpExpr)
 Microsoft.FSharp.Reflection.FSharpReflectionExtensions: Boolean FSharpType.IsExceptionRepresentation.Static(System.Type, Microsoft.FSharp.Core.FSharpOption`1[System.Boolean])
 Microsoft.FSharp.Reflection.FSharpReflectionExtensions: Boolean FSharpType.IsRecord.Static(System.Type, Microsoft.FSharp.Core.FSharpOption`1[System.Boolean])
 Microsoft.FSharp.Reflection.FSharpReflectionExtensions: Boolean FSharpType.IsUnion.Static(System.Type, Microsoft.FSharp.Core.FSharpOption`1[System.Boolean])

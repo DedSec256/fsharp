@@ -346,6 +346,11 @@ type Expr =
     static member WithValue: value: obj * expressionType:Type * definition: Expr -> Expr
 
 
+    /// <summary>Builds an expression that represents a use of an implicit argument passed as a witness for a constraint</summary>
+    /// <param name="argumentType">The type of the witness.</param>
+    /// <param name="argumentPosition">The position of the hidden witness argument.</param>
+    /// <returns>The resulting expression.</returns>
+    static member ImplicitArg : argumentType: Type * argumentPosition: int -> Expr
 
     /// <summary>Builds an expression that represents a variable</summary>
     /// <param name="variable">The input variable.</param>
