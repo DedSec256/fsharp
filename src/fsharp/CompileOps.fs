@@ -4372,7 +4372,8 @@ and [<Sealed>] TcImports(tcConfigP: TcConfigProvider, initialResolutions: TcAsse
 
             let providers = [
                 for designTimeAssemblyName in designTimeAssemblyNames do
-                    yield! ExtensionTyping.GetTypeProvidersOfAssembly(fileNameOfRuntimeAssembly,
+                    yield! Shim.ExtensionTypingProvider.InstantiateTypeProvidersOfAssembly(
+                                                                      fileNameOfRuntimeAssembly,
                                                                       ilScopeRefOfRuntimeAssembly,
                                                                       designTimeAssemblyName,
                                                                       typeProviderEnvironment,

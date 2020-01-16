@@ -914,77 +914,7 @@ let ``Type provider project references should not throw exceptions`` () =
 [<Ignore("Getting vsunit tests passing again")>]
 #endif
 let ``Projects creating generated types should not utilize cross-project-references but should still analyze oK once project is built`` () =
-    let options = 
-          {ProjectFileName =
-            __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TestConsole/TestConsole.fsproj";
-           ProjectId = None
-           SourceFiles =
-            [|__SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TestConsole/AssemblyInfo.fs";
-              __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TestConsole/Program.fs"|];
-           OtherOptions =
-            [|yield "--simpleresolution"; 
-              yield "--noframework";
-              yield "--out:" + __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TestConsole/bin/Debug/TestConsole.exe";
-              yield "--doc:" + __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TestConsole/bin/Debug/TestConsole.XML";
-              yield "--subsystemversion:6.00"; 
-              yield "--highentropyva+"; 
-              yield "--fullpaths";
-              yield "--flaterrors"; 
-              yield "--target:exe"; 
-              yield "--define:DEBUG"; 
-              yield "--define:TRACE";
-              yield "--debug+"; 
-              yield "--optimize-"; 
-              yield "--tailcalls-"; 
-              yield "--debug:full";
-              yield "--platform:anycpu";
-              yield "-r:" + __SOURCE_DIRECTORY__ + @"/../../packages/FSharp.Configuration.1.3.0/lib/net45/FSharp.Configuration.dll";
-              for r in mkStandardProjectReferences () do
-                  yield "-r:" + r
-              yield "-r:" + __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/bin/Debug/TypeProvidersBug.dll"|];
-           ReferencedProjects =
-            [|(__SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/bin/Debug/TypeProvidersBug.dll",
-               {ProjectFileName =
-                 __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/TypeProvidersBug.fsproj";
-                ProjectId = None
-                SourceFiles =
-                 [|__SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/AssemblyInfo.fs";
-                   __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/Library1.fs"|];
-                OtherOptions =
-                 [|yield "--simpleresolution"; 
-                   yield "--noframework";
-                   yield "--out:" + __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/bin/Debug/TypeProvidersBug.dll";
-                   yield "--doc:" + __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TypeProvidersBug/bin/Debug/TypeProvidersBug.XML";
-                   yield "--subsystemversion:6.00"; 
-                   yield "--highentropyva+"; 
-                   yield "--fullpaths";
-                   yield "--flaterrors"; 
-                   yield "--target:library"; 
-                   yield "--define:DEBUG";
-                   yield "--define:TRACE"; 
-                   yield "--debug+"; 
-                   yield "--optimize-"; 
-                   yield "--tailcalls-";
-                   yield "--debug:full"; 
-                   yield "--platform:anycpu";
-                   yield "-r:" + __SOURCE_DIRECTORY__ + @"/../../packages/FSharp.Configuration.1.3.0/lib/net45/FSharp.Configuration.dll";
-                   for r in mkStandardProjectReferences () do
-                       yield "-r:" + r |];
-                ReferencedProjects = [||];
-                IsIncompleteTypeCheckEnvironment = false;
-                UseScriptResolutionRules = false;
-                LoadTime = System.DateTime.Now
-                UnresolvedReferences = None;
-                OriginalLoadReferences = [];
-                Stamp = None;
-                ExtraProjectInfo = None;})|];
-           IsIncompleteTypeCheckEnvironment = false;
-           UseScriptResolutionRules = false;
-           LoadTime = System.DateTime.Now
-           UnresolvedReferences = None;
-           Stamp = None;
-           OriginalLoadReferences = [];
-           ExtraProjectInfo = None;}
+    let options = ProjectOptions.typeProviderConsoleProjectOptions
     //printfn "options: %A" options
     let fileName = __SOURCE_DIRECTORY__ + @"/data/TypeProvidersBug/TestConsole/Program.fs"    
     let fileSource = File.ReadAllText(fileName)

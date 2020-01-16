@@ -6,7 +6,7 @@ namespace FSharp.Compiler
 
 #if !NO_EXTENSIONTYPING
 
-module internal ExtensionTyping =
+module ExtensionTyping =
     open System
     open System.IO
     open System.Collections.Generic
@@ -1148,5 +1148,49 @@ module internal ExtensionTyping =
     /// We check by seeing if the type is absent from the remapping context.
     let IsGeneratedTypeDirectReference (st: Tainted<ProvidedType>, m) =
         st.PUntaint((fun st -> st.TryGetTyconRef() |> Option.isNone), m)
+     
+    [<AutoOpen>]
+    module Shim =
+        
+        type IExtensionTypingProvider =
+            abstract InstantiateTypeProvidersOfAssembly : 
+              runtimeAssemblyFilename: string 
+              * ilScopeRefOfRuntimeAssembly:ILScopeRef
+              * designerAssemblyName: string 
+              * ResolutionEnvironment 
+              * bool
+              * isInteractive: bool
+              * systemRuntimeContainsType : (string -> bool)
+              * systemRuntimeAssemblyVersion : System.Version
+              * compilerToolsPath : string list
+              * range -> Tainted<ITypeProvider> list
 
+        [<Sealed>]
+        type DefaultExtensionTypingProvider() =
+            interface IExtensionTypingProvider with
+                member this.InstantiateTypeProvidersOfAssembly
+                    (runTimeAssemblyFileName: string, 
+                     ilScopeRefOfRuntimeAssembly: ILScopeRef, 
+                     designTimeAssemblyNameString: string, 
+                     resolutionEnvironment: ResolutionEnvironment, 
+                     isInvalidationSupported: bool, 
+                     isInteractive: bool, 
+                     systemRuntimeContainsType : string -> bool, 
+                     systemRuntimeAssemblyVersion : System.Version, 
+                     compilerToolPaths: string list,
+                     m:range) =
+
+                     GetTypeProvidersOfAssembly(runTimeAssemblyFileName,
+                                                ilScopeRefOfRuntimeAssembly,
+                                                designTimeAssemblyNameString,
+                                                resolutionEnvironment,
+                                                isInvalidationSupported,
+                                                isInteractive,
+                                                systemRuntimeContainsType,
+                                                systemRuntimeAssemblyVersion,
+                                                compilerToolPaths,
+                                                m)
+
+        let mutable ExtensionTypingProvider = DefaultExtensionTypingProvider() :> IExtensionTypingProvider
+        
 #endif
