@@ -336,17 +336,17 @@ module ExtensionTyping =
         type IExtensionTypingProvider =
             
              /// Find and instantiate the set of ITypeProvider components for the given assembly reference
-            abstract InstantiateTypeProvidersOfAssembly : 
+            abstract InstantiateTypeProvidersOfAssembly: 
               runtimeAssemblyFilename: string 
-              * ilScopeRefOfRuntimeAssembly:ILScopeRef
+              * ilScopeRefOfRuntimeAssembly: ILScopeRef
               * designerAssemblyName: string 
-              * ResolutionEnvironment 
-              * bool
+              * resolutionEnvironment: ResolutionEnvironment
+              * isInvalidationSupported: bool
               * isInteractive: bool
-              * systemRuntimeContainsType : (string -> bool)
-              * systemRuntimeAssemblyVersion : System.Version
-              * compilerToolsPath : string list
-              * range -> Tainted<ITypeProvider> list
+              * systemRuntimeContainsType: (string -> bool)
+              * systemRuntimeAssemblyVersion: System.Version
+              * compilerToolsPath: string list
+              * m: range -> Tainted<ITypeProvider> list
 
         [<Sealed>]
         type DefaultExtensionTypingProvider =

@@ -97,7 +97,7 @@ module ExtensionTyping =
 
             protect (fun () -> Activator.CreateInstance(typeProviderImplementationType, [| box e|]) :?> ITypeProvider )
 
-        elif typeProviderImplementationType.GetConstructor [| |] <> null then 
+        elif typeProviderImplementationType.GetConstructor [| |] <> null then
             protect (fun () -> Activator.CreateInstance typeProviderImplementationType :?> ITypeProvider )
 
         else
@@ -1153,17 +1153,17 @@ module ExtensionTyping =
     module Shim =
         
         type IExtensionTypingProvider =
-            abstract InstantiateTypeProvidersOfAssembly : 
+            abstract InstantiateTypeProvidersOfAssembly: 
               runtimeAssemblyFilename: string 
-              * ilScopeRefOfRuntimeAssembly:ILScopeRef
+              * ilScopeRefOfRuntimeAssembly: ILScopeRef
               * designerAssemblyName: string 
-              * ResolutionEnvironment 
-              * bool
+              * resolutionEnvironment: ResolutionEnvironment
+              * isInvalidationSupported: bool
               * isInteractive: bool
               * systemRuntimeContainsType : (string -> bool)
               * systemRuntimeAssemblyVersion : System.Version
               * compilerToolsPath : string list
-              * range -> Tainted<ITypeProvider> list
+              * m: range -> Tainted<ITypeProvider> list
 
         [<Sealed>]
         type DefaultExtensionTypingProvider() =
@@ -1175,10 +1175,10 @@ module ExtensionTyping =
                      resolutionEnvironment: ResolutionEnvironment, 
                      isInvalidationSupported: bool, 
                      isInteractive: bool, 
-                     systemRuntimeContainsType : string -> bool, 
-                     systemRuntimeAssemblyVersion : System.Version, 
+                     systemRuntimeContainsType: string -> bool, 
+                     systemRuntimeAssemblyVersion: System.Version, 
                      compilerToolPaths: string list,
-                     m:range) =
+                     m: range) =
 
                      GetTypeProvidersOfAssembly(runTimeAssemblyFileName,
                                                 ilScopeRefOfRuntimeAssembly,

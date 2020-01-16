@@ -31,10 +31,10 @@ let ``Extension typing shim gets requests`` () =
                      resolutionEnvironment: ResolutionEnvironment, 
                      isInvalidationSupported: bool, 
                      isInteractive: bool, 
-                     systemRuntimeContainsType : string -> bool, 
-                     systemRuntimeAssemblyVersion : System.Version, 
+                     systemRuntimeContainsType: string -> bool, 
+                     systemRuntimeAssemblyVersion: System.Version, 
                      compilerToolPaths: string list,
-                     m:range) =
+                     m: range) =
                 gotRequest <- true
                 []
         }
