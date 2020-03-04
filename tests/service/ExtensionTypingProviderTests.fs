@@ -22,6 +22,8 @@ open FSharp.Compiler.SourceCodeServices
 [<Test>]
 let ``Extension typing shim gets requests`` () =
     let mutable gotRequest = false
+    let defaultExtensionTypingShim = Shim.ExtensionTypingProvider
+    
     let extensionTypingProvider =
         { new IExtensionTypingProvider with
             member this.InstantiateTypeProvidersOfAssembly
@@ -45,3 +47,5 @@ let ``Extension typing shim gets requests`` () =
         |> Async.RunSynchronously
         |> ignore
     gotRequest |> should be True
+    
+    Shim.ExtensionTypingProvider <- defaultExtensionTypingShim
