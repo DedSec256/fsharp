@@ -10,7 +10,7 @@ open Microsoft.FSharp.Core.CompilerServices
 open FSharp.Compiler.AbstractIL.IL
 open FSharp.Compiler.AbstractIL.Internal.Library 
 
-type TypeProviderError
+type internal TypeProviderError
     (
         errNum : int,
         tpDesignation : string,
@@ -72,7 +72,7 @@ type TypeProviderError
 type TaintedContext = { TypeProvider : ITypeProvider; TypeProviderAssemblyRef : ILScopeRef }
 
 [<NoEquality>][<NoComparison>] 
-type Tainted<'T> (context : TaintedContext, value : 'T) =
+type internal Tainted<'T> (context : TaintedContext, value : 'T) =
     do
         match box context.TypeProvider with 
         | null -> 
@@ -153,7 +153,7 @@ type Tainted<'T> (context : TaintedContext, value : 'T) =
     member this.Coerce<'U> (range:range) =
         Tainted(context, this.Protect(fun value -> box value :?> 'U) range)
 
-module Tainted =
+module internal Tainted =
     let (|Null|_|) (p:Tainted<'T>) =
         if p.PUntaintNoFailure(fun p -> match p with null -> true | _ -> false) then Some() else None
 

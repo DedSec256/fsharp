@@ -12,7 +12,7 @@ open FSharp.Compiler.Range
 open FSharp.Compiler.AbstractIL.IL
 
 /// Stores and transports aggregated list of errors reported by the type provider
-type TypeProviderError =
+type internal TypeProviderError =
     inherit System.Exception
     
     /// creates new instance of TypeProviderError that represents one error
@@ -39,7 +39,7 @@ type TypeProviderError =
 
 /// This struct wraps a value produced by a type provider to properly attribute any failures.
 [<NoEquality; NoComparison; Class>]
-type Tainted<'T> =
+type internal Tainted<'T> =
 
     /// Create an initial tainted value
     static member CreateAll : (ITypeProvider * ILScopeRef) list -> Tainted<ITypeProvider> list
@@ -93,7 +93,7 @@ type Tainted<'T> =
 
 
 [<RequireQualifiedAccess>]
-module Tainted =
+module internal Tainted =
 
     /// Test whether the tainted value is null
     val (|Null|_|) : Tainted<'T> -> unit option when 'T : null

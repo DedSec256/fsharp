@@ -1698,7 +1698,7 @@ module ProvidedMethodCalls =
             | [] -> None, paramVars
             | _ -> failwith "multiple objArgs?"
             
-        let ea = mi.PApplyWithProvider((fun (methodInfo, provider) -> ExtensionTyping.GetInvokerExpression(provider, methodInfo, [| for p in paramVars -> p.PUntaintNoFailure id |])), m)
+        let ea = mi.PApplyWithProvider((fun (methodInfo, provider) -> ExtensionTypingProvider.GetInvokerExpression(provider, methodInfo, [| for p in paramVars -> p.PUntaintNoFailure id |])), m)
 
         convertProvidedExpressionToExprAndWitness tcVal (thisArg, allArgs, paramVars, g, amap, mut, isProp, isSuperInit, m, ea)
 

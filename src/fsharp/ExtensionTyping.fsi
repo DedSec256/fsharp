@@ -6,27 +6,15 @@ namespace FSharp.Compiler
 
 #if !NO_EXTENSIONTYPING
 
-module ExtensionTyping =
 
+module ExtensionTypingApi =
+    
     open System
-    open System.IO
-    open System.Collections.Generic
-    open Microsoft.FSharp.Core.CompilerServices
-    open FSharp.Compiler.AbstractIL.IL
-    open FSharp.Compiler.AbstractIL.Internal.Library
     open FSharp.Compiler.Range
-
-    type TypeProviderDesignation = TypeProviderDesignation of string
-
-    /// Raised when a type provider has thrown an exception.    
-    exception ProvidedTypeResolution of range * exn
-
-    /// Raised when an type provider has thrown an exception.    
-    exception ProvidedTypeResolutionNoRange of exn
-
-    /// Get the list of relative paths searched for type provider design-time components
-    val toolingCompatiblePaths: unit -> string list
-
+    open System.Collections.Generic
+    open FSharp.Core.CompilerServices
+    open FSharp.Compiler.AbstractIL.IL
+    
     /// Carries information about the type provider resolution environment.
     type ResolutionEnvironment =
       {
@@ -43,11 +31,8 @@ module ExtensionTyping =
         /// The folder for temporary files
         temporaryFolder             : string
       }
-
-    /// Given an extension type resolver, supply a human-readable name suitable for error messages.
-    val DisplayNameOfTypeProvider : Tainted<Microsoft.FSharp.Core.CompilerServices.ITypeProvider> * range -> string
-
-     /// The context used to interpret information in the closure of System.Type, System.MethodInfo and other 
+      
+           /// The context used to interpret information in the closure of System.Type, System.MethodInfo and other 
      /// info objects coming from the type provider.
      ///
      /// At the moment this is the "Type --> ILTypeRef" and "Type --> Tycon" remapping 
@@ -270,9 +255,67 @@ module ExtensionTyping =
         static member Fresh : string * ProvidedType -> ProvidedVar
         override Equals : obj -> bool
         override GetHashCode : unit -> int
+    
+    [<AutoOpen>]
+    module Shim =
+        
+        type IExtensionTypingProvider =
+            
+             /// Find and instantiate the set of ITypeProvider components for the given assembly reference
+            abstract InstantiateTypeProvidersOfAssembly: 
+              runtimeAssemblyFilename: string
+              * designerAssemblyName: string 
+              * resolutionEnvironment: ResolutionEnvironment
+              * isInvalidationSupported: bool
+              * isInteractive: bool
+              * systemRuntimeContainsType: (string -> bool)
+              * systemRuntimeAssemblyVersion: System.Version
+              * compilerToolsPath: string list
+              * m: range -> ITypeProvider list
+              
+            abstract GetProvidedTypes: pn: IProvidedNamespace -> ProvidedType[]           
+            abstract ResolveTypeName: pn: IProvidedNamespace * typeName: string -> ProvidedType             
+            abstract GetInvokerExpression: provider: ITypeProvider * methodBase: ProvidedMethodBase * paramExprs: ProvidedVar[] -> ProvidedExpr
 
-    /// Get the provided expression for a particular use of a method.
-    val GetInvokerExpression : ITypeProvider * ProvidedMethodBase * ProvidedVar[] ->  ProvidedExpr
+        [<Sealed>]
+        type DefaultExtensionTypingProvider =
+            interface IExtensionTypingProvider
+
+        val mutable ExtensionTypingProvider: IExtensionTypingProvider
+
+module internal ExtensionTyping =
+
+    open ExtensionTypingApi
+    open FSharp.Core.CompilerServices
+    open FSharp.Compiler.AbstractIL.IL
+    open FSharp.Compiler.Range
+
+    type TypeProviderDesignation = TypeProviderDesignation of string
+
+    /// Raised when a type provider has thrown an exception.    
+    exception ProvidedTypeResolution of range * exn
+
+    /// Raised when an type provider has thrown an exception.    
+    exception ProvidedTypeResolutionNoRange of exn
+
+    /// Get the list of relative paths searched for type provider design-time components
+    val toolingCompatiblePaths: unit -> string list
+  
+    /// Find and instantiate the set of ITypeProvider components for the given assembly reference
+    val GetTypeProvidersOfAssembly : 
+          runtimeAssemblyFilename: string 
+          * ilScopeRefOfRuntimeAssembly:ILScopeRef
+          * designerAssemblyName: string 
+          * ResolutionEnvironment 
+          * bool
+          * isInteractive: bool
+          * systemRuntimeContainsType : (string -> bool)
+          * systemRuntimeAssemblyVersion : System.Version
+          * compilerToolsPath : string list
+          * range -> Tainted<ITypeProvider> list
+
+    /// Given an extension type resolver, supply a human-readable name suitable for error messages.
+    val DisplayNameOfTypeProvider : Tainted<Microsoft.FSharp.Core.CompilerServices.ITypeProvider> * range -> string
 
     /// Validate that the given provided type meets some of the rules for F# provided types
     val ValidateProvidedTypeAfterStaticInstantiation : range * Tainted<ProvidedType> * expectedPath : string[] * expectedName : string-> unit
@@ -325,33 +368,5 @@ module ExtensionTyping =
     /// Check if this is a direct reference to a non-embedded generated type. This is not permitted at any name resolution.
     /// We check by seeing if the type is absent from the remapping context.
     val IsGeneratedTypeDirectReference         : Tainted<ProvidedType> * range -> bool
-    
-    [<AutoOpen>]
-    module Shim =
-        open System
-        open FSharp.Core.CompilerServices
-        open FSharp.Compiler.AbstractIL.IL
-        open FSharp.Compiler.Range
-        
-        type IExtensionTypingProvider =
-            
-             /// Find and instantiate the set of ITypeProvider components for the given assembly reference
-            abstract InstantiateTypeProvidersOfAssembly: 
-              runtimeAssemblyFilename: string 
-              * ilScopeRefOfRuntimeAssembly: ILScopeRef
-              * designerAssemblyName: string 
-              * resolutionEnvironment: ResolutionEnvironment
-              * isInvalidationSupported: bool
-              * isInteractive: bool
-              * systemRuntimeContainsType: (string -> bool)
-              * systemRuntimeAssemblyVersion: System.Version
-              * compilerToolsPath: string list
-              * m: range -> Tainted<ITypeProvider> list
-
-        [<Sealed>]
-        type DefaultExtensionTypingProvider =
-            interface IExtensionTypingProvider
-
-        val mutable ExtensionTypingProvider: IExtensionTypingProvider
 
 #endif

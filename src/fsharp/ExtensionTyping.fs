@@ -4,27 +4,23 @@
 
 namespace FSharp.Compiler
 
+open System
+open System.IO
+open System.Reflection
+open FSharp.Compiler.AbstractIL.IL
+open FSharp.Compiler.Range
+open Microsoft.FSharp.Core.CompilerServices
+
 #if !NO_EXTENSIONTYPING
 
-module ExtensionTyping =
-    open System
-    open System.IO
-    open System.Collections.Generic
-    open System.Reflection
-    open Microsoft.FSharp.Core.CompilerServices
-    open FSharp.Compiler.ErrorLogger
-    open FSharp.Compiler.Range
-    open FSharp.Compiler.AbstractIL.IL
-    open FSharp.Compiler.AbstractIL.Internal.Library // frontAndBack
-    open Internal.Utilities.FSharpEnvironment  
-
-    type TypeProviderDesignation = TypeProviderDesignation of string
-
-    exception ProvidedTypeResolution of range * System.Exception
-    exception ProvidedTypeResolutionNoRange of System.Exception
-
-    let toolingCompatiblePaths() = toolingCompatiblePaths ()
-
+module ExtensionTypingApi =
+    
+    let StripException (e: exn) =
+        match e with
+        |   :? System.Reflection.TargetInvocationException as e -> e.InnerException
+        |   :? TypeInitializationException as e -> e.InnerException
+        |   _ -> e
+    
     /// Represents some of the configuration parameters passed to type provider components 
     type ResolutionEnvironment =
         { resolutionFolder          : string
@@ -32,259 +28,7 @@ module ExtensionTyping =
           showResolutionMessages    : bool
           referencedAssemblies      : string[]
           temporaryFolder           : string }
-
-    /// Load a the design-time part of a type-provider into the host process, and look for types
-    /// marked with the TypeProviderAttribute attribute.
-    let GetTypeProviderImplementationTypes (runTimeAssemblyFileName, designTimeAssemblyNameString, m:range, compilerToolPaths:string list) =
-
-        // Report an error, blaming the particular type provider component
-        let raiseError (e: exn) =
-            raise (TypeProviderError(FSComp.SR.etProviderHasWrongDesignerAssembly(typeof<TypeProviderAssemblyAttribute>.Name, designTimeAssemblyNameString, e.Message), runTimeAssemblyFileName, m))
-
-        let designTimeAssemblyOpt = getTypeProviderAssembly (runTimeAssemblyFileName, designTimeAssemblyNameString, compilerToolPaths, raiseError)
-
-        match designTimeAssemblyOpt with
-        | Some loadedDesignTimeAssembly ->
-            try
-                let exportedTypes = loadedDesignTimeAssembly.GetExportedTypes() 
-                let filtered = 
-                    [ for t in exportedTypes do 
-                          let ca = t.GetCustomAttributes(typeof<TypeProviderAttribute>, true)
-                          if ca <> null && ca.Length > 0 then 
-                              yield t ]
-                filtered
-            with e ->
-                raiseError e
-        | None -> []
-
-    let StripException (e: exn) =
-        match e with
-        |   :? System.Reflection.TargetInvocationException as e -> e.InnerException
-        |   :? TypeInitializationException as e -> e.InnerException
-        |   _ -> e
-
-    /// Create an instance of a type provider from the implementation type for the type provider in the
-    /// design-time assembly by using reflection-invoke on a constructor for the type provider.
-    let CreateTypeProvider (typeProviderImplementationType: System.Type, 
-                            runtimeAssemblyPath, 
-                            resolutionEnvironment: ResolutionEnvironment, 
-                            isInvalidationSupported: bool, 
-                            isInteractive: bool, 
-                            systemRuntimeContainsType, 
-                            systemRuntimeAssemblyVersion, 
-                            m) =
-
-        // Protect a .NET reflection call as we load the type provider component into the host process, 
-        // reporting errors.
-        let protect f =
-            try 
-                f ()
-            with err ->
-                let e = StripException (StripException err)
-                raise (TypeProviderError(FSComp.SR.etTypeProviderConstructorException(e.Message), typeProviderImplementationType.FullName, m))
-
-        if typeProviderImplementationType.GetConstructor([| typeof<TypeProviderConfig> |]) <> null then
-
-            // Create the TypeProviderConfig to pass to the type provider constructor
-            let e = TypeProviderConfig(systemRuntimeContainsType, 
-                                       ResolutionFolder=resolutionEnvironment.resolutionFolder, 
-                                       RuntimeAssembly=runtimeAssemblyPath, 
-                                       ReferencedAssemblies=Array.copy resolutionEnvironment.referencedAssemblies, 
-                                       TemporaryFolder=resolutionEnvironment.temporaryFolder, 
-                                       IsInvalidationSupported=isInvalidationSupported, 
-                                       IsHostedExecution= isInteractive, 
-                                       SystemRuntimeAssemblyVersion = systemRuntimeAssemblyVersion)
-
-            protect (fun () -> Activator.CreateInstance(typeProviderImplementationType, [| box e|]) :?> ITypeProvider )
-
-        elif typeProviderImplementationType.GetConstructor [| |] <> null then
-            protect (fun () -> Activator.CreateInstance typeProviderImplementationType :?> ITypeProvider )
-
-        else
-            // No appropriate constructor found
-            raise (TypeProviderError(FSComp.SR.etProviderDoesNotHaveValidConstructor(), typeProviderImplementationType.FullName, m))
-
-    let GetTypeProvidersOfAssembly
-            (runTimeAssemblyFileName: string, 
-             ilScopeRefOfRuntimeAssembly: ILScopeRef, 
-             designTimeAssemblyNameString: string, 
-             resolutionEnvironment: ResolutionEnvironment, 
-             isInvalidationSupported: bool, 
-             isInteractive: bool, 
-             systemRuntimeContainsType : string -> bool, 
-             systemRuntimeAssemblyVersion : System.Version, 
-             compilerToolPaths: string list,
-             m:range) =
-
-        let providerSpecs = 
-                try
-                    let designTimeAssemblyName = 
-                        try
-                            if designTimeAssemblyNameString.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) then
-                                Some (System.Reflection.AssemblyName (Path.GetFileNameWithoutExtension designTimeAssemblyNameString))
-                            else
-                                Some (System.Reflection.AssemblyName designTimeAssemblyNameString)
-                        with :? ArgumentException ->
-                            errorR(Error(FSComp.SR.etInvalidTypeProviderAssemblyName(runTimeAssemblyFileName, designTimeAssemblyNameString), m))
-                            None
-
-                    [ match designTimeAssemblyName, resolutionEnvironment.outputFile with
-                      // Check if the attribute is pointing to the file being compiled, in which case ignore it
-                      // This checks seems like legacy but is included for compat.
-                      | Some designTimeAssemblyName, Some path 
-                         when String.Compare(designTimeAssemblyName.Name, Path.GetFileNameWithoutExtension path, StringComparison.OrdinalIgnoreCase) = 0 ->
-                          ()
-
-                      | Some _, _ ->
-                          let provImplTypes = GetTypeProviderImplementationTypes (runTimeAssemblyFileName, designTimeAssemblyNameString, m, compilerToolPaths)
-                          for t in provImplTypes do
-                            let resolver =
-                                CreateTypeProvider (t, runTimeAssemblyFileName, resolutionEnvironment, isInvalidationSupported,
-                                    isInteractive, systemRuntimeContainsType, systemRuntimeAssemblyVersion, m)
-                            match box resolver with 
-                            | null -> ()
-                            | _ -> yield (resolver, ilScopeRefOfRuntimeAssembly)
-
-                      |   None, _ -> 
-                          () ]
-
-                with :? TypeProviderError as tpe ->
-                    tpe.Iter(fun e -> errorR(NumberedError((e.Number, e.ContextualErrorMessage), m)) )
-                    []
-
-        let providers = Tainted<_>.CreateAll providerSpecs
-
-        providers
-
-    let unmarshal (t: Tainted<_>) = t.PUntaintNoFailure id
-
-    /// Try to access a member on a provided type, catching and reporting errors
-    let TryTypeMember(st: Tainted<_>, fullName, memberName, m, recover, f) =
-        try
-            st.PApply (f, m)
-        with :? TypeProviderError as tpe -> 
-            tpe.Iter (fun e -> errorR(Error(FSComp.SR.etUnexpectedExceptionFromProvidedTypeMember(fullName, memberName, e.ContextualErrorMessage), m)))
-            st.PApplyNoFailure(fun _ -> recover)
-
-    /// Try to access a member on a provided type, where the result is an array of values, catching and reporting errors
-    let TryTypeMemberArray (st: Tainted<_>, fullName, memberName, m, f) =
-        let result =
-            try
-                st.PApplyArray(f, memberName, m)
-            with :? TypeProviderError as tpe ->
-                tpe.Iter (fun e -> error(Error(FSComp.SR.etUnexpectedExceptionFromProvidedTypeMember(fullName, memberName, e.ContextualErrorMessage), m)))
-                [||]
-
-        match result with 
-        | null -> error(Error(FSComp.SR.etUnexpectedNullFromProvidedTypeMember(fullName, memberName), m)); [||]
-        | r -> r
-
-    /// Try to access a member on a provided type, catching and reporting errors and checking the result is non-null, 
-    let TryTypeMemberNonNull (st: Tainted<_>, fullName, memberName, m, recover, f) =
-        match TryTypeMember(st, fullName, memberName, m, recover, f) with 
-        | Tainted.Null -> 
-            errorR(Error(FSComp.SR.etUnexpectedNullFromProvidedTypeMember(fullName, memberName), m)); 
-            st.PApplyNoFailure(fun _ -> recover)
-        | r -> r
-
-    /// Try to access a property or method on a provided member, catching and reporting errors
-    let TryMemberMember (mi: Tainted<_>, typeName, memberName, memberMemberName, m, recover, f) = 
-        try
-            mi.PApply (f, m)
-        with :? TypeProviderError as tpe ->
-            tpe.Iter (fun e -> errorR(Error(FSComp.SR.etUnexpectedExceptionFromProvidedMemberMember(memberMemberName, typeName, memberName, e.ContextualErrorMessage), m)))
-            mi.PApplyNoFailure(fun _ -> recover)
-
-    /// Get the string to show for the name of a type provider
-    let DisplayNameOfTypeProvider(resolver: Tainted<ITypeProvider>, m: range) =
-        resolver.PUntaint((fun tp -> tp.GetType().Name), m)
-
-    /// Validate a provided namespace name
-    let ValidateNamespaceName(name, typeProvider: Tainted<ITypeProvider>, m, nsp: string) =
-        if nsp<>null then // Null namespace designates the global namespace.
-            if String.IsNullOrWhiteSpace nsp then
-                // Empty namespace is not allowed
-                errorR(Error(FSComp.SR.etEmptyNamespaceOfTypeNotAllowed(name, typeProvider.PUntaint((fun tp -> tp.GetType().Name), m)), m))
-            else
-                for s in nsp.Split('.') do
-                    match s.IndexOfAny(PrettyNaming.IllegalCharactersInTypeAndNamespaceNames) with
-                    | -1 -> ()
-                    | n -> errorR(Error(FSComp.SR.etIllegalCharactersInNamespaceName(string s.[n], s), m))  
-
-    let bindingFlags =
-        BindingFlags.DeclaredOnly |||
-        BindingFlags.Static |||
-        BindingFlags.Instance |||
-        BindingFlags.Public
-
-    // NOTE: for the purposes of remapping the closure of generated types, the FullName is sufficient.
-    // We do _not_ rely on object identity or any other notion of equivalence provided by System.Type
-    // itself. The mscorlib implementations of System.Type equality relations are not suitable: for
-    // example RuntimeType overrides the equality relation to be reference equality for the Equals(object)
-    // override, but the other subtypes of System.Type do not, making the relation non-reflective.
-    //
-    // Further, avoiding reliance on canonicalization (UnderlyingSystemType) or System.Type object identity means that 
-    // providers can implement wrap-and-filter "views" over existing System.Type clusters without needing
-    // to preserve object identity when presenting the types to the F# compiler.
-
-    let providedSystemTypeComparer = 
-        let key (ty: System.Type) = (ty.Assembly.FullName, ty.FullName)
-        { new IEqualityComparer<Type> with 
-            member __.GetHashCode(ty: Type) = hash (key ty)
-            member __.Equals(ty1: Type, ty2: Type) = (key ty1 = key ty2) }
-
-    /// The context used to interpret information in the closure of System.Type, System.MethodInfo and other 
-    /// info objects coming from the type provider.
-    ///
-    /// This is the "Type --> Tycon" remapping context of the type. This is only present for generated provided types, and contains
-    /// all the entries in the remappings for the generative declaration.
-    ///
-    /// Laziness is used "to prevent needless computation for every type during remapping". However it
-    /// appears that the laziness likely serves no purpose and could be safely removed.
-    type ProvidedTypeContext = 
-        | NoEntries
-        | Entries of Dictionary<System.Type, ILTypeRef> * Lazy<Dictionary<System.Type, obj>>
-
-        static member Empty = NoEntries
-
-        static member Create(d1, d2) = Entries(d1, notlazy d2)
-
-        member ctxt.GetDictionaries()  = 
-            match ctxt with
-            | NoEntries -> 
-                Dictionary<System.Type, ILTypeRef>(providedSystemTypeComparer), Dictionary<System.Type, obj>(providedSystemTypeComparer)
-            | Entries (lookupILTR, lookupILTCR) ->
-                lookupILTR, lookupILTCR.Force()
-
-        member ctxt.TryGetILTypeRef st = 
-            match ctxt with 
-            | NoEntries -> None 
-            | Entries(d, _) -> 
-                match d.TryGetValue st with
-                | true, res -> Some res
-                | _ -> None
-
-        member ctxt.TryGetTyconRef st = 
-            match ctxt with 
-            | NoEntries -> None 
-            | Entries(_, d) -> 
-                let d = d.Force()
-                match d.TryGetValue st with
-                | true, res -> Some res
-                | _ -> None
-
-        member ctxt.RemapTyconRefs (f: obj->obj) = 
-            match ctxt with 
-            | NoEntries -> NoEntries
-            | Entries(d1, d2) ->
-                Entries(d1, lazy (let dict = new Dictionary<System.Type, obj>(providedSystemTypeComparer)
-                                  for KeyValue (st, tcref) in d2.Force() do dict.Add(st, f tcref)
-                                  dict))
-
-    type CustomAttributeData = System.Reflection.CustomAttributeData
-    type CustomAttributeNamedArgument = System.Reflection.CustomAttributeNamedArgument
-    type CustomAttributeTypedArgument = System.Reflection.CustomAttributeTypedArgument
-
+    
     [<AllowNullLiteral; Sealed>]
     type ProvidedType (x: System.Type, ctxt: ProvidedTypeContext) =
         inherit ProvidedMemberInfo(x, ctxt)
@@ -545,7 +289,6 @@ module ExtensionTyping =
             | :? System.Reflection.ConstructorInfo as ci -> (ci |> ProvidedConstructorInfo.Create ctxt : ProvidedConstructorInfo) :> ProvidedMethodBase
             | _ -> failwith (FSComp.SR.estApplyStaticArgumentsForMethodNotImplemented())
 
-
     and [<AllowNullLiteral; Sealed>] 
         ProvidedFieldInfo (x: System.Reflection.FieldInfo, ctxt) = 
         inherit ProvidedMemberInfo(x, ctxt)
@@ -568,8 +311,6 @@ module ExtensionTyping =
         override __.GetHashCode() = assert false; x.GetHashCode()
         static member TaintedEquals (pt1: Tainted<ProvidedFieldInfo>, pt2: Tainted<ProvidedFieldInfo>) = 
            Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
-
-
 
     and [<AllowNullLiteral; Sealed>] 
         ProvidedMethodInfo (x: System.Reflection.MethodInfo, ctxt) = 
@@ -726,6 +467,323 @@ module ExtensionTyping =
         static member CreateArray ctxt xs = match xs with null -> null | _ -> xs |> Array.map (ProvidedVar.Create ctxt)
         override __.Equals y = match y with :? ProvidedVar as y -> x.Equals y.Handle | _ -> false
         override __.GetHashCode() = x.GetHashCode()
+    
+    [<AutoOpen>]
+    module Shim =
+        
+        type IExtensionTypingProvider =
+            abstract InstantiateTypeProvidersOfAssembly: 
+              runtimeAssemblyFilename: string
+              * designerAssemblyName: string 
+              * resolutionEnvironment: ResolutionEnvironment
+              * isInvalidationSupported: bool
+              * isInteractive: bool
+              * systemRuntimeContainsType : (string -> bool)
+              * systemRuntimeAssemblyVersion : System.Version
+              * compilerToolsPath : string list
+              * m: range -> ITypeProvider list
+              
+            abstract GetProvidedTypes: pn: IProvidedNamespace -> ProvidedType[]           
+            abstract ResolveTypeName: pn: IProvidedNamespace * typeName: string -> ProvidedType             
+            abstract GetInvokerExpression: provider: ITypeProvider * methodBase: ProvidedMethodBase * paramExprs: ProvidedVar[] -> ProvidedExpr
+
+        [<Sealed>]
+        type DefaultExtensionTypingProvider() =
+            interface IExtensionTypingProvider with
+                member this.InstantiateTypeProvidersOfAssembly
+                    (runTimeAssemblyFileName: string,
+                     designTimeAssemblyNameString: string, 
+                     resolutionEnvironment: ResolutionEnvironment, 
+                     isInvalidationSupported: bool, 
+                     isInteractive: bool, 
+                     systemRuntimeContainsType: string -> bool, 
+                     systemRuntimeAssemblyVersion: System.Version, 
+                     compilerToolPaths: string list,
+                     m: range) =
+
+                    let providers = 
+                        try
+                            let designTimeAssemblyName = 
+                                try
+                                    if designTimeAssemblyNameString.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) then
+                                        Some (System.Reflection.AssemblyName (Path.GetFileNameWithoutExtension designTimeAssemblyNameString))
+                                    else
+                                        Some (System.Reflection.AssemblyName designTimeAssemblyNameString)
+                                with :? ArgumentException ->
+                                    errorR(Error(FSComp.SR.etInvalidTypeProviderAssemblyName(runTimeAssemblyFileName, designTimeAssemblyNameString), m))
+                                    None
+
+                            [ match designTimeAssemblyName, resolutionEnvironment.outputFile with
+                              // Check if the attribute is pointing to the file being compiled, in which case ignore it
+                              // This checks seems like legacy but is included for compat.
+                              | Some designTimeAssemblyName, Some path 
+                                 when String.Compare(designTimeAssemblyName.Name, Path.GetFileNameWithoutExtension path, StringComparison.OrdinalIgnoreCase) = 0 ->
+                                  ()
+
+                              | Some _, _ ->
+                                  let provImplTypes = GetTypeProviderImplementationTypes (runTimeAssemblyFileName, designTimeAssemblyNameString, m, compilerToolPaths)
+                                  for t in provImplTypes do
+                                    let resolver =
+                                        CreateTypeProvider (t, runTimeAssemblyFileName, resolutionEnvironment, isInvalidationSupported,
+                                            isInteractive, systemRuntimeContainsType, systemRuntimeAssemblyVersion, m)
+                                    match box resolver with 
+                                    | null -> ()
+                                    | _ -> yield resolver
+
+                              |   None, _ -> 
+                                  () ]
+
+                        with :? TypeProviderError as tpe ->
+                            tpe.Iter(fun e -> errorR(NumberedError((e.Number, e.ContextualErrorMessage), m)) )
+                            []
+                            
+                    providers
+                     
+                member this.GetProvidedTypes(pn: IProvidedNamespace) =
+                    pn.GetTypes() |> Array.map ProvidedType.CreateNoContext 
+            
+                member this.ResolveTypeName(pn: IProvidedNamespace, typeName: string) =
+                    pn.ResolveTypeName typeName |> ProvidedType.CreateNoContext
+         
+                member this.GetInvokerExpression(provider: ITypeProvider, methodBase: ProvidedMethodBase, paramExprs: ProvidedVar[]) =
+                    GetInvokerExpression(provider, methodBase, paramExprs)             
+
+        let mutable ExtensionTypingProvider = DefaultExtensionTypingProvider() :> IExtensionTypingProvider
+        
+    let GetTypeProvidersOfAssembly
+            (runTimeAssemblyFileName: string, 
+             ilScopeRefOfRuntimeAssembly: ILScopeRef, 
+             designTimeAssemblyNameString: string, 
+             resolutionEnvironment: ResolutionEnvironment, 
+             isInvalidationSupported: bool, 
+             isInteractive: bool, 
+             systemRuntimeContainsType : string -> bool, 
+             systemRuntimeAssemblyVersion : System.Version, 
+             compilerToolPaths: string list,
+             m: range) =
+    
+        let providers =
+            ExtensionTypingProvider.InstantiateTypeProvidersOfAssembly(
+                                                 runTimeAssemblyFileName,
+                                                 designTimeAssemblyNameString, 
+                                                 resolutionEnvironment, 
+                                                 isInvalidationSupported, 
+                                                 isInteractive, 
+                                                 systemRuntimeContainsType, 
+                                                 systemRuntimeAssemblyVersion, 
+                                                 compilerToolPaths,
+                                                 m)
+              
+        Tainted<_>.CreateAll (providers |> List.map (fun p -> p, ilScopeRefOfRuntimeAssembly))
+
+module internal ExtensionTyping =
+    
+    open System.Collections.Generic
+    open FSharp.Compiler.ErrorLogger
+    open FSharp.Compiler.AbstractIL.Internal.Library // frontAndBack
+    open Internal.Utilities.FSharpEnvironment
+    open ExtensionTypingApi
+
+    type TypeProviderDesignation = TypeProviderDesignation of string
+
+    exception ProvidedTypeResolution of range * System.Exception
+    exception ProvidedTypeResolutionNoRange of System.Exception
+
+    let toolingCompatiblePaths() = toolingCompatiblePaths ()
+
+    /// Load a the design-time part of a type-provider into the host process, and look for types
+    /// marked with the TypeProviderAttribute attribute.
+    let GetTypeProviderImplementationTypes (runTimeAssemblyFileName, designTimeAssemblyNameString, m:range, compilerToolPaths:string list) =
+
+        // Report an error, blaming the particular type provider component
+        let raiseError (e: exn) =
+            raise (TypeProviderError(FSComp.SR.etProviderHasWrongDesignerAssembly(typeof<TypeProviderAssemblyAttribute>.Name, designTimeAssemblyNameString, e.Message), runTimeAssemblyFileName, m))
+
+        let designTimeAssemblyOpt = getTypeProviderAssembly (runTimeAssemblyFileName, designTimeAssemblyNameString, compilerToolPaths, raiseError)
+
+        match designTimeAssemblyOpt with
+        | Some loadedDesignTimeAssembly ->
+            try
+                let exportedTypes = loadedDesignTimeAssembly.GetExportedTypes() 
+                let filtered = 
+                    [ for t in exportedTypes do 
+                          let ca = t.GetCustomAttributes(typeof<TypeProviderAttribute>, true)
+                          if ca <> null && ca.Length > 0 then 
+                              yield t ]
+                filtered
+            with e ->
+                raiseError e
+        | None -> []
+
+    /// Create an instance of a type provider from the implementation type for the type provider in the
+    /// design-time assembly by using reflection-invoke on a constructor for the type provider.
+    let CreateTypeProvider (typeProviderImplementationType: System.Type, 
+                            runtimeAssemblyPath, 
+                            resolutionEnvironment: ResolutionEnvironment, 
+                            isInvalidationSupported: bool, 
+                            isInteractive: bool, 
+                            systemRuntimeContainsType, 
+                            systemRuntimeAssemblyVersion, 
+                            m) =
+
+        // Protect a .NET reflection call as we load the type provider component into the host process, 
+        // reporting errors.
+        let protect f =
+            try 
+                f ()
+            with err ->
+                let e = StripException (StripException err)
+                raise (TypeProviderError(FSComp.SR.etTypeProviderConstructorException(e.Message), typeProviderImplementationType.FullName, m))
+
+        if typeProviderImplementationType.GetConstructor([| typeof<TypeProviderConfig> |]) <> null then
+
+            // Create the TypeProviderConfig to pass to the type provider constructor
+            let e = TypeProviderConfig(systemRuntimeContainsType, 
+                                       ResolutionFolder=resolutionEnvironment.resolutionFolder, 
+                                       RuntimeAssembly=runtimeAssemblyPath, 
+                                       ReferencedAssemblies=Array.copy resolutionEnvironment.referencedAssemblies, 
+                                       TemporaryFolder=resolutionEnvironment.temporaryFolder, 
+                                       IsInvalidationSupported=isInvalidationSupported, 
+                                       IsHostedExecution= isInteractive, 
+                                       SystemRuntimeAssemblyVersion = systemRuntimeAssemblyVersion)
+
+            protect (fun () -> Activator.CreateInstance(typeProviderImplementationType, [| box e|]) :?> ITypeProvider )
+
+        elif typeProviderImplementationType.GetConstructor [| |] <> null then
+            protect (fun () -> Activator.CreateInstance typeProviderImplementationType :?> ITypeProvider )
+
+        else
+            // No appropriate constructor found
+            raise (TypeProviderError(FSComp.SR.etProviderDoesNotHaveValidConstructor(), typeProviderImplementationType.FullName, m))
+
+    let unmarshal (t: Tainted<_>) = t.PUntaintNoFailure id
+
+    /// Try to access a member on a provided type, catching and reporting errors
+    let TryTypeMember(st: Tainted<_>, fullName, memberName, m, recover, f) =
+        try
+            st.PApply (f, m)
+        with :? TypeProviderError as tpe -> 
+            tpe.Iter (fun e -> errorR(Error(FSComp.SR.etUnexpectedExceptionFromProvidedTypeMember(fullName, memberName, e.ContextualErrorMessage), m)))
+            st.PApplyNoFailure(fun _ -> recover)
+
+    /// Try to access a member on a provided type, where the result is an array of values, catching and reporting errors
+    let TryTypeMemberArray (st: Tainted<_>, fullName, memberName, m, f) =
+        let result =
+            try
+                st.PApplyArray(f, memberName, m)
+            with :? TypeProviderError as tpe ->
+                tpe.Iter (fun e -> error(Error(FSComp.SR.etUnexpectedExceptionFromProvidedTypeMember(fullName, memberName, e.ContextualErrorMessage), m)))
+                [||]
+
+        match result with 
+        | null -> error(Error(FSComp.SR.etUnexpectedNullFromProvidedTypeMember(fullName, memberName), m)); [||]
+        | r -> r
+
+    /// Try to access a member on a provided type, catching and reporting errors and checking the result is non-null, 
+    let TryTypeMemberNonNull (st: Tainted<_>, fullName, memberName, m, recover, f) =
+        match TryTypeMember(st, fullName, memberName, m, recover, f) with 
+        | Tainted.Null -> 
+            errorR(Error(FSComp.SR.etUnexpectedNullFromProvidedTypeMember(fullName, memberName), m)); 
+            st.PApplyNoFailure(fun _ -> recover)
+        | r -> r
+
+    /// Try to access a property or method on a provided member, catching and reporting errors
+    let TryMemberMember (mi: Tainted<_>, typeName, memberName, memberMemberName, m, recover, f) = 
+        try
+            mi.PApply (f, m)
+        with :? TypeProviderError as tpe ->
+            tpe.Iter (fun e -> errorR(Error(FSComp.SR.etUnexpectedExceptionFromProvidedMemberMember(memberMemberName, typeName, memberName, e.ContextualErrorMessage), m)))
+            mi.PApplyNoFailure(fun _ -> recover)
+
+    /// Get the string to show for the name of a type provider
+    let DisplayNameOfTypeProvider(resolver: Tainted<ITypeProvider>, m: range) =
+        resolver.PUntaint((fun tp -> tp.GetType().Name), m)
+
+    /// Validate a provided namespace name
+    let ValidateNamespaceName(name, typeProvider: Tainted<ITypeProvider>, m, nsp: string) =
+        if nsp<>null then // Null namespace designates the global namespace.
+            if String.IsNullOrWhiteSpace nsp then
+                // Empty namespace is not allowed
+                errorR(Error(FSComp.SR.etEmptyNamespaceOfTypeNotAllowed(name, typeProvider.PUntaint((fun tp -> tp.GetType().Name), m)), m))
+            else
+                for s in nsp.Split('.') do
+                    match s.IndexOfAny(PrettyNaming.IllegalCharactersInTypeAndNamespaceNames) with
+                    | -1 -> ()
+                    | n -> errorR(Error(FSComp.SR.etIllegalCharactersInNamespaceName(string s.[n], s), m))  
+
+    let bindingFlags =
+        BindingFlags.DeclaredOnly |||
+        BindingFlags.Static |||
+        BindingFlags.Instance |||
+        BindingFlags.Public
+
+    // NOTE: for the purposes of remapping the closure of generated types, the FullName is sufficient.
+    // We do _not_ rely on object identity or any other notion of equivalence provided by System.Type
+    // itself. The mscorlib implementations of System.Type equality relations are not suitable: for
+    // example RuntimeType overrides the equality relation to be reference equality for the Equals(object)
+    // override, but the other subtypes of System.Type do not, making the relation non-reflective.
+    //
+    // Further, avoiding reliance on canonicalization (UnderlyingSystemType) or System.Type object identity means that 
+    // providers can implement wrap-and-filter "views" over existing System.Type clusters without needing
+    // to preserve object identity when presenting the types to the F# compiler.
+
+    let providedSystemTypeComparer = 
+        let key (ty: System.Type) = (ty.Assembly.FullName, ty.FullName)
+        { new IEqualityComparer<Type> with 
+            member __.GetHashCode(ty: Type) = hash (key ty)
+            member __.Equals(ty1: Type, ty2: Type) = (key ty1 = key ty2) }
+
+    /// The context used to interpret information in the closure of System.Type, System.MethodInfo and other 
+    /// info objects coming from the type provider.
+    ///
+    /// This is the "Type --> Tycon" remapping context of the type. This is only present for generated provided types, and contains
+    /// all the entries in the remappings for the generative declaration.
+    ///
+    /// Laziness is used "to prevent needless computation for every type during remapping". However it
+    /// appears that the laziness likely serves no purpose and could be safely removed.
+    type ProvidedTypeContext = 
+        | NoEntries
+        | Entries of Dictionary<System.Type, ILTypeRef> * Lazy<Dictionary<System.Type, obj>>
+
+        static member Empty = NoEntries
+
+        static member Create(d1, d2) = Entries(d1, notlazy d2)
+
+        member ctxt.GetDictionaries()  = 
+            match ctxt with
+            | NoEntries -> 
+                Dictionary<System.Type, ILTypeRef>(providedSystemTypeComparer), Dictionary<System.Type, obj>(providedSystemTypeComparer)
+            | Entries (lookupILTR, lookupILTCR) ->
+                lookupILTR, lookupILTCR.Force()
+
+        member ctxt.TryGetILTypeRef st = 
+            match ctxt with 
+            | NoEntries -> None 
+            | Entries(d, _) -> 
+                match d.TryGetValue st with
+                | true, res -> Some res
+                | _ -> None
+
+        member ctxt.TryGetTyconRef st = 
+            match ctxt with 
+            | NoEntries -> None 
+            | Entries(_, d) -> 
+                let d = d.Force()
+                match d.TryGetValue st with
+                | true, res -> Some res
+                | _ -> None
+
+        member ctxt.RemapTyconRefs (f: obj->obj) = 
+            match ctxt with 
+            | NoEntries -> NoEntries
+            | Entries(d1, d2) ->
+                Entries(d1, lazy (let dict = new Dictionary<System.Type, obj>(providedSystemTypeComparer)
+                                  for KeyValue (st, tcref) in d2.Force() do dict.Add(st, f tcref)
+                                  dict))
+
+    type CustomAttributeData = System.Reflection.CustomAttributeData
+    type CustomAttributeNamedArgument = System.Reflection.CustomAttributeNamedArgument
+    type CustomAttributeTypedArgument = System.Reflection.CustomAttributeTypedArgument
 
     /// Get the provided invoker expression for a particular use of a method.
     let GetInvokerExpression (provider: ITypeProvider, methodBase: ProvidedMethodBase, paramExprs: ProvidedVar[]) = 
@@ -898,7 +956,7 @@ module ExtensionTyping =
         let staticParameters = st.PApplyWithProvider((fun (st, provider) -> st.GetStaticParameters provider), range=m) 
         if staticParameters.PUntaint((fun a -> a.Length), m)  = 0 then 
             ValidateProvidedTypeAfterStaticInstantiation(m, st, expectedPath, expectedName)
-
+    
 
     /// Resolve a (non-nested) provided type given a full namespace name and a type name. 
     /// May throw an exception which will be turned into an error message by one of the 'Try' function below.
@@ -914,7 +972,7 @@ module ExtensionTyping =
 
             // Check if the provided namespace name is an exact match of the required namespace name
             if displayName = providedNamespaceName then
-                let resolvedType = providedNamespace.PApply((fun providedNamespace -> ProvidedType.CreateNoContext(providedNamespace.ResolveTypeName typeName)), range=m) 
+                let resolvedType = providedNamespace.PApply((fun providedNamespace -> ExtensionTypingProvider.ResolveTypeName(providedNamespace, typeName)), range=m) 
                 match resolvedType with
                 |   Tainted.Null -> None
                 |   result -> 
@@ -1120,7 +1178,7 @@ module ExtensionTyping =
 
     /// Get the ILTypeRef for the provided type (including for nested types). Do not take into account
     /// any type relocations or static linking for generated types.
-    let GetOriginalILTypeRefOfProvidedType (st: Tainted<ProvidedType>, m) = 
+    let internal GetOriginalILTypeRefOfProvidedType (st: Tainted<ProvidedType>, m) = 
         
         let aref = GetOriginalILAssemblyRefOfProvidedAssembly (st.PApply((fun st -> st.Assembly), m), m)
         let scoperef = ILScopeRef.Assembly aref
@@ -1130,7 +1188,7 @@ module ExtensionTyping =
 
     /// Get the ILTypeRef for the provided type (including for nested types). Take into account
     /// any type relocations or static linking for generated types.
-    let GetILTypeRefOfProvidedType (st: Tainted<ProvidedType>, m) = 
+    let internal GetILTypeRefOfProvidedType (st: Tainted<ProvidedType>, m) = 
         match st.PUntaint((fun st -> st.TryGetILTypeRef()), m) with 
         | Some ilTypeRef -> ilTypeRef
         | None -> GetOriginalILTypeRefOfProvidedType (st, m)
@@ -1146,51 +1204,7 @@ module ExtensionTyping =
 
     /// Check if this is a direct reference to a non-embedded generated type. This is not permitted at any name resolution.
     /// We check by seeing if the type is absent from the remapping context.
-    let IsGeneratedTypeDirectReference (st: Tainted<ProvidedType>, m) =
+    let internal IsGeneratedTypeDirectReference (st: Tainted<ProvidedType>, m) =
         st.PUntaint((fun st -> st.TryGetTyconRef() |> Option.isNone), m)
-     
-    [<AutoOpen>]
-    module Shim =
-        
-        type IExtensionTypingProvider =
-            abstract InstantiateTypeProvidersOfAssembly: 
-              runtimeAssemblyFilename: string 
-              * ilScopeRefOfRuntimeAssembly: ILScopeRef
-              * designerAssemblyName: string 
-              * resolutionEnvironment: ResolutionEnvironment
-              * isInvalidationSupported: bool
-              * isInteractive: bool
-              * systemRuntimeContainsType : (string -> bool)
-              * systemRuntimeAssemblyVersion : System.Version
-              * compilerToolsPath : string list
-              * m: range -> Tainted<ITypeProvider> list
-
-        [<Sealed>]
-        type DefaultExtensionTypingProvider() =
-            interface IExtensionTypingProvider with
-                member this.InstantiateTypeProvidersOfAssembly
-                    (runTimeAssemblyFileName: string, 
-                     ilScopeRefOfRuntimeAssembly: ILScopeRef, 
-                     designTimeAssemblyNameString: string, 
-                     resolutionEnvironment: ResolutionEnvironment, 
-                     isInvalidationSupported: bool, 
-                     isInteractive: bool, 
-                     systemRuntimeContainsType: string -> bool, 
-                     systemRuntimeAssemblyVersion: System.Version, 
-                     compilerToolPaths: string list,
-                     m: range) =
-
-                     GetTypeProvidersOfAssembly(runTimeAssemblyFileName,
-                                                ilScopeRefOfRuntimeAssembly,
-                                                designTimeAssemblyNameString,
-                                                resolutionEnvironment,
-                                                isInvalidationSupported,
-                                                isInteractive,
-                                                systemRuntimeContainsType,
-                                                systemRuntimeAssemblyVersion,
-                                                compilerToolPaths,
-                                                m)
-
-        let mutable ExtensionTypingProvider = DefaultExtensionTypingProvider() :> IExtensionTypingProvider
         
 #endif
