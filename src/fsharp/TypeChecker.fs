@@ -5914,13 +5914,7 @@ and TcExprUndelayed cenv overallTy env tpenv (synExpr: SynExpr) =
     | SynExpr.Lambda _ -> 
         TcIteratedLambdas cenv true env overallTy Set.empty tpenv synExpr
 
-    | SynExpr.Match (spMatch, synInputExpr, synClauses, _m) ->
-
-        let inputExpr, inputTy, tpenv = TcExprOfUnknownType cenv env tpenv synInputExpr
-        let mInputExpr = inputExpr.Range
-        let matchVal, matchExpr, tpenv = TcAndPatternCompileMatchClauses mInputExpr mInputExpr ThrowIncompleteMatchException cenv (Some inputExpr) inputTy overallTy env tpenv synClauses
-        let overallExpr = mkLet spMatch mInputExpr matchVal inputExpr matchExpr
-        overallExpr, tpenv
+    | SynExpr.M
 
     // (function[spMatch] pat1 -> expr1 ... | patN -> exprN)
     //
