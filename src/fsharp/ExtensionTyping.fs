@@ -821,7 +821,7 @@ module ExtensionTyping =
                                      (ProvidedTypeComparer.Instance :> IEqualityComparer<_>).Equals(this.Type, y.Type)
             | _ -> false
 
-        override this.GetHashCode() = (this.Name, this.Type.FullName).GetHashCode()
+        override this.GetHashCode() = this.Name.GetHashCode()
         
     [<AutoOpen>]
     module Shim =
