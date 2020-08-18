@@ -386,7 +386,7 @@ module ExtensionTyping =
         abstract member ApplyContext: ProvidedTypeContext -> ProvidedType
         default pt.ApplyContext (ctxt) = ProvidedType(pt.Handle, ctxt)
         static member TaintedEquals (pt1: Tainted<ProvidedType>, pt2: Tainted<ProvidedType>) = 
-           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.FullName)) (pt2.PApplyNoFailure(fun st -> st.FullName))
+           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
 
     and [<AllowNullLiteral>] 
         IProvidedCustomAttributeProvider =
