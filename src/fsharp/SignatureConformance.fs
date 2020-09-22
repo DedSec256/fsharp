@@ -535,7 +535,7 @@ type Checker(g, amap, denv, remapInfo: SignatureRepackageInfo, checkingSig) =
             | TNoRepr, TNoRepr -> true
 #if !NO_EXTENSIONTYPING
             | TProvidedTypeExtensionPoint info1, TProvidedTypeExtensionPoint info2 ->  
-                Tainted.EqTainted info1.ProvidedType.TypeProvider info2.ProvidedType.TypeProvider && ProvidedType.TaintedEquals(info1.ProvidedType, info2.ProvidedType)
+                Tainted.RefEqTainted info1.ProvidedType.TypeProvider info2.ProvidedType.TypeProvider && ProvidedType.TaintedEquals(info1.ProvidedType, info2.ProvidedType)
             | TProvidedNamespaceExtensionPoint _, TProvidedNamespaceExtensionPoint _ -> 
                 System.Diagnostics.Debug.Assert(false, "unreachable: TProvidedNamespaceExtensionPoint only on namespaces, not types" )
                 true

@@ -113,7 +113,9 @@ module Tainted =
 
     /// Test whether the tainted value equals given value. Type providers are ignored (equal tainted values produced by different type providers are equal)
     /// Failure in call to equality operation will be blamed on type provider of first operand
-    val EqTainted : Tainted<'T> -> Tainted<'T> -> bool when 'T : equality and 'T : not struct
+    val RefEqTainted : Tainted<'T> -> Tainted<'T> -> bool when 'T : equality and 'T : not struct
+    
+    val EqTainted : Tainted<'T> -> Tainted<'T> -> bool when 'T : equality
 
     /// Compute the hash value for the tainted value
     val GetHashCodeTainted : Tainted<'T> -> int when 'T : equality

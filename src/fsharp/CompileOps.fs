@@ -4395,7 +4395,7 @@ and [<Sealed>] TcImports(tcConfigP: TcConfigProvider, initialResolutions: TcAsse
                                 
                 // Add to the existing list of extensions
                 | TProvidedNamespaceExtensionPoint(resolutionFolder, prior) as repr -> 
-                    if not(prior |> List.exists(fun r->Tainted.EqTainted r provider)) then 
+                    if not(prior |> List.exists(fun r->Tainted.RefEqTainted r provider)) then 
                         TProvidedNamespaceExtensionPoint(resolutionFolder, provider :: prior)
                     else 
                         repr

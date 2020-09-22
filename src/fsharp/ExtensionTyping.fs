@@ -385,8 +385,8 @@ module ExtensionTyping =
         default __.AsProvidedVar (nm) = ProvidedVar.Create ctxt (Quotations.Var(nm, x))
         abstract member ApplyContext: ProvidedTypeContext -> ProvidedType
         default pt.ApplyContext (ctxt) = ProvidedType(pt.Handle, ctxt)
-        static member TaintedEquals (pt1: Tainted<ProvidedType>, pt2: Tainted<ProvidedType>) = 
-           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
+        static member TaintedEquals (pt1: Tainted<ProvidedType>, pt2: Tainted<ProvidedType>) =
+           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> (st.Assembly.FullName, st.FullName))) (pt2.PApplyNoFailure(fun st -> (st.Assembly.FullName, st.FullName)))
 
     and [<AllowNullLiteral>] 
         IProvidedCustomAttributeProvider =
@@ -554,7 +554,7 @@ module ExtensionTyping =
         static member TaintedGetHashCode (x: Tainted<ProvidedMethodBase>) =            
            Tainted.GetHashCodeTainted (x.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) 
         static member TaintedEquals (pt1: Tainted<ProvidedMethodBase>, pt2: Tainted<ProvidedMethodBase>) = 
-           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
+           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) (pt2.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName)))
 
         abstract GetStaticParametersForMethod: provider: ITypeProvider -> ProvidedParameterInfo[]
         default __.GetStaticParametersForMethod(provider: ITypeProvider) = 
@@ -642,7 +642,7 @@ module ExtensionTyping =
         override __.Equals y = assert false; match y with :? ProvidedFieldInfo as y -> x.Equals y.Handle | _ -> false
         override __.GetHashCode() = assert false; x.GetHashCode()
         static member TaintedEquals (pt1: Tainted<ProvidedFieldInfo>, pt2: Tainted<ProvidedFieldInfo>) = 
-           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
+           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) (pt2.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName)))
 
 
 
@@ -686,7 +686,7 @@ module ExtensionTyping =
         static member TaintedGetHashCode (x: Tainted<ProvidedPropertyInfo>) = 
            Tainted.GetHashCodeTainted (x.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) 
         static member TaintedEquals (pt1: Tainted<ProvidedPropertyInfo>, pt2: Tainted<ProvidedPropertyInfo>) = 
-           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
+           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) (pt2.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName)))
 
     and [<AllowNullLiteral>] 
         ProvidedEventInfo (x: System.Reflection.EventInfo, ctxt) = 
@@ -706,7 +706,7 @@ module ExtensionTyping =
         static member TaintedGetHashCode (x: Tainted<ProvidedEventInfo>) = 
            Tainted.GetHashCodeTainted (x.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) 
         static member TaintedEquals (pt1: Tainted<ProvidedEventInfo>, pt2: Tainted<ProvidedEventInfo>) = 
-           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> st.Handle)) (pt2.PApplyNoFailure(fun st -> st.Handle))
+           Tainted.EqTainted (pt1.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName))) (pt2.PApplyNoFailure(fun st -> (st.Name, st.DeclaringType.Assembly.FullName, st.DeclaringType.FullName)))
 
     and [<AllowNullLiteral>] 
         ProvidedConstructorInfo (x: System.Reflection.ConstructorInfo, ctxt) = 
