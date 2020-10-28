@@ -17,7 +17,7 @@ type internal TypeProviderToken() = interface LockToken
 type internal TypeProviderLock() =
     inherit Lock<TypeProviderToken>()
 
-type internal TypeProviderError
+type TypeProviderError
     (
         errNum : int,
         tpDesignation : string,

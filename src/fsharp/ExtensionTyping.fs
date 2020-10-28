@@ -894,7 +894,7 @@ module ExtensionTyping =
                             []
                             
                     providers
-                     
+
                 member this.GetProvidedTypes(pn: IProvidedNamespace) =
                     pn.GetTypes() |> Array.map ProvidedType.CreateNoContext 
             
