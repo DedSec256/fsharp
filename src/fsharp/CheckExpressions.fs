@@ -5356,7 +5356,7 @@ and TcExprThen cenv overallTy env tpenv synExpr delayed =
         | Some {contents = Decided altId} -> TcExprThen cenv overallTy env tpenv (SynExpr.LongIdent (isOpt, LongIdentWithDots([altId], []), None, mLongId)) delayed
         | _ ->
             CallExprHasTypeSink cenv.tcSink (mLongId, env.NameEnv, overallTy, env.AccessRights)
-            TcLongIdentThen cenv overallTy env tpenv longId delayed
+            TcLongIdentThen cenv overallTy env tpenv longId mLongId delayed
 
     // f x
     | SynExpr.App (hpa, _, func, arg, mFuncAndArg) ->
@@ -5724,20 +5724,22 @@ and TcExprUndelayed cenv overallTy env tpenv (synExpr: SynExpr) =
             let mExprAndDotLookup = unionRanges e1.Range (rangeOfLid longId)
             TcExprThen cenv overallTy env tpenv e1 [DelayedDotLookup(longId, mExprAndDotLookup); DelayedApp(ExprAtomicFlag.Atomic, e2, mStmt); MakeDelayedSet(e3, mStmt)]
 
-    | SynExpr.LongIdentSet (lidwd, e2, m) -> 
+    | SynExpr.LongIdentSet (LongIdentWithDots(longId, _) as lidwd, e2, m) ->
+        let m = rangeOfLid longId
         if lidwd.ThereIsAnExtraDotAtTheEnd then
             // just drop rhs on the floor
-            TcLongIdentThen cenv overallTy env tpenv lidwd [ ]
+            TcLongIdentThen cenv overallTy env tpenv lidwd m [ ]
         else
-            TcLongIdentThen cenv overallTy env tpenv lidwd [ MakeDelayedSet(e2, m) ]
+            TcLongIdentThen cenv overallTy env tpenv lidwd m [ MakeDelayedSet(e2, m) ]
     
     // Type.Items(e1) <- e2 
-    | SynExpr.NamedIndexedPropertySet (lidwd, e1, e2, mStmt) ->
+    | SynExpr.NamedIndexedPropertySet (LongIdentWithDots(longId, _) as lidwd, e1, e2, mStmt) ->
+        let m = rangeOfLid longId
         if lidwd.ThereIsAnExtraDotAtTheEnd then
             // just drop rhs on the floor
-            TcLongIdentThen cenv overallTy env tpenv lidwd [ ]
+            TcLongIdentThen cenv overallTy env tpenv lidwd m [ ]
         else
-            TcLongIdentThen cenv overallTy env tpenv lidwd [ DelayedApp(ExprAtomicFlag.Atomic, e1, mStmt); MakeDelayedSet(e2, mStmt) ]
+            TcLongIdentThen cenv overallTy env tpenv lidwd m [ DelayedApp(ExprAtomicFlag.Atomic, e1, mStmt); MakeDelayedSet(e2, mStmt) ]
 
     | SynExpr.TraitCall (tps, memSpfn, arg, m) ->
         let synTypes = tps |> List.map (fun tp -> SynType.Var(tp, m))
@@ -7547,12 +7549,12 @@ and GetLongIdentTypeNameInfo delayed =
     | _ -> 
         TypeNameResolutionInfo.Default
 
-and TcLongIdentThen cenv overallTy env tpenv (LongIdentWithDots(longId, _)) delayed =
+and TcLongIdentThen cenv overallTy env tpenv (LongIdentWithDots(longId, _)) m delayed =
 
     let ad = env.eAccessRights
     let typeNameResInfo = GetLongIdentTypeNameInfo delayed
     let nameResolutionResult =
-        ResolveLongIdentAsExprAndComputeRange cenv.tcSink cenv.nameResolver (rangeOfLid longId) ad env.eNameResEnv typeNameResInfo longId
+        ResolveLongIdentAsExprAndComputeRange cenv.tcSink cenv.nameResolver m ad env.eNameResEnv typeNameResInfo longId
         |> ForceRaise
     TcItemThen cenv overallTy env tpenv nameResolutionResult delayed
 
