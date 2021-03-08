@@ -159,7 +159,7 @@
       </trans-unit>
       <trans-unit id="5003">
         <source>Script.fsx</source>
-        <target state="translated">Script.fsx</target>
+        <target state="new">Script.fsx</target>
         <note />
       </trans-unit>
       <trans-unit id="5005">
@@ -199,7 +199,7 @@
       </trans-unit>
       <trans-unit id="5013">
         <source>File.fs</source>
-        <target state="translated">File.fs</target>
+        <target state="new">File.fs</target>
         <note />
       </trans-unit>
       <trans-unit id="5014">
@@ -304,7 +304,7 @@
       </trans-unit>
       <trans-unit id="5034">
         <source>Portable Library (.NET 4.5, Windows Store, Silverlight 5, Xamarin)</source>
-        <target state="translated">Portable Bibliothek (.NET 4.5, Windows Store, Silverlight 5, Xamarin)</target>
+        <target state="translated">Portierbare Bibliothek (.NET 4.5, Windows Store, Silverlight 5, Xamarin)</target>
         <note />
       </trans-unit>
       <trans-unit id="5035">
@@ -364,7 +364,7 @@
       </trans-unit>
       <trans-unit id="5047">
         <source>Portable Library (.NET 4.5, Windows Store, Xamarin)</source>
-        <target state="translated">Portable Bibliothek (.NET 4.5, Windows Store, Xamarin)</target>
+        <target state="translated">Portierbare Bibliothek (.NET 4.5, Windows Store, Xamarin)</target>
         <note />
       </trans-unit>
       <trans-unit id="5048">
@@ -374,7 +374,7 @@
       </trans-unit>
       <trans-unit id="5049">
         <source>Portable Library (.NET 4.5, Windows Store, Windows Phone 8 Silverlight, Xamarin)</source>
-        <target state="translated">Portable Bibliothek (.NET 4.5, Windows Store, Windows Phone 8 Silverlight, Xamarin)</target>
+        <target state="translated">Portierbare Bibliothek (.NET 4.5, Windows Store, Windows Phone 8 Silverlight, Xamarin)</target>
         <note />
       </trans-unit>
       <trans-unit id="5050">
@@ -384,7 +384,7 @@
       </trans-unit>
       <trans-unit id="5051">
         <source>Portable Library (.NET 4.5, Windows Store, Windows Phone 8.1, Windows Phone Silverlight 8, Xamarin)</source>
-        <target state="translated">Portable Bibliothek (.NET 4.5, Windows Store, Windows Phone 8.1, Windows Phone Silverlight 8, Xamarin)</target>
+        <target state="translated">Portierbare Bibliothek (.NET 4.5, Windows Store, Windows Phone 8.1, Windows Phone Silverlight 8, Xamarin)</target>
         <note />
       </trans-unit>
       <trans-unit id="5052">
@@ -433,13 +433,13 @@
         <note />
       </trans-unit>
       <trans-unit id="ProductDetails">
-        <source>Microsoft Visual F# Tools {{FSProductVersion}} for F# {{FSLanguageVersion}}</source>
-        <target state="needs-review-translation">Microsoft Visual F# Tools {{FSProductVersion}} für f# {{FSLanguageVersion}}</target>
+        <source>Microsoft Visual F# Tools</source>
+        <target state="translated">Microsoft Visual F# Tools</target>
         <note />
       </trans-unit>
       <trans-unit id="9002">
-        <source>Microsoft Visual F# Tools {{FSProductVersion}} for F# {{FSLanguageVersion}}</source>
-        <target state="needs-review-translation">Microsoft Visual F# Tools {{FSProductVersion}} für f# {{FSLanguageVersion}}</target>
+        <source>Microsoft Visual F# Tools</source>
+        <target state="translated">Microsoft Visual F# Tools</target>
         <note />
       </trans-unit>
       <trans-unit id="ProductID">
@@ -453,8 +453,8 @@
         <note />
       </trans-unit>
       <trans-unit id="9001">
-        <source>Visual F# Tools {{FSProductVersion}} for F# {{FSLanguageVersion}}</source>
-        <target state="needs-review-translation">Visual F# Tools {{FSProductVersion}} für F# {{FSLanguageVersion}}</target>
+        <source>Visual F# Tools</source>
+        <target state="translated">Visual F# Tools</target>
         <note />
       </trans-unit>
       <trans-unit id="9027">

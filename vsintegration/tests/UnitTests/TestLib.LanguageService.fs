@@ -12,9 +12,9 @@ open Salsa.VsOpsUtils
 open Salsa.VsMocks
 open UnitTests.TestLib.Salsa
 open UnitTests.TestLib.Utils
-open FSharp.Compiler
 open System.Text.RegularExpressions 
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open Microsoft.VisualStudio.FSharp
 
 #nowarn "52" // The value has been copied to ensure the original is not mutated
@@ -159,7 +159,7 @@ type internal GlobalParseAndTypeCheckCounter private(initialParseCount:int, init
     static member StartNew(vs) =
         TakeCoffeeBreak(vs)
         let n = IncrementalBuilderEventTesting.GetCurrentIncrementalBuildEventNum()
-        new GlobalParseAndTypeCheckCounter(FSharpChecker.GlobalForegroundParseCountStatistic, FSharpChecker.GlobalForegroundTypeCheckCountStatistic, n, vs)
+        new GlobalParseAndTypeCheckCounter(FSharpChecker.ActualParseFileCount, FSharpChecker.ActualCheckFileCount, n, vs)
     member private this.GetEvents() = 
         TakeCoffeeBreak(vs)
         let n = IncrementalBuilderEventTesting.GetCurrentIncrementalBuildEventNum()
@@ -281,10 +281,11 @@ type LanguageServiceBaseTests() =
             ?defines : list<string>, 
             ?fileKind : SourceFileKind, 
             ?disabledWarnings : list<string>,
-            ?fileName : string
+            ?fileName : string,
+            ?otherFlags: string
         ) = 
         let content = content.Split( [|"\r\n"|], StringSplitOptions.None) |> List.ofArray
-        this.CreateSingleFileProject(content, ?references = references, ?defines = defines, ?fileKind = fileKind, ?disabledWarnings = disabledWarnings, ?fileName = fileName)
+        this.CreateSingleFileProject(content, ?references = references, ?defines = defines, ?fileKind = fileKind, ?disabledWarnings = disabledWarnings, ?fileName = fileName, ?otherFlags = otherFlags)
 
     member internal this.CreateSingleFileProject
         (
@@ -293,7 +294,8 @@ type LanguageServiceBaseTests() =
             ?defines : list<string>, 
             ?fileKind : SourceFileKind, 
             ?disabledWarnings : list<string>,
-            ?fileName : string
+            ?fileName : string,
+            ?otherFlags: string
         ) = 
         assert (box currentVS = box defaultVS)
         let mkKeyComponent l = 
@@ -312,7 +314,7 @@ type LanguageServiceBaseTests() =
             let refs = mkKeyComponent references
             let defines = mkKeyComponent defines
             let warnings = mkKeyComponent disabledWarnings
-            (refs, defines, disabledWarnings, fileName.ToLower())
+            (refs, defines, warnings, otherFlags, fileName.ToLower())
 
         match cache.TryGetValue key with
         | true, (proj, file) ->
@@ -336,6 +338,10 @@ type LanguageServiceBaseTests() =
 
             for r in (defaultArg references []) do 
                 GlobalFunctions.AddAssemblyReference(proj, r)
+
+            match otherFlags with 
+            | None -> ()
+            | Some flags -> GlobalFunctions.SetOtherFlags(proj, flags) 
 
             let content = String.concat Environment.NewLine content
             let _ = AddFileFromTextBlob(proj, fileName, content)
@@ -416,7 +422,7 @@ type LanguageServiceBaseTests() =
             failwith "LanguageServiceBaseTests.UsingNewVS was called when 'active' instance of VS is not 'default' one - this may denote that tests contains errors"
         currentVS <- ops.CreateVisualStudio()
         { new System.IDisposable with 
-            member __.Dispose() = 
+            member _.Dispose() = 
                 if box currentVS = box defaultVS then
                     failwith "At this moment 'current' instance of VS cannot be the same as the 'default' one. This may denote that tests contains errors."
                 GlobalFunctions.Cleanup(currentVS)

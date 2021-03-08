@@ -12,12 +12,12 @@
 //   and capturing large amounts of structured output.
 (*
     cd Debug\net40\bin
-    .\fsc.exe --define:EXE -r:.\Microsoft.Build.Utilities.Core.dll -o VisualFSharp.UnitTests.exe -g --optimize- -r .\FSharp.Compiler.Private.dll  -r .\FSharp.Editor.dll -r nunit.framework.dll ..\..\..\tests\service\FsUnit.fs ..\..\..\tests\service\Common.fs /delaysign /keyfile:..\..\..\src\fsharp\msft.pubkey ..\..\..\vsintegration\tests\UnitTests\GoToDefinitionServiceTests.fs 
+    .\fsc.exe --define:EXE -r:.\Microsoft.Build.Utilities.Core.dll -o VisualFSharp.UnitTests.exe -g --optimize- -r .\FSharp.Compiler.Service.dll  -r .\FSharp.Editor.dll -r nunit.framework.dll ..\..\..\tests\service\FsUnit.fs ..\..\..\tests\service\Common.fs /delaysign /keyfile:..\..\..\src\fsharp\msft.pubkey ..\..\..\vsintegration\tests\UnitTests\GoToDefinitionServiceTests.fs 
     .\VisualFSharp.UnitTests.exe 
 *)
 // Technique 3: 
 // 
-//    Use F# Interactive.  This only works for FSharp.Compiler.Private.dll which has a public API
+//    Use F# Interactive.  This only works for FSharp.Compiler.Service.dll which has a public API
 
 namespace Microsoft.VisualStudio.FSharp.Editor.Tests.Roslyn
 
@@ -28,8 +28,10 @@ open NUnit.Framework
 open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.Text
 open Microsoft.VisualStudio.FSharp.Editor
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.Range
+open FSharp.Compiler
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Text
 open UnitTests.TestLib.LanguageService
 
 [<TestFixture>][<Category "Roslyn Services">]
@@ -52,15 +54,45 @@ module GoToDefinitionServiceTests =
             let textLine = sourceText.Lines.GetLineFromPosition position
             let textLinePos = sourceText.Lines.GetLinePosition position
             let fcsTextLineNumber = Line.fromZ textLinePos.Line
-            let! lexerSymbol = Tokenizer.getSymbolAtPosition(documentKey, sourceText, position, filePath, defines, SymbolLookupKind.Greedy, false)
+            let! lexerSymbol = Tokenizer.getSymbolAtPosition(documentKey, sourceText, position, filePath, defines, SymbolLookupKind.Greedy, false, false)
             let! _, _, checkFileResults = checker.ParseAndCheckDocument (filePath, textVersionHash,  sourceText, options, LanguageServicePerformanceOptions.Default, userOpName=userOpName)  |> Async.RunSynchronously
 
-            let declarations = checkFileResults.GetDeclarationLocation (fcsTextLineNumber, lexerSymbol.Ident.idRange.EndColumn, textLine.ToString(), lexerSymbol.FullIsland, false, userOpName=userOpName) |> Async.RunSynchronously
+            let declarations = checkFileResults.GetDeclarationLocation (fcsTextLineNumber, lexerSymbol.Ident.idRange.EndColumn, textLine.ToString(), lexerSymbol.FullIsland, false)
             
             match declarations with
-            | FSharpFindDeclResult.DeclFound range -> return range
+            | FindDeclResult.DeclFound range -> return range
             | _ -> return! None
         }
+
+    let makeOptions filePath args = 
+        { 
+            ProjectFileName = "C:\\test.fsproj"
+            ProjectId = None
+            SourceFiles =  [| filePath |]
+            ReferencedProjects = [| |]
+            OtherOptions = args
+            IsIncompleteTypeCheckEnvironment = true
+            UseScriptResolutionRules = false
+            LoadTime = DateTime.MaxValue
+            OriginalLoadReferences = []
+            UnresolvedReferences = None
+            Stamp = None
+        }
+
+    let GoToDefinitionTest (fileContents: string, caretMarker: string, expected) =
+
+        let filePath = Path.GetTempFileName() + ".fs"
+        let options = makeOptions filePath [| |]
+        File.WriteAllText(filePath, fileContents)
+
+        let caretPosition = fileContents.IndexOf(caretMarker) + caretMarker.Length - 1 // inside the marker
+        let documentId = DocumentId.CreateNewId(ProjectId.CreateNewId())
+        let actual = 
+           findDefinition(checker, documentId, SourceText.From(fileContents), filePath, caretPosition, [], options, 0) 
+           |> Option.map (fun range -> (range.StartLine, range.EndLine, range.StartColumn, range.EndColumn))
+
+        if actual <> expected then 
+            Assert.Fail(sprintf "Incorrect information returned for fileContents=<<<%s>>>, caretMarker=<<<%s>>>, expected =<<<%A>>>, actual = <<<%A>>>" fileContents caretMarker expected actual)
 
     [<Test>]
     let VerifyDefinition() =
@@ -100,33 +132,20 @@ let _ = Module1.foo 1
        for caretMarker, expected in testCases do
         
         printfn "Test case: caretMarker=<<<%s>>>" caretMarker 
-        let filePath = Path.GetTempFileName() + ".fs"
-        let options: FSharpProjectOptions = { 
-            ProjectFileName = "C:\\test.fsproj"
-            ProjectId = None
-            SourceFiles =  [| filePath |]
-            ReferencedProjects = [| |]
-            OtherOptions = [| |]
-            IsIncompleteTypeCheckEnvironment = true
-            UseScriptResolutionRules = false
-            LoadTime = DateTime.MaxValue
-            OriginalLoadReferences = []
-            UnresolvedReferences = None
-            ExtraProjectInfo = None
-            Stamp = None
-        }
+        GoToDefinitionTest (fileContents, caretMarker, expected)
 
-        File.WriteAllText(filePath, fileContents)
+    [<Test>]
+    let VerifyDefinitionStringInterpolation() =
 
-        let caretPosition = fileContents.IndexOf(caretMarker) + caretMarker.Length - 1 // inside the marker
-        let documentId = DocumentId.CreateNewId(ProjectId.CreateNewId())
-        let actual = 
-           findDefinition(checker, documentId, SourceText.From(fileContents), filePath, caretPosition, [], options, 0) 
-           |> Option.map (fun range -> (range.StartLine, range.EndLine, range.StartColumn, range.EndColumn))
+        let fileContents = """
+let xxxxx = 1
+let yyyy = $"{abc{xxxxx}def}" """
+        let caretMarker = "xxxxx"
+        let expected = Some(2, 2, 4, 9)
 
-        if actual <> expected then 
-            Assert.Fail(sprintf "Incorrect information returned for fileContents=<<<%s>>>, caretMarker=<<<%s>>>, expected =<<<%A>>>, actual = <<<%A>>>" fileContents caretMarker expected actual)
+        GoToDefinitionTest (fileContents, caretMarker, expected)
 
 #if EXE
     VerifyDefinition()
+    VerifyDefinitionStringInterpolation()
 #endif

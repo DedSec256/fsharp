@@ -10,13 +10,12 @@ open System.Threading.Tasks
 open System.Linq
 
 open Microsoft.CodeAnalysis
-open Microsoft.CodeAnalysis.Editor.Implementation.Debugging
-open Microsoft.CodeAnalysis.Host.Mef
 open Microsoft.CodeAnalysis.Text
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Editor.Implementation.Debugging
 
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.Range
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Text
+open FSharp.Compiler.Text.Position
 
 [<Export(typeof<IFSharpBreakpointResolutionService>)>]
 type internal FSharpBreakpointResolutionService 
@@ -44,7 +43,7 @@ type internal FSharpBreakpointResolutionService
     interface IFSharpBreakpointResolutionService with
         member this.ResolveBreakpointAsync(document: Document, textSpan: TextSpan, cancellationToken: CancellationToken): Task<FSharpBreakpointResolutionResult> =
             asyncMaybe {
-                let! parsingOptions, _options = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken)
+                let! parsingOptions, _options = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken, userOpName)
                 let! sourceText = document.GetTextAsync(cancellationToken)
                 let! range = FSharpBreakpointResolutionService.GetBreakpointLocation(checkerProvider.Checker, sourceText, document.Name, textSpan, parsingOptions)
                 let! span = RoslynHelpers.TryFSharpRangeToTextSpan(sourceText, range)

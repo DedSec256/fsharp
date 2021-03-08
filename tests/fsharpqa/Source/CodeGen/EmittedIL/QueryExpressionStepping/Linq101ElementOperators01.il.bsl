@@ -1,5 +1,5 @@
 
-//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.6.1055.0
+//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.8.3928.0
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 
 
@@ -13,11 +13,16 @@
 .assembly extern FSharp.Core
 {
   .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A )                         // .?_....:
-  .ver 4:5:0:0
+  .ver 5:0:0:0
 }
 .assembly extern Utils
 {
   .ver 0:0:0:0
+}
+.assembly extern netstandard
+{
+  .publickeytoken = (CC 7B 13 FF CD 2D DD 51 )                         // .{...-.Q
+  .ver 2:0:0:0
 }
 .assembly Linq101ElementOperators01
 {
@@ -33,20 +38,20 @@
 }
 .mresource public FSharpSignatureData.Linq101ElementOperators01
 {
-  // Offset: 0x00000000 Length: 0x0000038A
+  // Offset: 0x00000000 Length: 0x0000037E
 }
 .mresource public FSharpOptimizationData.Linq101ElementOperators01
 {
-  // Offset: 0x00000390 Length: 0x00000127
+  // Offset: 0x00000388 Length: 0x00000127
 }
 .module Linq101ElementOperators01.exe
-// MVID: {5B9A632A-19D7-C20D-A745-03832A639A5B}
+// MVID: {5FCFFD0D-19D7-C20D-A745-03830DFDCF5F}
 .imagebase 0x00400000
 .file alignment 0x00000200
 .stackreserve 0x00100000
 .subsystem 0x0003       // WINDOWS_CUI
 .corflags 0x00000001    //  ILONLY
-// Image base: 0x028F0000
+// Image base: 0x05A30000
 
 
 // =============== CLASS MEMBERS DECLARATION ===================
@@ -100,7 +105,7 @@
       .locals init ([0] class [Utils]Utils/Product V_0,
                [1] class [Utils]Utils/Product p)
       .language '{AB4F38C9-B6E6-43BA-BE3B-58080B2CCCE3}', '{994B45C4-E6E9-11D2-903F-00C04FA302A1}', '{5A869D0B-6611-11D3-BD2A-0000F80849BD}'
-      .line 100001,100001 : 0,0 'C:\\GitHub\\dsyme\\visualfsharp\\tests\\fsharpqa\\Source\\CodeGen\\EmittedIL\\QueryExpressionStepping\\Linq101ElementOperators01.fs'
+      .line 100001,100001 : 0,0 'C:\\GitHub\\dsyme\\fsharp\\tests\\fsharpqa\\source\\CodeGen\\EmittedIL\\QueryExpressionStepping\\Linq101ElementOperators01.fs'
       IL_0000:  ldarg.0
       IL_0001:  ldfld      int32 Linq101ElementOperators01/products12@12::pc
       IL_0006:  ldc.i4.1
@@ -389,6 +394,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'products12@13-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Product,bool>
   {
+    .field static assembly initonly class Linq101ElementOperators01/'products12@13-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -413,6 +419,16 @@
       IL_0008:  ceq
       IL_000a:  ret
     } // end of method 'products12@13-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101ElementOperators01/'products12@13-1'::.ctor()
+      IL_0005:  stsfld     class Linq101ElementOperators01/'products12@13-1' Linq101ElementOperators01/'products12@13-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'products12@13-1'::.cctor
 
   } // end of class 'products12@13-1'
 
@@ -749,6 +765,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'startsWithO@23-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<string,bool>
   {
+    .field static assembly initonly class Linq101ElementOperators01/'startsWithO@23-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -769,11 +786,21 @@
       .line 23,23 : 16,27 ''
       IL_0000:  ldarg.1
       IL_0001:  ldc.i4.0
-      IL_0002:  callvirt   instance char [mscorlib]System.String::get_Chars(int32)
+      IL_0002:  callvirt   instance char [netstandard]System.String::get_Chars(int32)
       IL_0007:  ldc.i4.s   111
       IL_0009:  ceq
       IL_000b:  ret
     } // end of method 'startsWithO@23-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101ElementOperators01/'startsWithO@23-1'::.ctor()
+      IL_0005:  stsfld     class Linq101ElementOperators01/'startsWithO@23-1' Linq101ElementOperators01/'startsWithO@23-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'startsWithO@23-1'::.cctor
 
   } // end of class 'startsWithO@23-1'
 
@@ -1440,6 +1467,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'fourthLowNum@53-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<int32,bool>
   {
+    .field static assembly initonly class Linq101ElementOperators01/'fourthLowNum@53-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -1464,6 +1492,16 @@
       IL_0004:  ret
     } // end of method 'fourthLowNum@53-1'::Invoke
 
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101ElementOperators01/'fourthLowNum@53-1'::.ctor()
+      IL_0005:  stsfld     class Linq101ElementOperators01/'fourthLowNum@53-1' Linq101ElementOperators01/'fourthLowNum@53-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'fourthLowNum@53-1'::.cctor
+
   } // end of class 'fourthLowNum@53-1'
 
   .method public specialname static class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> 
@@ -1471,7 +1509,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::'products@8-2'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::products@8
     IL_0005:  ret
   } // end of method Linq101ElementOperators01::get_products
 
@@ -1527,7 +1565,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::'numbers2@48-2'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::numbers2@48
     IL_0005:  ret
   } // end of method Linq101ElementOperators01::get_numbers2
 
@@ -1588,7 +1626,7 @@
 .class private abstract auto ansi sealed '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01
        extends [mscorlib]System.Object
 {
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> 'products@8-2'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> products@8
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [Utils]Utils/Product products12@10
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
@@ -1598,7 +1636,7 @@
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly int32 firstNumOrDefault@29
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> 'numbers2@48-2'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> numbers2@48
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly int32 fourthLowNum@50
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
@@ -1625,7 +1663,7 @@
     .line 8,8 : 1,32 ''
     IL_0000:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> [Utils]Utils::getProductList()
     IL_0005:  dup
-    IL_0006:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::'products@8-2'
+    IL_0006:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::products@8
     IL_000b:  stloc.0
     IL_000c:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
     IL_0011:  stloc.s    V_8
@@ -1638,7 +1676,7 @@
                                                                                       int32,
                                                                                       class [Utils]Utils/Product)
     IL_001f:  newobj     instance void class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [Utils]Utils/Product,class [mscorlib]System.Collections.IEnumerable>::.ctor(class [mscorlib]System.Collections.Generic.IEnumerable`1<!0>)
-    IL_0024:  newobj     instance void Linq101ElementOperators01/'products12@13-1'::.ctor()
+    IL_0024:  ldsfld     class Linq101ElementOperators01/'products12@13-1' Linq101ElementOperators01/'products12@13-1'::@_instance
     IL_0029:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [Utils]Utils/Product,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                     class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
     IL_002e:  callvirt   instance !!0 [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Head<class [Utils]Utils/Product,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>)
@@ -1691,7 +1729,7 @@
                                                                                        int32,
                                                                                        string)
     IL_00bd:  newobj     instance void class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<string,class [mscorlib]System.Collections.IEnumerable>::.ctor(class [mscorlib]System.Collections.Generic.IEnumerable`1<!0>)
-    IL_00c2:  newobj     instance void Linq101ElementOperators01/'startsWithO@23-1'::.ctor()
+    IL_00c2:  ldsfld     class Linq101ElementOperators01/'startsWithO@23-1' Linq101ElementOperators01/'startsWithO@23-1'::@_instance
     IL_00c7:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<string,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                 class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
     IL_00cc:  callvirt   instance !!0 [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Head<string,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>)
@@ -1746,7 +1784,7 @@
     IL_013b:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0> class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32>::Cons(!0,
                                                                                                                                                                     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0>)
     IL_0140:  dup
-    IL_0141:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::'numbers2@48-2'
+    IL_0141:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101ElementOperators01>'.$Linq101ElementOperators01::numbers2@48
     IL_0146:  stloc.s    numbers2
     IL_0148:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
     IL_014d:  stloc.s    V_10
@@ -1759,7 +1797,7 @@
                                                                                         int32,
                                                                                         int32)
     IL_015b:  newobj     instance void class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<int32,class [mscorlib]System.Collections.IEnumerable>::.ctor(class [mscorlib]System.Collections.Generic.IEnumerable`1<!0>)
-    IL_0160:  newobj     instance void Linq101ElementOperators01/'fourthLowNum@53-1'::.ctor()
+    IL_0160:  ldsfld     class Linq101ElementOperators01/'fourthLowNum@53-1' Linq101ElementOperators01/'fourthLowNum@53-1'::@_instance
     IL_0165:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<int32,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
     IL_016a:  ldc.i4.1

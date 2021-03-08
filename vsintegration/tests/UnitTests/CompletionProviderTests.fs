@@ -11,7 +11,7 @@
 //   and capturing large amounts of structured output.
 (*
     cd Debug\net40\bin
-    .\fsc.exe --define:EXE -r:.\Microsoft.Build.Utilities.Core.dll -o VisualFSharp.UnitTests.exe -g --optimize- -r .\FSharp.Compiler.Private.dll  -r .\FSharp.Editor.dll -r nunit.framework.dll ..\..\..\tests\service\FsUnit.fs ..\..\..\tests\service\Common.fs /delaysign /keyfile:..\..\..\src\fsharp\msft.pubkey ..\..\..\vsintegration\tests\UnitTests\CompletionProviderTests.fs 
+    .\fsc.exe --define:EXE -r:.\Microsoft.Build.Utilities.Core.dll -o VisualFSharp.UnitTests.exe -g --optimize- -r .\FSharp.Compiler.Service.dll  -r .\FSharp.Editor.dll -r nunit.framework.dll ..\..\..\tests\service\FsUnit.fs ..\..\..\tests\service\Common.fs /delaysign /keyfile:..\..\..\src\fsharp\msft.pubkey ..\..\..\vsintegration\tests\UnitTests\CompletionProviderTests.fs 
     .\VisualFSharp.UnitTests.exe 
 *)
 // Technique 3: 
@@ -31,32 +31,31 @@ open Microsoft.CodeAnalysis.Completion
 open Microsoft.CodeAnalysis.Text
 open Microsoft.VisualStudio.FSharp.Editor
 
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
 open UnitTests.TestLib.LanguageService
 
 let filePath = "C:\\test.fs"
-let internal projectOptions = { 
+let internal projectOptions opts = { 
     ProjectFileName = "C:\\test.fsproj"
     ProjectId = None
     SourceFiles =  [| filePath |]
     ReferencedProjects = [| |]
-    OtherOptions = [| |]
+    OtherOptions = opts
     IsIncompleteTypeCheckEnvironment = true
     UseScriptResolutionRules = false
     LoadTime = DateTime.MaxValue
     OriginalLoadReferences = []
     UnresolvedReferences = None
-    ExtraProjectInfo = None
     Stamp = None
 }
 
 let formatCompletions(completions : string seq) =
     "\n\t" + String.Join("\n\t", completions)
 
-let VerifyCompletionList(fileContents: string, marker: string, expected: string list, unexpected: string list) =
+let VerifyCompletionListWithOptions(fileContents: string, marker: string, expected: string list, unexpected: string list, opts) =
     let caretPosition = fileContents.IndexOf(marker) + marker.Length
     let results = 
-        FSharpCompletionProvider.ProvideCompletionsAsyncAux(checker, SourceText.From(fileContents), caretPosition, projectOptions, filePath, 0, (fun _ -> []), LanguageServicePerformanceOptions.Default, IntelliSenseOptions.Default) 
+        FSharpCompletionProvider.ProvideCompletionsAsyncAux(checker, SourceText.From(fileContents), caretPosition, projectOptions opts, filePath, 0, (fun _ -> []), LanguageServicePerformanceOptions.Default, IntelliSenseOptions.Default) 
         |> Async.RunSynchronously 
         |> Option.defaultValue (ResizeArray())
         |> Seq.map(fun result -> result.DisplayText)
@@ -99,12 +98,15 @@ let VerifyCompletionList(fileContents: string, marker: string, expected: string 
         let msg = sprintf "%s%s%s" expectedNotFoundMsg unexpectedFoundMsg completionsMsg
 
         Assert.Fail(msg)
+let VerifyCompletionList(fileContents, marker, expected, unexpected) =
+   VerifyCompletionListWithOptions(fileContents, marker, expected, unexpected, [| |])
+
 
 let VerifyCompletionListExactly(fileContents: string, marker: string, expected: string list) =
     let caretPosition = fileContents.IndexOf(marker) + marker.Length
     
     let actual = 
-        FSharpCompletionProvider.ProvideCompletionsAsyncAux(checker, SourceText.From(fileContents), caretPosition, projectOptions, filePath, 0, (fun _ -> []), LanguageServicePerformanceOptions.Default, IntelliSenseOptions.Default) 
+        FSharpCompletionProvider.ProvideCompletionsAsyncAux(checker, SourceText.From(fileContents), caretPosition, projectOptions [| |], filePath, 0, (fun _ -> []), LanguageServicePerformanceOptions.Default, IntelliSenseOptions.Default) 
         |> Async.RunSynchronously 
         |> Option.defaultValue (ResizeArray())
         |> Seq.toList
@@ -122,6 +124,13 @@ let VerifyCompletionListExactly(fileContents: string, marker: string, expected: 
 let VerifyNoCompletionList(fileContents: string, marker: string) =
     VerifyCompletionListExactly(fileContents, marker, [])
 
+let VerifyCompletionListSpan(fileContents: string, marker: string, expected: string) =
+    let caretPosition = fileContents.IndexOf(marker) + marker.Length
+    let documentId = DocumentId.CreateNewId(ProjectId.CreateNewId())
+    let sourceText = SourceText.From(fileContents)
+    let resultSpan = CompletionUtils.getDefaultCompletionListSpan(sourceText, caretPosition, documentId, filePath, [])
+    Assert.AreEqual(expected, sourceText.ToString(resultSpan))
+
 [<Test>]
 let ShouldTriggerCompletionAtCorrectMarkers() =
     let testCases = 
@@ -134,18 +143,18 @@ let ShouldTriggerCompletionAtCorrectMarkers() =
         ("System.", true)
         ("Console.", true) ]
 
-    for (marker: string, shouldBeTriggered: bool) in testCases do
-    let fileContents = """
+    for (marker, shouldBeTriggered) in testCases do
+      let fileContents = """
 let x = 1
 let y = 2
 System.Console.WriteLine(x + y)
 """
 
-    let caretPosition = fileContents.IndexOf(marker) + marker.Length
-    let documentId = DocumentId.CreateNewId(ProjectId.CreateNewId())
-    let getInfo() = documentId, filePath, []
-    let triggered = FSharpCompletionProvider.ShouldTriggerCompletionAux(SourceText.From(fileContents), caretPosition, CompletionTriggerKind.Insertion, getInfo, IntelliSenseOptions.Default)
-    Assert.AreEqual(shouldBeTriggered, triggered, "FSharpCompletionProvider.ShouldTriggerCompletionAux() should compute the correct result")
+      let caretPosition = fileContents.IndexOf(marker) + marker.Length
+      let documentId = DocumentId.CreateNewId(ProjectId.CreateNewId())
+      let getInfo() = documentId, filePath, []
+      let triggered = FSharpCompletionProvider.ShouldTriggerCompletionAux(SourceText.From(fileContents), caretPosition, CompletionTriggerKind.Insertion, getInfo, IntelliSenseOptions.Default)
+      Assert.AreEqual(shouldBeTriggered, triggered, "FSharpCompletionProvider.ShouldTriggerCompletionAux() should compute the correct result")
 
 [<Test>]
 let ShouldNotTriggerCompletionAfterAnyTriggerOtherThanInsertionOrDeletion() = 
@@ -179,6 +188,32 @@ System.Console.WriteLine()
     let getInfo() = documentId, filePath, []
     let triggered = FSharpCompletionProvider.ShouldTriggerCompletionAux(SourceText.From(fileContents), caretPosition, CompletionTriggerKind.Insertion, getInfo, IntelliSenseOptions.Default)
     Assert.IsFalse(triggered, "FSharpCompletionProvider.ShouldTriggerCompletionAux() should not trigger")
+    
+[<Test>]
+let ShouldTriggerCompletionInInterpolatedString() =
+    let fileContents = """
+
+let x = 1
+let y = 2
+let z = $"abc  {System.Console.WriteLine(x + y)} def"
+"""
+    let testCases = 
+       [
+        ("x", true)
+        ("y", true)
+        ("1", false)
+        ("2", false)
+        ("x +", false)
+        ("Console.Write", false)
+        ("System.", true)
+        ("Console.", true) ]
+
+    for (marker, shouldBeTriggered) in testCases do
+        let caretPosition = fileContents.IndexOf(marker) + marker.Length
+        let documentId = DocumentId.CreateNewId(ProjectId.CreateNewId())
+        let getInfo() = documentId, filePath, []
+        let triggered = FSharpCompletionProvider.ShouldTriggerCompletionAux(SourceText.From(fileContents), caretPosition, CompletionTriggerKind.Insertion, getInfo, IntelliSenseOptions.Default)
+        Assert.AreEqual(shouldBeTriggered, triggered, sprintf "FSharpCompletionProvider.ShouldTriggerCompletionAux() should compute the correct result for marker '%s'" marker) 
     
 [<Test>]
 let ShouldNotTriggerCompletionInExcludedCode() =
@@ -307,11 +342,21 @@ System.Console.WriteLine()
     VerifyCompletionList(fileContents, "System.", ["Console"; "Array"; "String"], ["T1"; "M1"; "M2"])
 
 [<Test>]
+let ShouldDisplaySystemNamespaceInInterpolatedString() =
+    let fileContents = """
+type T1 =
+    member this.M1 = 5
+    member this.M2 = "literal"
+let x = $"1 not the same as {System.Int32.MaxValue} is it"
+"""
+    VerifyCompletionListWithOptions(fileContents, "System.", ["Console"; "Array"; "String"], ["T1"; "M1"; "M2"], [| "/langversion:preview" |])
+
+[<Test>]
 let ``Class instance members are ordered according to their kind and where they are defined (simple case, by a variable)``() =
     let fileContents = """
 type Base() =
-    member __.BaseMethod() = 1
-    member __.BaseProp = 1
+    member _.BaseMethod() = 1
+    member _.BaseProp = 1
 
 type Class() = 
     inherit Base()
@@ -328,8 +373,8 @@ x.
 let ``Class instance members are ordered according to their kind and where they are defined (simple case, by a constructor)``() =
     let fileContents = """
 type Base() =
-    member __.BaseMethod() = 1
-    member __.BaseProp = 1
+    member _.BaseMethod() = 1
+    member _.BaseProp = 1
 
 type Class() = 
     inherit Base()
@@ -364,8 +409,8 @@ let ``Class instance members are ordered according to their kind and where they 
     let fileContents = """
 type Base() =
     inherit System.Collections.Generic.List<int>
-    member __.BaseMethod() = 1
-    member __.BaseProp = 1
+    member _.BaseMethod() = 1
+    member _.BaseProp = 1
 
 type Class() = 
     inherit Base()
@@ -433,8 +478,8 @@ let ``Extension methods go after everything else, extension properties are treat
 open System.Collections.Generic
 
 type List<'a> with
-    member __.ExtensionProp = 1
-    member __.ExtensionMeth() = 1
+    member _.ExtensionProp = 1
+    member _.ExtensionMeth() = 1
 
 List().
 """
@@ -447,7 +492,7 @@ List().
 [<Test>]
 let ``Completion for open contains namespaces and static types``() =
     let fileContents = """
-open System.Ma
+open type System.Ma
 """
     let expected = ["Management"; "Math"] // both namespace and static type
     VerifyCompletionList(fileContents, "System.Ma", expected, [])
@@ -647,6 +692,48 @@ module Extensions =
     wrappedMessage.
 """
     VerifyCompletionList(fileContents, "wrappedMessage.", ["PrintRef"], [])
+
+[<Test>]
+let ``Completion list span works with underscore in identifier``() =
+    let fileContents = """
+let x = A.B_C
+"""
+    VerifyCompletionListSpan(fileContents, "A.B_C", "B_C")
+
+[<Test>]
+let ``Completion list span works with digit in identifier``() =
+    let fileContents = """
+let x = A.B1C
+"""
+    VerifyCompletionListSpan(fileContents, "A.B1C", "B1C")
+
+[<Test>]
+let ``Completion list span works with enclosed backtick identifier``() =
+    let fileContents = """
+let x = A.``B C``
+"""
+    VerifyCompletionListSpan(fileContents, "A.``B C``", "``B C``")
+
+[<Test>]
+let ``Completion list span works with partial backtick identifier``() =
+    let fileContents = """
+let x = A.``B C
+"""
+    VerifyCompletionListSpan(fileContents, "A.``B C", "``B C")
+
+[<Test>]
+let ``Completion list span works with first of multiple enclosed backtick identifiers``() =
+    let fileContents = """
+let x = A.``B C`` + D.``E F``
+"""
+    VerifyCompletionListSpan(fileContents, "A.``B C``", "``B C``")
+
+[<Test>]
+let ``Completion list span works with last of multiple enclosed backtick identifiers``() =
+    let fileContents = """
+let x = A.``B C`` + D.``E F``
+"""
+    VerifyCompletionListSpan(fileContents, "D.``E F``", "``E F``")
 
 #if EXE
 ShouldDisplaySystemNamespace()

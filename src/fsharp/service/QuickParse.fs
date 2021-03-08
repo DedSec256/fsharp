@@ -1,14 +1,16 @@
 // Copyright (c) Microsoft Corporation.  All Rights Reserved.  See License.txt in the project root for license information.
 
-namespace FSharp.Compiler
+namespace FSharp.Compiler.EditorServices
 
 open System
-open FSharp.Compiler.AbstractIL.Internal.Library
-open FSharp.Compiler.SourceCodeServices
+open Internal.Utilities.Library
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.Tokenization
 
 /// Qualified long name.
 type PartialLongName =
-    { /// Qualifying idents, prior to the last dot, not including the last part.
+    {
+      /// Qualifying idents, prior to the last dot, not including the last part.
       QualifyingIdents: string list
       
       /// Last part of long ident.
@@ -18,7 +20,8 @@ type PartialLongName =
       EndColumn: int
 
       /// Position of the last dot.
-      LastDotPos: int option }
+      LastDotPos: int option
+    }
     
     /// Empty partial long name.
     static member Empty(endColumn: int) = { QualifyingIdents = []; PartialIdent = ""; EndColumn = endColumn; LastDotPos = None }
@@ -51,7 +54,7 @@ module QuickParse =
             FSharp.Compiler.Parser.tagOfToken (FSharp.Compiler.Parser.token.IDENT tokenText)
         else tokenTag
 
-    let rec isValidStrippedName (name:string) idx = 
+    let rec isValidStrippedName (name: ReadOnlySpan<char>) idx = 
         if idx = name.Length then false
         elif IsIdentifierPartCharacter name.[idx] then true
         else isValidStrippedName name (idx + 1)
@@ -64,8 +67,8 @@ module QuickParse =
 
       // Strip the surrounding bars (e.g. from "|xyz|_|") to get "xyz"
       match name.StartsWithOrdinal("|"), name.EndsWithOrdinal("|_|"), name.EndsWithOrdinal("|") with
-      | true, true, _ when name.Length > 4 -> isValidStrippedName (name.Substring(1, name.Length - 4)) 0
-      | true, _, true when name.Length > 2 -> isValidStrippedName (name.Substring(1, name.Length - 2)) 0
+      | true, true, _ when name.Length > 4 -> isValidStrippedName (name.AsSpan(1, name.Length - 4)) 0
+      | true, _, true when name.Length > 2 -> isValidStrippedName (name.AsSpan(1, name.Length - 2)) 0
       | _ -> false
     
     let GetCompleteIdentifierIslandImpl (lineStr: string) (index: int) : (string * int * bool) option =
@@ -164,12 +167,12 @@ module QuickParse =
     /// a call to `DeclItemsForNamesAtPosition` for intellisense. This will
     /// allow us to use find the correct qualified items rather than resorting
     /// to the more expensive and less accurate environment lookup.
-    let GetCompleteIdentifierIsland (tolerateJustAfter: bool) (lineStr: string) (index: int) : (string * int * bool) option =
-        if String.IsNullOrEmpty lineStr then None
+    let GetCompleteIdentifierIsland (tolerateJustAfter: bool) (tokenText: string) (index: int) : (string * int * bool) option =
+        if String.IsNullOrEmpty tokenText then None
         else     
-            let directResult = GetCompleteIdentifierIslandImpl lineStr index
+            let directResult = GetCompleteIdentifierIslandImpl tokenText index
             if tolerateJustAfter && directResult = None then 
-                GetCompleteIdentifierIslandImpl lineStr (index - 1)
+                GetCompleteIdentifierIslandImpl tokenText (index - 1)
             else 
                 directResult
 

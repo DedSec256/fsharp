@@ -2,14 +2,19 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
   <file datatype="xml" source-language="en" target-language="pl" original="../FSIstrings.resx">
     <body>
+      <trans-unit id="fsiIntroPackageSourceUriInfo">
+        <source>Include package source uri when searching for packages</source>
+        <target state="translated">Uwzględnij identyfikator URI źródła pakietów podczas wyszukiwania pakietów</target>
+        <note />
+      </trans-unit>
       <trans-unit id="fsiOperationCouldNotBeCompleted">
         <source>Operation could not be completed due to earlier error</source>
         <target state="translated">Nie udało się ukończyć operacji z powodu wcześniejszego błędu</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiOperationFailed">
-        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpErrorInfo use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
-        <target state="translated">Operacja nie powiodła się. Tekst błędu został umieszczony w strumieniu błędów. Aby zwrócić odpowiedni element FSharpErrorInfo, użyj elementu EvalInteractionNonThrowing, eEvalScriptNonThrowing lub EvalExpressionNonThrowing</target>
+        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpDiagnostic use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
+        <target state="translated">Operacja nie powiodła się. Tekst błędu został umieszczony w strumieniu błędów. Aby zwrócić odpowiedni element FSharpDiagnostic, użyj elementu EvalInteractionNonThrowing, eEvalScriptNonThrowing lub EvalExpressionNonThrowing</target>
         <note />
       </trans-unit>
       <trans-unit id="stoppedDueToError">
@@ -120,11 +125,6 @@
       <trans-unit id="fsiDirectoryDoesNotExist">
         <source>Directory '{0}' doesn't exist</source>
         <target state="translated">Katalog „{0}” nie istnieje</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="fsiInvalidDirective">
-        <source>Invalid directive '#{0} {1}'</source>
-        <target state="translated">Nieprawidłowa dyrektywa „#{0} {1}”</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiLineTooLong">

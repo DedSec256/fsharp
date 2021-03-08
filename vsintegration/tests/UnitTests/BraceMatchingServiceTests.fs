@@ -9,7 +9,7 @@ open NUnit.Framework
 open Microsoft.CodeAnalysis.Classification
 open Microsoft.CodeAnalysis.Editor
 open Microsoft.CodeAnalysis.Text
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
 open Microsoft.VisualStudio.FSharp.Editor
 open Microsoft.VisualStudio.FSharp.LanguageService
 open UnitTests.TestLib.LanguageService
@@ -28,7 +28,6 @@ type BraceMatchingServiceTests()  =
         LoadTime = DateTime.MaxValue
         OriginalLoadReferences = []
         UnresolvedReferences = None
-        ExtraProjectInfo = None
         Stamp = None
     }
 
@@ -85,6 +84,19 @@ type BraceMatchingServiceTests()  =
     [<Test>]
     member this.BracketInExpression() = 
         this.VerifyBraceMatch("let x = (3*5)-1", "(3*", ")-1")
+
+    [<Test>]
+    member this.BraceInInterpolatedStringSimple() = 
+        this.VerifyBraceMatch("let x = $\"abc{1}def\"", "{1", "}def")
+
+    [<Test>]
+    member this.BraceInInterpolatedStringTwoHoles() = 
+        this.VerifyBraceMatch("let x = $\"abc{1}def{2+3}hij\"", "{2", "}hij")
+
+    [<Test>]
+    member this.BraceInInterpolatedStringNestedRecord() = 
+        this.VerifyBraceMatch("let x = $\"abc{ id{contents=3}.contents }\"", "{contents", "}.contents")
+        this.VerifyBraceMatch("let x = $\"abc{ id{contents=3}.contents }\"", "{ id", "}\"")
 
     [<TestCase("[start")>]
     [<TestCase("]end")>]

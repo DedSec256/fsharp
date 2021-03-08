@@ -3,60 +3,60 @@
 namespace Microsoft.VisualStudio.FSharp.Editor
 
 open System.Collections.Generic
-open Internal.Utilities.StructuredFormat
+open FSharp.Compiler.Text
 open Microsoft.CodeAnalysis.Classification
-open FSharp.Compiler
 open Microsoft.VisualStudio.Core.Imaging
 open Microsoft.VisualStudio.Language.StandardClassification
 open Microsoft.VisualStudio.Text.Adornments
 
 module internal QuickInfoViewProvider =
 
-    let layoutTagToClassificationTag (layoutTag:LayoutTag) =
+    let layoutTagToClassificationTag (layoutTag:TextTag) =
         match layoutTag with
-        | ActivePatternCase
-        | ActivePatternResult
-        | UnionCase
-        | Enum -> ClassificationTypeNames.EnumName // Roslyn-style classification name
-        | Alias
-        | Class
-        | Module
-        | Record
-        | Struct
-        | TypeParameter
-        | Union
-        | UnknownType -> PredefinedClassificationTypeNames.Type
-        | Interface -> ClassificationTypeNames.InterfaceName // Roslyn-style classification name
-        | Keyword -> PredefinedClassificationTypeNames.Keyword
-        | Delegate
-        | Event
-        | Field
-        | Local
-        | Member
-        | Method
-        | ModuleBinding
-        | Namespace
-        | Parameter
-        | Property
-        | RecordField -> PredefinedClassificationTypeNames.Identifier
-        | LineBreak
-        | Space -> PredefinedClassificationTypeNames.WhiteSpace
-        | NumericLiteral -> PredefinedClassificationTypeNames.Number
-        | Operator -> PredefinedClassificationTypeNames.Operator
-        | StringLiteral -> PredefinedClassificationTypeNames.String
-        | Punctuation
-        | Text
-        | UnknownEntity -> PredefinedClassificationTypeNames.Other
+        | TextTag.ActivePatternCase
+        | TextTag.ActivePatternResult
+        | TextTag.UnionCase
+        | TextTag.Enum -> ClassificationTypeNames.EnumName
+        | TextTag.Struct -> ClassificationTypeNames.StructName
+        | TextTag.TypeParameter -> ClassificationTypeNames.TypeParameterName
+        | TextTag.Alias
+        | TextTag.Class
+        | TextTag.Record
+        | TextTag.Union
+        | TextTag.UnknownType // Default to class until/unless we use classification data
+        | TextTag.Module -> ClassificationTypeNames.ClassName
+        | TextTag.Interface -> ClassificationTypeNames.InterfaceName
+        | TextTag.Keyword -> ClassificationTypeNames.Keyword
+        | TextTag.Member
+        | TextTag.Function
+        | TextTag.Method -> ClassificationTypeNames.MethodName
+        | TextTag.Property
+        | TextTag.RecordField -> ClassificationTypeNames.PropertyName
+        | TextTag.Parameter
+        | TextTag.Local -> ClassificationTypeNames.LocalName
+        | TextTag.ModuleBinding -> ClassificationTypeNames.Identifier
+        | TextTag.Namespace -> ClassificationTypeNames.NamespaceName
+        | TextTag.Delegate -> ClassificationTypeNames.DelegateName
+        | TextTag.Event -> ClassificationTypeNames.EventName
+        | TextTag.Field -> ClassificationTypeNames.FieldName
+        | TextTag.LineBreak
+        | TextTag.Space -> ClassificationTypeNames.WhiteSpace
+        | TextTag.NumericLiteral -> ClassificationTypeNames.NumericLiteral
+        | TextTag.Operator -> ClassificationTypeNames.Operator
+        | TextTag.StringLiteral -> ClassificationTypeNames.StringLiteral
+        | TextTag.Punctuation -> ClassificationTypeNames.Punctuation
+        | TextTag.UnknownEntity
+        | TextTag.Text -> ClassificationTypeNames.Text
 
     let provideContent
         (
-            imageId:ImageId,
-            description:#seq<Layout.TaggedText>,
-            documentation:#seq<Layout.TaggedText>,
+            imageId:ImageId option,
+            description: seq<TaggedText>,
+            documentation: seq<TaggedText>,
             navigation:QuickInfoNavigation
         ) =
 
-        let buildContainerElement (itemGroup:#seq<Layout.TaggedText>) =
+        let buildContainerElement (itemGroup: seq<TaggedText>) =
             let finalCollection = List<ContainerElement>()
             let currentContainerItems = List<obj>()
             let runsCollection = List<ClassifiedTextRun>()
@@ -73,11 +73,11 @@ module internal QuickInfoViewProvider =
             for item in itemGroup do
                 let classificationTag = layoutTagToClassificationTag item.Tag
                 match item with
-                | :? Layout.NavigableTaggedText as nav when navigation.IsTargetValid nav.Range ->
+                | :? NavigableTaggedText as nav when navigation.IsTargetValid nav.Range ->
                     flushRuns()
                     let navigableTextRun = NavigableTextRun(classificationTag, item.Text, fun () -> navigation.NavigateTo nav.Range)
                     currentContainerItems.Add(navigableTextRun :> obj)
-                | _ when item.Tag = LineBreak ->
+                | _ when item.Tag = TextTag.LineBreak ->
                     flushRuns()
                     // preserve succesive linebreaks
                     if currentContainerItems.Count = 0 then
@@ -91,9 +91,11 @@ module internal QuickInfoViewProvider =
             flushContainer()
             ContainerElement(ContainerElementStyle.Stacked, finalCollection |> Seq.map box)
 
-        ContainerElement(ContainerElementStyle.Stacked,
-            ContainerElement(ContainerElementStyle.Wrapped, 
-                ImageElement(imageId), 
-                buildContainerElement description),
-            buildContainerElement documentation
-        )
+        let innerElement =
+            match imageId with
+            | Some imageId ->
+                ContainerElement(ContainerElementStyle.Wrapped, ImageElement(imageId), buildContainerElement description)
+            | None ->
+                ContainerElement(ContainerElementStyle.Wrapped, buildContainerElement description)
+
+        ContainerElement(ContainerElementStyle.Stacked, innerElement, buildContainerElement documentation)

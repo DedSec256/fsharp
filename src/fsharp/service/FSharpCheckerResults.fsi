@@ -1,51 +1,131 @@
 // Copyright (c) Microsoft Corporation.  All Rights Reserved.  See License.txt in the project root for license information.
 
-namespace FSharp.Compiler.SourceCodeServices
+namespace FSharp.Compiler.CodeAnalysis
 
-open FSharp.Compiler 
+open System
+open System.Threading
+open Internal.Utilities.Library
 open FSharp.Compiler.AbstractIL.IL
-open FSharp.Compiler.AbstractIL.Internal.Library
 open FSharp.Compiler.AccessibilityLogic
-open FSharp.Compiler.Ast
-open FSharp.Compiler.CompileOps
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.CheckDeclarations
+open FSharp.Compiler.CompilerConfig
+open FSharp.Compiler.CompilerImports
+open FSharp.Compiler.Diagnostics
+open FSharp.Compiler.EditorServices
 open FSharp.Compiler.ErrorLogger
+open FSharp.Compiler.Symbols
 open FSharp.Compiler.NameResolution
-open FSharp.Compiler.Range
-open FSharp.Compiler.Tast
-open FSharp.Compiler.Tastops
+open FSharp.Compiler.ParseAndCheckInputs
+open FSharp.Compiler.ScriptClosure
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.TypedTree
+open FSharp.Compiler.TypedTreeOps
 open FSharp.Compiler.TcGlobals
 open FSharp.Compiler.Text
-open FSharp.Compiler.TypeChecker
 
-/// Represents the reason why the GetDeclarationLocation operation failed.
-[<RequireQualifiedAccess>]
-type public FSharpFindDeclFailureReason = 
+/// <summary>Unused in this API</summary>
+type public FSharpUnresolvedReferencesSet =
+    internal 
+    | FSharpUnresolvedReferencesSet of UnresolvedAssemblyReference list
 
-    /// Generic reason: no particular information about error apart from a message
-    | Unknown of message: string
+/// <summary>A set of information describing a project or script build configuration.</summary>
+type public FSharpProjectOptions =
+    {
+      // Note that this may not reduce to just the project directory, because there may be two projects in the same directory.
+      ProjectFileName: string
 
-    /// Source code file is not available
-    | NoSourceCode
+      /// This is the unique identifier for the project, it is case sensitive. If it's None, will key off of ProjectFileName in our caching.
+      ProjectId: string option
 
-    /// Trying to find declaration of ProvidedType without TypeProviderDefinitionLocationAttribute
-    | ProvidedType of string
+      /// The files in the project
+      SourceFiles: string[]
 
-    /// Trying to find declaration of ProvidedMember without TypeProviderDefinitionLocationAttribute
-    | ProvidedMember of string
+      /// Additional command line argument options for the project. These can include additional files and references.
+      OtherOptions: string[]
 
-/// Represents the result of the GetDeclarationLocation operation.
-[<RequireQualifiedAccess>]
-type public FSharpFindDeclResult = 
+      /// The command line arguments for the other projects referenced by this project, indexed by the
+      /// exact text used in the "-r:" reference in FSharpProjectOptions.
+      ReferencedProjects: (string * FSharpProjectOptions)[]
 
-    /// Indicates a declaration location was not found, with an additional reason
-    | DeclNotFound of FSharpFindDeclFailureReason
+      /// When true, the typechecking environment is known a priori to be incomplete, for
+      /// example when a .fs file is opened outside of a project. In this case, the number of error
+      /// messages reported is reduced.
+      IsIncompleteTypeCheckEnvironment: bool
 
-    /// Indicates a declaration location was found
-    | DeclFound    of range
+      /// When true, use the reference resolution rules for scripts rather than the rules for compiler.
+      UseScriptResolutionRules: bool
 
-    /// Indicates an external declaration was found
-    | ExternalDecl of assembly : string * externalSym : ExternalSymbol
-     
+      /// Timestamp of project/script load, used to differentiate between different instances of a project load.
+      /// This ensures that a complete reload of the project or script type checking
+      /// context occurs on project or script unload/reload.
+      LoadTime: DateTime
+
+      /// Unused in this API and should be 'None' when used as user-specified input
+      UnresolvedReferences: FSharpUnresolvedReferencesSet option
+
+      /// Unused in this API and should be '[]' when used as user-specified input
+      OriginalLoadReferences: (range * string * string) list
+
+      /// An optional stamp to uniquely identify this set of options
+      /// If two sets of options both have stamps, then they are considered equal
+      /// if and only if the stamps are equal
+      Stamp: int64 option
+    }
+
+    /// Whether the two parse options refer to the same project.
+    static member internal UseSameProject: options1: FSharpProjectOptions * options2: FSharpProjectOptions -> bool
+
+    /// Compare two options sets with respect to the parts of the options that are important to building.
+    static member internal AreSameForChecking: options1: FSharpProjectOptions * options2: FSharpProjectOptions -> bool
+
+    /// Compute the project directory.
+    member internal ProjectDirectory: string
+
+/// Represents the use of an F# symbol from F# source code
+[<Sealed>]
+type public FSharpSymbolUse = 
+
+    /// The symbol referenced
+    member Symbol: FSharpSymbol 
+
+    /// The display context active at the point where the symbol is used. Can be passed to FSharpType.Format
+    /// and other methods to format items in a way that is suitable for a specific source code location.
+    member DisplayContext: FSharpDisplayContext
+
+    /// Indicates if the reference is a definition for the symbol, either in a signature or implementation
+    member IsFromDefinition: bool
+
+    /// Indicates if the reference is in a pattern
+    member IsFromPattern: bool
+
+    /// Indicates if the reference is in a syntactic type
+    member IsFromType: bool
+
+    /// Indicates if the reference is in an attribute
+    member IsFromAttribute: bool
+
+    /// Indicates if the reference is via the member being implemented in a class or object expression
+    member IsFromDispatchSlotImplementation: bool
+
+    /// Indicates if the reference is either a builder or a custom operation in a computation expression
+    member IsFromComputationExpression: bool
+
+    /// Indicates if the reference is in open statement
+    member IsFromOpenStatement: bool
+
+    /// The file name the reference occurs in 
+    member FileName: string 
+
+    /// The range of text representing the reference to the symbol
+    member Range: range
+
+    /// Indicates if the FSharpSymbolUse is declared as private
+    member IsPrivateToFile: bool 
+
+    // For internal use only
+    internal new: g:TcGlobals * denv: DisplayEnv * symbol:FSharpSymbol * itemOcc:ItemOccurence * range: range -> FSharpSymbolUse
+
 /// Represents the checking context implied by the ProjectOptions 
 [<Sealed>]
 type public FSharpProjectContext =
@@ -56,30 +136,15 @@ type public FSharpProjectContext =
     /// Get the accessibility rights for this project context w.r.t. InternalsVisibleTo attributes granting access to other assemblies
     member AccessibilityRights : FSharpAccessibilityRights
 
-[<RequireQualifiedAccess>]
-type public SemanticClassificationType =
-    | ReferenceType
-    | ValueType
-    | UnionCase
-    | Function
-    | Property
-    | MutableVar
-    | Module
-    | Printf
-    | ComputationExpression
-    | IntrinsicFunction
-    | Enumeration
-    | Interface
-    | TypeArgument
-    | Operator
-    | Disposable
+    /// Get the project options
+    member ProjectOptions: FSharpProjectOptions
 
 /// Options used to determine active --define conditionals and other options relevant to parsing files in a project
 type public FSharpParsingOptions =
     { 
       SourceFiles: string[]
       ConditionalCompilationDefines: string list
-      ErrorSeverityOptions: FSharpErrorSeverityOptions
+      ErrorSeverityOptions: FSharpDiagnosticOptions
       IsInteractive: bool
       LightSyntax: bool option
       CompilingFsLib: bool
@@ -95,7 +160,7 @@ type public FSharpParsingOptions =
 [<Sealed>]
 type public FSharpCheckFileResults =
     /// The errors returned by parsing a source file.
-    member Errors : FSharpErrorInfo[]
+    member Diagnostics: FSharpDiagnostic[]
 
     /// Get a view of the contents of the assembly up to and including the file just checked
     member PartialAssemblySignature : FSharpAssemblySignature
@@ -117,7 +182,7 @@ type public FSharpCheckFileResults =
 
     /// <summary>Get the items for a declaration list</summary>
     ///
-    /// <param name="ParsedFileResultsOpt">
+    /// <param name="parsedFileResults">
     ///    If this is present, it is used to filter declarations based on location in the
     ///    parse tree, specifically at 'open' declarations, 'inherit' of class or interface
     ///    'record field' locations and r.h.s. of 'range' operator a..b
@@ -133,17 +198,11 @@ type public FSharpCheckFileResults =
     /// <param name="getAllEntities">
     ///    Function that returns all entities from current and referenced assemblies.
     /// </param>
-    /// <param name="hasTextChangedSinceLastTypecheck">
-    ///    If text has been used from a captured name resolution from the typecheck, then 
-    ///    callback to the client to check if the text has changed. If it has, then give up
-    ///    and assume that we're going to repeat the operation later on.
-    /// </param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetDeclarationListInfo : ParsedFileResultsOpt:FSharpParseFileResults option * line: int * lineText:string * partialName: PartialLongName * ?getAllEntities: (unit -> AssemblySymbol list) * ?hasTextChangedSinceLastTypecheck: (obj * range -> bool) * ?userOpName: string -> Async<FSharpDeclarationListInfo>
+    member GetDeclarationListInfo: parsedFileResults:FSharpParseFileResults option * line: int * lineText:string * partialName: PartialLongName * ?getAllEntities: (unit -> AssemblySymbol list) -> DeclarationListInfo
 
     /// <summary>Get the items for a declaration list in FSharpSymbol format</summary>
     ///
-    /// <param name="ParsedFileResultsOpt">
+    /// <param name="parsedFileResults">
     ///    If this is present, it is used to filter declarations based on location in the
     ///    parse tree, specifically at 'open' declarations, 'inherit' of class or interface
     ///    'record field' locations and r.h.s. of 'range' operator a..b
@@ -159,13 +218,7 @@ type public FSharpCheckFileResults =
     /// <param name="getAllEntities">
     ///    Function that returns all entities from current and referenced assemblies.
     /// </param>
-    /// <param name="hasTextChangedSinceLastTypecheck">
-    ///    If text has been used from a captured name resolution from the typecheck, then 
-    ///    callback to the client to check if the text has changed. If it has, then give up
-    ///    and assume that we're going to repeat the operation later on.
-    /// </param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetDeclarationListSymbols : ParsedFileResultsOpt:FSharpParseFileResults option * line: int * lineText:string * partialName: PartialLongName * ?getAllEntities: (unit -> AssemblySymbol list) * ?hasTextChangedSinceLastTypecheck: (obj * range -> bool) * ?userOpName: string -> Async<FSharpSymbolUse list list>
+    member GetDeclarationListSymbols: parsedFileResults:FSharpParseFileResults option * line: int * lineText:string * partialName: PartialLongName * ?getAllEntities: (unit -> AssemblySymbol list) -> FSharpSymbolUse list list
 
     /// <summary>Compute a formatted tooltip for the given location</summary>
     ///
@@ -174,18 +227,7 @@ type public FSharpCheckFileResults =
     /// <param name="lineText">The text of the line where the information is being requested.</param>
     /// <param name="names">The identifiers at the location where the information is being requested.</param>
     /// <param name="tokenTag">Used to discriminate between 'identifiers', 'strings' and others. For strings, an attempt is made to give a tooltip for a #r "..." location. Use a value from FSharpTokenInfo.Tag, or FSharpTokenTag.Identifier, unless you have other information available.</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetStructuredToolTipText : line:int * colAtEndOfNames:int * lineText:string * names:string list * tokenTag:int * ?userOpName: string -> Async<FSharpStructuredToolTipText>
-
-    /// <summary>Compute a formatted tooltip for the given location</summary>
-    ///
-    /// <param name="line">The line number where the information is being requested.</param>
-    /// <param name="colAtEndOfNames">The column number at the end of the identifiers where the information is being requested.</param>
-    /// <param name="lineText">The text of the line where the information is being requested.</param>
-    /// <param name="names">The identifiers at the location where the information is being requested.</param>
-    /// <param name="tokenTag">Used to discriminate between 'identifiers', 'strings' and others. For strings, an attempt is made to give a tooltip for a #r "..." location. Use a value from FSharpTokenInfo.Tag, or FSharpTokenTag.Identifier, unless you have other information available.</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetToolTipText : line:int * colAtEndOfNames:int * lineText:string * names:string list * tokenTag:int * ?userOpName: string -> Async<FSharpToolTipText>
+    member GetToolTip: line:int * colAtEndOfNames:int * lineText:string * names:string list * tokenTag:int -> ToolTipText
 
     /// <summary>Compute the Visual Studio F1-help key identifier for the given location, based on name resolution results</summary>
     ///
@@ -193,9 +235,7 @@ type public FSharpCheckFileResults =
     /// <param name="colAtEndOfNames">The column number at the end of the identifiers where the information is being requested.</param>
     /// <param name="lineText">The text of the line where the information is being requested.</param>
     /// <param name="names">The identifiers at the location where the information is being requested.</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetF1Keyword : line:int * colAtEndOfNames:int * lineText:string * names:string list * ?userOpName: string -> Async<string option>
-
+    member GetF1Keyword : line:int * colAtEndOfNames:int * lineText:string * names:string list -> string option
 
     /// <summary>Compute a set of method overloads to show in a dialog relevant to the given code location.</summary>
     ///
@@ -203,16 +243,14 @@ type public FSharpCheckFileResults =
     /// <param name="colAtEndOfNames">The column number at the end of the identifiers where the information is being requested.</param>
     /// <param name="lineText">The text of the line where the information is being requested.</param>
     /// <param name="names">The identifiers at the location where the information is being requested.</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetMethods : line:int * colAtEndOfNames:int * lineText:string * names:string list option * ?userOpName: string -> Async<FSharpMethodGroup>
+    member GetMethods : line:int * colAtEndOfNames:int * lineText:string * names:string list option -> MethodGroup
 
     /// <summary>Compute a set of method overloads to show in a dialog relevant to the given code location.  The resulting method overloads are returned as symbols.</summary>
     /// <param name="line">The line number where the information is being requested.</param>
     /// <param name="colAtEndOfNames">The column number at the end of the identifiers where the information is being requested.</param>
     /// <param name="lineText">The text of the line where the information is being requested.</param>
     /// <param name="names">The identifiers at the location where the information is being requested.</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetMethodsAsSymbols : line:int * colAtEndOfNames:int * lineText:string * names:string list * ?userOpName: string -> Async<FSharpSymbolUse list option>
+    member GetMethodsAsSymbols : line:int * colAtEndOfNames:int * lineText:string * names:string list -> FSharpSymbolUse list option
 
     /// <summary>Resolve the names at the given location to the declaration location of the corresponding construct.</summary>
     ///
@@ -221,8 +259,7 @@ type public FSharpCheckFileResults =
     /// <param name="lineText">The text of the line where the information is being requested.</param>
     /// <param name="names">The identifiers at the location where the information is being requested.</param>
     /// <param name="preferFlag">If not given, then get the location of the symbol. If false, then prefer the location of the corresponding symbol in the implementation of the file (rather than the signature if present). If true, prefer the location of the corresponding symbol in the signature of the file (rather than the implementation).</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetDeclarationLocation : line:int * colAtEndOfNames:int * lineText:string * names:string list * ?preferFlag:bool * ?userOpName: string -> Async<FSharpFindDeclResult>
+    member GetDeclarationLocation : line:int * colAtEndOfNames:int * lineText:string * names:string list * ?preferFlag:bool -> FindDeclResult
 
     /// <summary>Resolve the names at the given location to a use of symbol.</summary>
     ///
@@ -230,11 +267,10 @@ type public FSharpCheckFileResults =
     /// <param name="colAtEndOfNames">The column number at the end of the identifiers where the information is being requested.</param>
     /// <param name="lineText">The text of the line where the information is being requested.</param>
     /// <param name="names">The identifiers at the location where the information is being requested.</param>
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member GetSymbolUseAtLocation  : line:int * colAtEndOfNames:int * lineText:string * names:string list * ?userOpName: string -> Async<FSharpSymbolUse option>
+    member GetSymbolUseAtLocation  : line:int * colAtEndOfNames:int * lineText:string * names:string list -> FSharpSymbolUse option
 
     /// <summary>Get any extra colorization info that is available after the typecheck</summary>
-    member GetSemanticClassification : range option -> (range * SemanticClassificationType)[]
+    member GetSemanticClassification : range option -> SemanticClassificationItem[]
 
     /// <summary>Get the locations of format specifiers</summary>
     [<System.Obsolete("This member has been replaced by GetFormatSpecifierLocationsAndArity, which returns both range and arity of specifiers")>]
@@ -244,23 +280,21 @@ type public FSharpCheckFileResults =
     member GetFormatSpecifierLocationsAndArity : unit -> (range*int)[]
 
     /// Get all textual usages of all symbols throughout the file
-    member GetAllUsesOfAllSymbolsInFile :  unit -> Async<FSharpSymbolUse[]>
+    member GetAllUsesOfAllSymbolsInFile : ?cancellationToken: CancellationToken -> seq<FSharpSymbolUse>
 
     /// Get the textual usages that resolved to the given symbol throughout the file
-    member GetUsesOfSymbolInFile : symbol:FSharpSymbol -> Async<FSharpSymbolUse[]>
+    member GetUsesOfSymbolInFile : symbol:FSharpSymbol * ?cancellationToken: CancellationToken -> FSharpSymbolUse[]
 
-    member internal GetVisibleNamespacesAndModulesAtPoint : pos -> Async<Tast.ModuleOrNamespaceRef[]>
+    member internal GetVisibleNamespacesAndModulesAtPoint : pos -> ModuleOrNamespaceRef[]
 
     /// Find the most precise display environment for the given line and column.
-    member GetDisplayContextForPos : pos : pos -> Async<FSharpDisplayContext option>
+    member GetDisplayContextForPos : cursorPos : pos -> FSharpDisplayContext option
 
     /// Determines if a long ident is resolvable at a specific point.
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member internal IsRelativeNameResolvable: cursorPos : pos * plid : string list * item: Item * ?userOpName: string -> Async<bool>
+    member internal IsRelativeNameResolvable: cursorPos : pos * plid : string list * item: Item -> bool
 
     /// Determines if a long ident is resolvable at a specific point.
-    /// <param name="userOpName">An optional string used for tracing compiler operations associated with this request.</param>
-    member IsRelativeNameResolvableFromSymbol: cursorPos : pos * plid : string list * symbol: FSharpSymbol * ?userOpName: string -> Async<bool>
+    member IsRelativeNameResolvableFromSymbol: cursorPos : pos * plid : string list * symbol: FSharpSymbol -> bool
 
     /// Represents complete typechecked implementation file, including its typechecked signatures if any.
     member ImplementationFile: FSharpImplementationFileContents option
@@ -271,8 +305,7 @@ type public FSharpCheckFileResults =
     /// Internal constructor
     static member internal MakeEmpty : 
         filename: string *
-        creationErrors: FSharpErrorInfo[] *
-        reactorOps: IReactorOperations *
+        creationErrors: FSharpDiagnostic[] *
         keepAssemblyContents: bool 
           -> FSharpCheckFileResults
         
@@ -284,11 +317,11 @@ type public FSharpCheckFileResults =
         tcGlobals: TcGlobals *
         isIncompleteTypeCheckEnvironment: bool *
         builder: IncrementalBuilder * 
+        projectOptions: FSharpProjectOptions *
         dependencyFiles: string[] * 
-        creationErrors: FSharpErrorInfo[] *
-        parseErrors: FSharpErrorInfo[] *
-        tcErrors: FSharpErrorInfo[] *
-        reactorOps : IReactorOperations *
+        creationErrors: FSharpDiagnostic[] *
+        parseErrors: FSharpDiagnostic[] *
+        tcErrors: FSharpDiagnostic[] *
         keepAssemblyContents: bool *
         ccuSigForFile: ModuleOrNamespaceType *
         thisCcu: CcuThunk *
@@ -314,18 +347,16 @@ type public FSharpCheckFileResults =
          tcState: TcState *
          moduleNamesDict: ModuleNamesDict *
          loadClosure: LoadClosure option *
-         backgroundDiagnostics: (PhasedDiagnostic * FSharpErrorSeverity)[] *    
-         reactorOps: IReactorOperations *
-         textSnapshotInfo : obj option *
-         userOpName: string *
+         backgroundDiagnostics: (PhasedDiagnostic * FSharpDiagnosticSeverity)[] *    
          isIncompleteTypeCheckEnvironment: bool * 
+         projectOptions: FSharpProjectOptions *
          builder: IncrementalBuilder * 
          dependencyFiles: string[] * 
-         creationErrors:FSharpErrorInfo[] * 
-         parseErrors:FSharpErrorInfo[] * 
+         creationErrors:FSharpDiagnostic[] * 
+         parseErrors:FSharpDiagnostic[] * 
          keepAssemblyContents: bool *
          suggestNamesForErrors: bool
-          ->  Async<FSharpCheckFileAnswer>
+          -> Cancellable<FSharpCheckFileResults>
 
 /// The result of calling TypeCheckResult including the possibility of abort and background compiler not caught up.
 and [<RequireQualifiedAccess>] public FSharpCheckFileAnswer =
@@ -340,7 +371,7 @@ and [<RequireQualifiedAccess>] public FSharpCheckFileAnswer =
 type public FSharpCheckProjectResults =
 
     /// The errors returned by processing the project
-    member Errors: FSharpErrorInfo[]
+    member Diagnostics: FSharpDiagnostic[]
 
     /// Get a view of the overall signature of the assembly. Only valid to use if HasCriticalErrors is false.
     member AssemblySignature: FSharpAssemblySignature
@@ -355,10 +386,10 @@ type public FSharpCheckProjectResults =
     member ProjectContext: FSharpProjectContext
 
     /// Get the textual usages that resolved to the given symbol throughout the project
-    member GetUsesOfSymbol: symbol:FSharpSymbol -> Async<FSharpSymbolUse[]>
+    member GetUsesOfSymbol: symbol:FSharpSymbol * ?cancellationToken: CancellationToken -> FSharpSymbolUse[]
 
     /// Get all textual usages of all symbols throughout the project
-    member GetAllUsesOfAllSymbols: unit -> Async<FSharpSymbolUse[]>
+    member GetAllUsesOfAllSymbols: ?cancellationToken: CancellationToken  -> FSharpSymbolUse[]
 
     /// Indicates if critical errors existed in the project options
     member HasCriticalErrors: bool 
@@ -375,8 +406,19 @@ type public FSharpCheckProjectResults =
         projectFileName:string *
         tcConfigOption: TcConfig option *
         keepAssemblyContents: bool *
-        errors: FSharpErrorInfo[] * 
-        details:(TcGlobals * TcImports * CcuThunk * ModuleOrNamespaceType * TcSymbolUses list * TopAttribs option * CompileOps.IRawFSharpAssemblyData option * ILAssemblyRef * AccessorDomain * TypedImplFile list option * string[]) option 
+        diagnostics: FSharpDiagnostic[] * 
+        details:(TcGlobals *
+                 TcImports *
+                 CcuThunk *
+                 ModuleOrNamespaceType *
+                 TcSymbolUses list *
+                 TopAttribs option *
+                 IRawFSharpAssemblyData option *
+                 ILAssemblyRef *
+                 AccessorDomain *
+                 TypedImplFile list option *
+                 string[] *
+                 FSharpProjectOptions) option 
            -> FSharpCheckProjectResults
 
 module internal ParseAndCheckFile = 
@@ -387,7 +429,7 @@ module internal ParseAndCheckFile =
         options: FSharpParsingOptions * 
         userOpName: string *
         suggestNamesForErrors: bool
-          -> FSharpErrorInfo[] * ParsedInput option * bool
+          -> FSharpDiagnostic[] * ParsedInput * bool
 
     val matchBraces: 
         sourceText: ISourceText *
@@ -401,8 +443,7 @@ module internal ParseAndCheckFile =
 // Used internally to provide intellisense over F# Interactive.
 type internal FsiInteractiveChecker =
     internal new: 
-        ReferenceResolver.Resolver *
-        ops: IReactorOperations *
+        LegacyReferenceResolver *
         tcConfig: TcConfig * 
         tcGlobals: TcGlobals * 
         tcImports: TcImports * 
@@ -413,9 +454,8 @@ type internal FsiInteractiveChecker =
         ctok: CompilationThreadToken * 
         sourceText:ISourceText * 
         ?userOpName: string 
-          -> Async<FSharpParseFileResults * FSharpCheckFileResults * FSharpCheckProjectResults>
+          -> Cancellable<FSharpParseFileResults * FSharpCheckFileResults * FSharpCheckProjectResults>
 
 module internal FSharpCheckerResultsSettings =
     val defaultFSharpBinariesDir: string
 
-    val maxTimeShareMilliseconds : int64

@@ -216,7 +216,7 @@ if "!BIN_AVAILABLE!" == "true" (
     CALL :backupAndOrCopy fsc.exe "!COMPILERSDKPATH!"
     CALL :backupAndOrCopy fsc.exe.config "%COMPILERSDKPATH%"
     CALL :backupAndOrCopy FSharp.Build.dll "%COMPILERSDKPATH%"
-    CALL :backupAndOrCopy FSharp.Compiler.Private.dll "%COMPILERSDKPATH%"
+    CALL :backupAndOrCopy FSharp.Compiler.Service.dll "%COMPILERSDKPATH%"
     CALL :backupAndOrCopy FSharp.Compiler.Interactive.Settings.dll "%COMPILERSDKPATH%"
     CALL :backupAndOrCopy fsi.exe "%COMPILERSDKPATH%"
     CALL :backupAndOrCopy fsi.exe.config "%COMPILERSDKPATH%"
@@ -245,8 +245,6 @@ set RESTOREDIR=!RESTOREBASE!\main_assemblies
 CALL :checkAvailability main_assemblies
 if "!BIN_AVAILABLE!" == "true" (
     CALL :backupAndOrCopy FSharp.Core.dll "%COMPILERMAINASSEMBLIESPATH%"
-    CALL :backupAndOrCopy FSharp.Core.optdata "%COMPILERMAINASSEMBLIESPATH%"
-    CALL :backupAndOrCopy FSharp.Core.sigdata "%COMPILERMAINASSEMBLIESPATH%"
     CALL :backupAndOrCopy FSharp.Core.xml "%COMPILERMAINASSEMBLIESPATH%"
 )
 

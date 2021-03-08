@@ -3,7 +3,20 @@
 open System
 open System.IO
 open System.Xml.Linq
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
+
+module FileSystemHelpers =
+    let safeDeleteFile (path: string) =
+        try
+            File.Delete(path)
+        with
+        | _ -> ()
+
+    let safeDeleteDirectory (path: string) =
+        try
+            Directory.Delete(path)
+        with
+        | _ -> ()
 
 type FSharpProject =
     {
@@ -29,9 +42,10 @@ type FSharpProject =
         member this.Dispose() =
             // delete each source file
             this.Files
-            |> List.iter (fun (path, _contents) -> File.Delete(path))
+            |> List.map fst
+            |> List.iter FileSystemHelpers.safeDeleteFile
             // delete the directory
-            Directory.Delete(this.Directory)
+            FileSystemHelpers.safeDeleteDirectory (this.Directory)
             // project file doesn't really exist, nothing to delete
             ()
 
@@ -67,7 +81,6 @@ module internal ProjectOptionsBuilder =
                 LoadTime = DateTime.MaxValue
                 OriginalLoadReferences = []
                 UnresolvedReferences = None
-                ExtraProjectInfo = None
                 Stamp = None
             }
         {

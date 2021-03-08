@@ -3,6 +3,7 @@
 namespace Tests.LanguageService.AutoCompletion
 
 open System
+open Microsoft.VisualStudio.FSharp.LanguageService
 open Salsa.Salsa
 open Salsa.VsMocks
 open Salsa.VsOpsUtils
@@ -28,19 +29,20 @@ module StandardSettings =
 type UsingMSBuild() as this  = 
     inherit LanguageServiceBaseTests()
 
-    let createFile (code : list<string>) fileKind refs = 
+    let createFile (code : list<string>) fileKind refs otherFlags = 
         let (_, _, file) = 
             match code with
             | [code] when code.IndexOfAny([|'\r'; '\n'|]) <> -1 ->
-                this.CreateSingleFileProject(code, fileKind = fileKind, references = refs)
-            | code -> this.CreateSingleFileProject(code, fileKind = fileKind, references = refs)
+                this.CreateSingleFileProject(code, fileKind = fileKind, references = refs, ?otherFlags=otherFlags)
+            | code ->
+                this.CreateSingleFileProject(code, fileKind = fileKind, references = refs, ?otherFlags=otherFlags)
         file
 
-    let DoWithAutoCompleteUsingExtraRefs refs coffeeBreak fileKind reason (code : list<string>) marker f  =        
+    let DoWithAutoCompleteUsingExtraRefs refs otherFlags coffeeBreak fileKind reason (code : list<string>) marker f  =        
         // Up to 2 untyped parse operations are OK: we do an initial parse to provide breakpoint valdiation etc. 
         // This might be before the before the background builder is ready to process the foreground typecheck.
         // In this case the background builder calls us back when its ready, and we then request a foreground typecheck 
-        let file = createFile code fileKind refs
+        let file = createFile code fileKind refs otherFlags
             
         if coffeeBreak then
             TakeCoffeeBreak(this.VS)
@@ -51,33 +53,43 @@ type UsingMSBuild() as this  =
         gpatcc.AssertExactly(0,0)
 
 
-    let DoWithAutoComplete coffeeBreak fileKind reason (code : list<string>) marker f  = DoWithAutoCompleteUsingExtraRefs [] coffeeBreak fileKind reason code marker f
+    let DoWithAutoComplete coffeeBreak fileKind reason otherFlags (code : list<string>) marker f  =
+        DoWithAutoCompleteUsingExtraRefs [] otherFlags coffeeBreak fileKind reason code marker f
 
-    let AssertAutoCompleteContains, AssertAutoCompleteContainsNoCoffeeBreak, AutoCompleteInInterfaceFileContains, AssertCtrlSpaceCompleteContains, AssertCtrlSpaceCompleteContainsNoCoffeeBreak = 
-        let AssertAutoCompleteContains coffeeBreak filename reason code marker  should shouldnot  =        
-            DoWithAutoComplete coffeeBreak filename reason code marker <| 
-                fun completions ->
-                AssertCompListContainsAll(completions, should)
-                AssertCompListDoesNotContainAny(completions, shouldnot) 
+    let AssertAutoCompleteContainsAux coffeeBreak filename reason otherFlags code marker  should shouldnot  =        
+        DoWithAutoComplete coffeeBreak filename reason otherFlags code marker (fun completions ->
+            AssertCompListContainsAll(completions, should)
+            AssertCompListDoesNotContainAny(completions, shouldnot))
 
-        ((AssertAutoCompleteContains true SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.MemberSelect),
-         (AssertAutoCompleteContains false SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.MemberSelect),
-         (AssertAutoCompleteContains true SourceFileKind.FSI Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.MemberSelect),
-         (AssertAutoCompleteContains true SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.CompleteWord),
-         (AssertAutoCompleteContains false SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.CompleteWord))
+    let AssertAutoCompleteContains =
+        AssertAutoCompleteContainsAux true SourceFileKind.FS BackgroundRequestReason.MemberSelect None
+
+    let AssertAutoCompleteContainsNoCoffeeBreak = 
+        AssertAutoCompleteContainsAux false SourceFileKind.FS BackgroundRequestReason.MemberSelect None
+
+    let AutoCompleteInInterfaceFileContains = 
+        AssertAutoCompleteContainsAux true SourceFileKind.FSI BackgroundRequestReason.MemberSelect None
+
+    let AssertCtrlSpaceCompleteContains = 
+        AssertAutoCompleteContainsAux true SourceFileKind.FS BackgroundRequestReason.CompleteWord None
+
+    let AssertCtrlSpaceCompleteContainsWithOtherFlags otherFlags = 
+        AssertAutoCompleteContainsAux true SourceFileKind.FS BackgroundRequestReason.CompleteWord (Some otherFlags)
+
+    let AssertCtrlSpaceCompleteContainsNoCoffeeBreak = 
+        AssertAutoCompleteContainsAux false SourceFileKind.FS BackgroundRequestReason.CompleteWord None
     
     let AssertCtrlSpaceCompletionListIsEmpty code marker = 
-        DoWithAutoComplete true SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.CompleteWord code marker AssertCompListIsEmpty
+        DoWithAutoComplete true SourceFileKind.FS BackgroundRequestReason.CompleteWord None code marker AssertCompListIsEmpty
 
     let AssertCtrlSpaceCompletionListIsEmptyNoCoffeeBreak code marker = 
-        DoWithAutoComplete false SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.CompleteWord code marker AssertCompListIsEmpty
+        DoWithAutoComplete false SourceFileKind.FS BackgroundRequestReason.CompleteWord None code marker AssertCompListIsEmpty
 
     let AssertAutoCompleteCompletionListIsEmpty code marker = 
-        DoWithAutoComplete true SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.MemberSelect code marker AssertCompListIsEmpty
+        DoWithAutoComplete true SourceFileKind.FS BackgroundRequestReason.MemberSelect None code marker AssertCompListIsEmpty
 
     let AssertAutoCompleteCompletionListIsEmptyNoCoffeeBreak code marker = 
-        DoWithAutoComplete false SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.MemberSelect code marker AssertCompListIsEmpty
-
+        DoWithAutoComplete false SourceFileKind.FS BackgroundRequestReason.MemberSelect None code marker AssertCompListIsEmpty
 
     let testAutoCompleteAdjacentToDot op =
         let text = sprintf "System.Console%s" op
@@ -334,22 +346,22 @@ a.
             [
                 [
                 "type A() ="
-                "   member __.X = ()"
+                "   member _.X = ()"
                 "   member this."
                 ]
                 [
                 "type A() ="
-                "   member __.X = ()"
+                "   member _.X = ()"
                 "   member private this."
                 ]
                 [
                 "type A() ="
-                "   member __.X = ()"
+                "   member _.X = ()"
                 "   member public this."
                 ]
                 [
                 "type A() ="
-                "   member __.X = ()"
+                "   member _.X = ()"
                 "   member internal this."
                 ]
 
@@ -365,7 +377,7 @@ a.
     [<Category("TypeProvider")>]
     member this.``TypeProvider.VisibilityChecksForGeneratedTypes``() = 
         let extraRefs = [PathRelativeToTestAssembly(@"DummyProviderForLanguageServiceTesting.dll")]
-        let check = DoWithAutoCompleteUsingExtraRefs extraRefs true SourceFileKind.FS Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.MemberSelect
+        let check = DoWithAutoCompleteUsingExtraRefs extraRefs None true SourceFileKind.FS BackgroundRequestReason.MemberSelect
 
         let code = 
             [
@@ -507,10 +519,10 @@ a.
             [
                 "type Foo = Foo"
                 "    with"
-                "        member __.Bar = 1"
-                "        member __.PublicMethodForIntellisense() = 2"
-                "        member internal __.InternalMethod() = 3"
-                "        member private __.PrivateProperty = 4"
+                "        member _.Bar = 1"
+                "        member _.PublicMethodForIntellisense() = 2"
+                "        member internal _.InternalMethod() = 3"
+                "        member private _.PrivateProperty = 4"
                 ""
                 "let u: Unit ="
                 "    [ Foo ]"
@@ -3332,6 +3344,264 @@ let x = query { for bbbb in abbbbc(*D0*) do
             ["b"]
             ["i"]
 
+    [<Test>]
+    member public this.``CompletionForAndBang_BaseLine0``() = 
+        AssertCtrlSpaceCompleteContains
+            ["type Builder() ="
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "builder {"
+             "    let! xxx3 = 2"
+             "    return x"
+             "}"]
+             "    return x"
+            ["xxx3"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_BaseLine1``() = 
+        AssertCtrlSpaceCompleteContains
+            ["type Builder() ="
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let xxx1 = 1"
+             "builder {"
+             "   let xxx2 = 1"
+             "   let! xxx3 = 1"
+             "   return (1 + x)"
+             "}"]
+             "   return (1 + x"
+            ["xxx1"; "xxx2"; "xxx3"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_BaseLine2``() = 
+        /// Without closing '}'
+        AssertCtrlSpaceCompleteContains
+            ["type Builder() ="
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let yyy1 = 1"
+             "builder {"
+             "   let yyy2 = 1"
+             "   let! yyy3 = 1"
+             "   return (1 + y)"]
+             "   return (1 + y"
+            ["yyy1"; "yyy2"; "yyy3"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_BaseLine3``() = 
+        /// Without closing ')'
+        AssertCtrlSpaceCompleteContains
+            ["type Builder() ="
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let zzz1 = 1"
+             "builder {"
+             "   let zzz2 = 1"
+             "   let! zzz3 = 1"
+             "   return (1 + z" ]
+             "   return (1 + z"
+            ["zzz1"; "zzz2"; "zzz3"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_BaseLine4``() = 
+        AssertCtrlSpaceCompleteContains
+            ["type Builder() ="
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let zzz1 = 1"
+             "builder {"
+             "   let! zzz3 = 1"
+             "   return (1 + z" ]
+             "   return (1 + z"
+            ["zzz1"; "zzz3"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_MergeSources_Bind_Return0``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.MergeSources(a: 'T1, b: 'T2) = (a, b)"
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "builder {"
+             "    let! xxx3 = 2"
+             "    and! xxx4 = 2"
+             "    return x"
+             "}"]
+             "    return x"
+            ["xxx3"; "xxx4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_MergeSources_Bind_Return1``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.MergeSources(a: 'T1, b: 'T2) = (a, b)"
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let xxx1 = 1"
+             "builder {"
+             "   let xxx2 = 1"
+             "   let! xxx3 = 1"
+             "   and! xxx4 = 1"
+             "   return (1 + x)"
+             "}"]
+             "   return (1 + x"
+            ["xxx1"; "xxx2"; "xxx3"; "xxx4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_MergeSources_Bind_Return2``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.MergeSources(a: 'T1, b: 'T2) = (a, b)"
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let yyy1 = 1"
+             "builder {"
+             "   let yyy2 = 1"
+             "   let! yyy3 = 1"
+             "   and! yyy4 = 1"
+             "   return (1 + y)"]
+             "   return (1 + y"
+            ["yyy1"; "yyy2"; "yyy3"; "yyy4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_MergeSources_Bind_Return3``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.MergeSources(a: 'T1, b: 'T2) = (a, b)"
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let zzz1 = 1"
+             "builder {"
+             "   let zzz2 = 1"
+             "   let! zzz3 = 1"
+             "   and! zzz4 = 1"
+             "   return (1 + z" ]
+             "   return (1 + z"
+            ["zzz1"; "zzz2"; "zzz3"; "zzz4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_MergeSources_Bind_Return4``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.MergeSources(a: 'T1, b: 'T2) = (a, b)"
+             "    member x.Bind(a: 'T1, f: 'T1 -> 'T2) = f a"
+             "    member x.Return(a: 'T) = a"
+             "let builder = Builder()"
+             "let zzz1 = 1"
+             "builder {"
+             "   let! zzz3 = 1"
+             "   and! zzz4 = 1"
+             "   return (1 + z" ]
+             "   return (1 + z"
+            ["zzz1"; "zzz3"; "zzz4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_Bind2Return0``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.Bind2Return(a: 'T1, b: 'T2, f: ('T1 * 'T2) -> 'T3) = f (a, b)"
+             "let builder = Builder()"
+             "builder {"
+             "    let! xxx3 = 2"
+             "    and! xxx4 = 2"
+             "    return x"
+             "}"]
+             "    return x"
+            ["xxx3"; "xxx4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_Bind2Return1``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.Bind2Return(a: 'T1, b: 'T2, f: ('T1 * 'T2) -> 'T3) = f (a, b)"
+             "let builder = Builder()"
+             "let xxx1 = 1"
+             "builder {"
+             "   let xxx2 = 1"
+             "   let! xxx3 = 1"
+             "   and! xxx4 = 1"
+             "   return (1 + x)"
+             "}"]
+             "   return (1 + x"
+            ["xxx1"; "xxx2"; "xxx3"; "xxx4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_Bind2Return2``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.Bind2Return(a: 'T1, b: 'T2, f: ('T1 * 'T2) -> 'T3) = f (a, b)"
+             "let builder = Builder()"
+             "let yyy1 = 1"
+             "builder {"
+             "   let yyy2 = 1"
+             "   let! yyy3 = 1"
+             "   and! yyy4 = 1"
+             "   return (1 + y)"]
+             "   return (1 + y"
+            ["yyy1"; "yyy2"; "yyy3"; "yyy4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_Bind2Return3``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.Bind2Return(a: 'T1, b: 'T2, f: ('T1 * 'T2) -> 'T3) = f (a, b)"
+             "let builder = Builder()"
+             "let zzz1 = 1"
+             "builder {"
+             "   let zzz2 = 1"
+             "   let! zzz3 = 1"
+             "   and! zzz4 = 1"
+             "   return (1 + z" ]
+             "   return (1 + z"
+            ["zzz1"; "zzz2"; "zzz3"; "zzz4"]
+            [] 
+
+    [<Test>]
+    member public this.``CompletionForAndBang_Test_Bind2Return4``() = 
+        AssertCtrlSpaceCompleteContainsWithOtherFlags
+            "/langversion:preview"
+            ["type Builder() ="
+             "    member x.Bind2Return(a: 'T1, b: 'T2, f: ('T1 * 'T2) -> 'T3) = f (a, b)"
+             "let builder = Builder()"
+             "let zzz1 = 1"
+             "builder {"
+             "   let! zzz3 = 1"
+             "   and! zzz4 = 1"
+             "   return (1 + z" ]
+             "   return (1 + z"
+            ["zzz1"; "zzz3"; "zzz4"]
+            [] 
 
             (**)
     [<Test>]
@@ -3547,13 +3817,6 @@ let x = query { for bbbb in abbbbc(*D0*) do
                     type MyAttr() = inherit Attribute()")
 
     [<Test>]
-    member public this.``Attribute.WhenAttachedToNothing.Bug70080``() =        
-        this.AutoCompleteBug70080Helper(@"
-                    open System
-                    [<Attr     // expect AttributeUsage
-                    // nothing here")
-
-    [<Test>]
     member public this.``Attribute.WhenAttachedToLetInNamespace.Bug70080``() =        
         this.AutoCompleteBug70080Helper @"
                     namespace Foo
@@ -3601,7 +3864,7 @@ let x = query { for bbbb in abbbbc(*D0*) do
             [ @"
                     type C() = 
                         let someValue = ""abc""
-                        member __.M() = 
+                        member _.M() = 
                           let x = 1
                           match someValue. with
                             let x = 1
@@ -3639,8 +3902,8 @@ let x = query { for bbbb in abbbbc(*D0*) do
         AssertAutoCompleteContains 
             [ "open System." ]
             "." // marker
-            [ "Collections"; "Console" ] // should contain (namespace, static type)
-            [ "Int32" ] // should not contain (non-static type)
+            [ "Collections" ] // should contain (namespace)
+            [ ] // should not contain
 
     [<Test>]
     member public this.``OpenNamespaceOrModule.CompletionOnlyContainsNamespaceOrModule.Case2``() =        
@@ -4403,7 +4666,7 @@ let x = query { for bbbb in abbbbc(*D0*) do
         MoveCursorToEndOfMarker(file,"System.Windows.")
         let completions = AutoCompleteAtCursor(file)
         printfn "Completions=%A" completions
-        Assert.AreEqual(1, completions.Length)
+        Assert.AreEqual(3, completions.Length)
         
     /// Tests whether we're correctly showing both type and module when they have the same name
     [<Test>]
@@ -4929,32 +5192,6 @@ let x = query { for bbbb in abbbbc(*D0*) do
         gpatcc.AssertExactly(0,0)
 
 
-    [<Test>]
-    member this.``BadCompletionAfterQuicklyTyping.Bug177519.NowWorking``() =        
-        // this test is similar to "Bug72561.Noteworthy" but uses name resolutions rather than expression typings
-        // name resolutions currently still respond with stale info
-        let code = [ "let A = 42"
-                     "let B = \"\""
-                     "A.    // quickly backspace and retype B. --> exact name resolution code path" ]
-        let (_, _, file) = this.CreateSingleFileProject(code)
-        
-        TakeCoffeeBreak(this.VS)
-        let gpatcc = GlobalParseAndTypeCheckCounter.StartNew(this.VS)
-        let code2= [ "let A = 42"
-                     "let B = \"\""
-                     "B.    // quickly backspace and retype B. --> exact name resolution code path" ]
-        ReplaceFileInMemoryWithoutCoffeeBreak file code2
-        MoveCursorToEndOfMarker(file, "B.")
-        // Note: no TakeCoffeeBreak(this.VS)
-        let completions = AutoCompleteAtCursor file
-        AssertCompListIsEmpty(completions)  // empty completion list means second-chance intellisense will kick in
-        // if we wait...
-        TakeCoffeeBreak(this.VS)
-        let completions = AutoCompleteAtCursor file
-        // ... we get the expected answer
-        AssertCompListContainsAll(completions, ["Chars"])  // has correct string info
-        gpatcc.AssertExactly(0,0)
-                                             
 //*********************************************Previous Completion test and helper*****
     member private this.VerifyCompListDoesNotContainAnyAtStartOfMarker(fileContents : string, marker : string, list : string list) =
         let (solution, project, file) = this.CreateSingleFileProject(fileContents)
@@ -5043,17 +5280,6 @@ let x = query { for bbbb in abbbbc(*D0*) do
         AssertCtrlSpaceCompleteContains 
             ["""
                     module Foo
-                    open System
-                    [<
-             """]
-            "[<"
-            ["AttributeUsage"]
-            []
-      
-    [<Test>]
-    member this.``Attributes.CanSeeOpenNamespaces.Bug268290.Case2``() =
-        AssertCtrlSpaceCompleteContains 
-            ["""
                     open System
                     [<
              """]
@@ -5202,11 +5428,11 @@ let x = query { for bbbb in abbbbc(*D0*) do
 
 (*------------------------------------------IDE Query automation start -------------------------------------------------*)
     member private this.AssertAutoCompletionInQuery(fileContent : string list, marker:string,contained:string list) =
-        let file = createFile fileContent SourceFileKind.FS ["System.Xml.Linq"]
+        let file = createFile fileContent SourceFileKind.FS ["System.Xml.Linq"] None
             
         let gpatcc = GlobalParseAndTypeCheckCounter.StartNew(this.VS)
         MoveCursorToEndOfMarker(file, marker)
-        let completions = CompleteAtCursorForReason(file,Microsoft.VisualStudio.FSharp.LanguageService.BackgroundRequestReason.CompleteWord)
+        let completions = CompleteAtCursorForReason(file,BackgroundRequestReason.CompleteWord)
         AssertCompListContainsAll(completions, contained)
         gpatcc.AssertExactly(0,0)
 
@@ -5320,8 +5546,8 @@ let x = query { for bbbb in abbbbc(*D0*) do
         this.VerifyDotCompListContainAllAtStartOfMarker(
             fileContents = """
                 type T() = 
-                    member __.P with get() = new T()
-                    member __.M() = [|1..2|]
+                    member _.P with get() = new T()
+                    member _.M() = [|1..2|]
                 let t = new T()
                 t.P.M()(*marker*)  """,
             marker = "(*marker*)",
@@ -5332,7 +5558,7 @@ let x = query { for bbbb in abbbbc(*D0*) do
         this.VerifyDotCompListContainAllAtStartOfMarker(
             fileContents = """
                 type T() = 
-                    member __.M() = [|1..2|]
+                    member _.M() = [|1..2|]
 
                 type R = { P : T } 
                     

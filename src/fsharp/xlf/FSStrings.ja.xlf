@@ -4,7 +4,27 @@
     <body>
       <trans-unit id="Parser.TOKEN.DOT.DOT.HAT">
         <source>symbol '..^'</source>
-        <target state="new">symbol '..^'</target>
+        <target state="translated">シンボル '..^'</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.BEGIN.END">
+        <source>interpolated string</source>
+        <target state="translated">補間された文字列</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.BEGIN.PART">
+        <source>interpolated string (first part)</source>
+        <target state="translated">補間された文字列 (最初の部分)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.END">
+        <source>interpolated string (final part)</source>
+        <target state="translated">補間された文字列 (最後の部分)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.PART">
+        <source>interpolated string (part)</source>
+        <target state="translated">補間された文字列 (部分)</target>
         <note />
       </trans-unit>
       <trans-unit id="SeeAlso">
@@ -54,7 +74,7 @@
       </trans-unit>
       <trans-unit id="ErrorFromApplyingDefault1">
         <source>Type constraint mismatch when applying the default type '{0}' for a type inference variable. </source>
-        <target state="translated">既定の型 '{0}' を型推論の変数に適用するときに、型の制約が一致しませんでした。</target>
+        <target state="translated">既定の型 '{0}' を型推論の変数に適用するときに、型の制約が一致しませんでした。 </target>
         <note />
       </trans-unit>
       <trans-unit id="ErrorFromApplyingDefault2">
@@ -68,18 +88,13 @@
         <note />
       </trans-unit>
       <trans-unit id="UpperCaseIdentifierInPattern">
-        <source>Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name.</source>
-        <target state="translated">通常、大文字の変数識別子はパターンに使用しません。また、つづりが間違っているパターン名を示す可能性があります。</target>
+        <source>Uppercase variable identifiers should not generally be used in patterns, and may indicate a missing open declaration or a misspelt pattern name.</source>
+        <target state="translated">通常、大文字の変数識別子はパターンに使用できません。また、欠落している open 宣言か、つづりが間違っているパターン名を示す可能性があります。</target>
         <note />
       </trans-unit>
       <trans-unit id="NotUpperCaseConstructor">
         <source>Discriminated union cases and exception labels must be uppercase identifiers</source>
         <target state="translated">判別された共用体ケースと例外のラベルは、大文字の識別子にする必要があります</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="PossibleOverload">
-        <source>Possible overload: '{0}'. {1}.</source>
-        <target state="translated">使用できるオーバーロードは '{0}' です。{1}。</target>
         <note />
       </trans-unit>
       <trans-unit id="FunctionExpected">
@@ -994,7 +1009,7 @@
       </trans-unit>
       <trans-unit id="UnexpectedEndOfInput">
         <source>Unexpected end of input</source>
-        <target state="translated">予期しない入力の終わりです:</target>
+        <target state="translated">予期しない入力の終わりです</target>
         <note />
       </trans-unit>
       <trans-unit id="Unexpected">
@@ -1174,7 +1189,7 @@
       </trans-unit>
       <trans-unit id="FixKeyword">
         <source>keyword </source>
-        <target state="translated">キーワード</target>
+        <target state="translated">キーワード </target>
         <note />
       </trans-unit>
       <trans-unit id="FixSymbol">
@@ -1625,6 +1640,11 @@
       <trans-unit id="Parser.TOKEN.BAR.RBRACE">
         <source>symbol '|}'</source>
         <target state="translated">シンボル '|}'</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.AND.BANG">
+        <source>keyword 'and!'</source>
+        <target state="translated">キーワード 'and!'</target>
         <note />
       </trans-unit>
     </body>

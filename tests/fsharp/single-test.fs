@@ -3,6 +3,7 @@
 open System
 open System.IO
 open System.Diagnostics
+open System.Reflection
 open NUnit.Framework
 open TestFramework
 open HandleExpects
@@ -11,7 +12,7 @@ type Permutation =
     | FSC_CORECLR
     | FSC_CORECLR_BUILDONLY
     | FSI_CORECLR
-#if !FSHARP_SUITE_DRIVES_CORECLR_TESTS
+#if !NETCOREAPP
     | FSI_FILE
     | FSI_STDIN
     | GENERATED_SIGNATURE
@@ -94,7 +95,7 @@ let generateOverrides =
 // Arguments:
 //    pc = ProjectConfiguration
 //    outputType = OutputType.Exe, OutputType.Library or OutputType.Script
-//    targetFramework optimize = "net472" OR NETCOREAPP3.0 etc ...
+//    targetFramework optimize = "net472" or net5.0 etc ...
 //    optimize = true or false
 //    configuration = "Release" or "Debug"
 //
@@ -105,12 +106,7 @@ let generateProjectArtifacts (pc:ProjectConfiguration) outputType (targetFramewo
                 "fsi"
             else
                 "FSharp.Core"
-        let targetCore =
-            if targetFramework.StartsWith("netstandard", StringComparison.InvariantCultureIgnoreCase) || targetFramework.StartsWith("netcoreapp", StringComparison.InvariantCultureIgnoreCase) then 
-                "netstandard2.0"
-            else
-                "net45"
-        (Path.GetFullPath(__SOURCE_DIRECTORY__) + "/../../artifacts/bin/"  + compiler + "/" + configuration + "/" + targetCore + "/FSharp.Core.dll")
+        (Path.GetFullPath(__SOURCE_DIRECTORY__) + "/../../artifacts/bin/"  + compiler + "/" + configuration + "/netstandard2.0/FSharp.Core.dll")
 
     let computeSourceItems addDirectory addCondition (compileItem:CompileItem) sources =
         let computeInclude src =
@@ -214,12 +210,12 @@ let singleTestBuildAndRunCore cfg copyFiles p languageVersion =
     let extraSources = ["testlib.fsi";"testlib.fs";"test.mli";"test.ml";"test.fsi";"test.fs";"test2.fsi";"test2.fs";"test.fsx";"test2.fsx"]
     let utilitySources = [__SOURCE_DIRECTORY__  ++ "coreclr_utilities.fs"]
     let referenceItems =  if String.IsNullOrEmpty(copyFiles) then [] else [copyFiles]
-    let framework = "netcoreapp3.0"
+    let framework = "net5.0"
 
     // Arguments:
     //    outputType = OutputType.Exe, OutputType.Library or OutputType.Script
     //    compilerType = "coreclr" or "net40"
-    //    targetFramework optimize = "net472" OR NETCOREAPP3.0 etc ...
+    //    targetFramework optimize = "net472" OR net5.0 etc ...
     //    optimize = true or false
     let executeSingleTestBuildAndRun outputType compilerType targetFramework optimize buildOnly =
         let mutable result = false
@@ -227,12 +223,15 @@ let singleTestBuildAndRunCore cfg copyFiles p languageVersion =
             let mutable result = ""
             lock lockObj <| (fun () ->
                 let rec loop () =
-                    let dir = Path.Combine(Path.GetTempPath(), "FSharp.Cambridge", Path.GetRandomFileName())
-                    if Directory.Exists(dir) then
+                    let pathToArtifacts = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "../../../.."))
+                    if Path.GetFileName(pathToArtifacts) <> "artifacts" then failwith "FSharp.Cambridge did not find artifacts directory --- has the location changed????"
+                    let pathToTemp = Path.Combine(pathToArtifacts, "Temp")
+                    let projectDirectory = Path.Combine(pathToTemp, "FSharp.Cambridge", Path.GetRandomFileName())
+                    if Directory.Exists(projectDirectory) then
                         loop ()
                     else
-                        Directory.CreateDirectory(dir) |>ignore
-                        dir
+                        Directory.CreateDirectory(projectDirectory) |>ignore
+                        projectDirectory
                 result <- loop())
             result
 
@@ -305,11 +304,11 @@ let singleTestBuildAndRunCore cfg copyFiles p languageVersion =
                 printfn "Filename: %s" projectFileName
 
     match p with
-    | FSC_CORECLR -> executeSingleTestBuildAndRun OutputType.Exe "coreclr" "netcoreapp3.0" true false
-    | FSC_CORECLR_BUILDONLY -> executeSingleTestBuildAndRun OutputType.Exe "coreclr" "netcoreapp3.0" true true
-    | FSI_CORECLR -> executeSingleTestBuildAndRun OutputType.Script "coreclr" "netcoreapp3.0" true false
+    | FSC_CORECLR -> executeSingleTestBuildAndRun OutputType.Exe "coreclr" "net5.0" true false
+    | FSC_CORECLR_BUILDONLY -> executeSingleTestBuildAndRun OutputType.Exe "coreclr" "net5.0" true true
+    | FSI_CORECLR -> executeSingleTestBuildAndRun OutputType.Script "coreclr" "net5.0" true false
 
-#if !FSHARP_SUITE_DRIVES_CORECLR_TESTS
+#if !NETCOREAPP
     | FSC_BUILDONLY -> executeSingleTestBuildAndRun OutputType.Exe "net40" "net472" false true
     | FSC_OPT_PLUS_DEBUG -> executeSingleTestBuildAndRun OutputType.Exe "net40" "net472" true false
     | FSC_OPT_MINUS_DEBUG -> executeSingleTestBuildAndRun OutputType.Exe "net40" "net472" false false

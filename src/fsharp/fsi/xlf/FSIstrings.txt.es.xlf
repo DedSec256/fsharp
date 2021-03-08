@@ -2,14 +2,19 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
   <file datatype="xml" source-language="en" target-language="es" original="../FSIstrings.resx">
     <body>
+      <trans-unit id="fsiIntroPackageSourceUriInfo">
+        <source>Include package source uri when searching for packages</source>
+        <target state="translated">Incluir el URI de origen del paquete al buscar paquetes</target>
+        <note />
+      </trans-unit>
       <trans-unit id="fsiOperationCouldNotBeCompleted">
         <source>Operation could not be completed due to earlier error</source>
         <target state="translated">La operación no se pudo completar debido a un error anterior</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiOperationFailed">
-        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpErrorInfo use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
-        <target state="translated">Error en la operación. El texto del error se ha impreso en la secuencia de errores. Para devolver el correspondiente FSharpErrorInfo, use EvalInteractionNonThrowing, EvalScriptNonThrowing o EvalExpressionNonThrowing</target>
+        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpDiagnostic use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
+        <target state="translated">Error en la operación. El texto del error se ha impreso en la secuencia de errores. Para devolver el valor FSharpDiagnostic correspondiente, use EvalInteractionNonThrowing, EvalScriptNonThrowing o EvalExpressionNonThrowing</target>
         <note />
       </trans-unit>
       <trans-unit id="stoppedDueToError">
@@ -122,11 +127,6 @@
         <target state="translated">El directorio '{0}' no existe.</target>
         <note />
       </trans-unit>
-      <trans-unit id="fsiInvalidDirective">
-        <source>Invalid directive '#{0} {1}'</source>
-        <target state="translated">Directiva '#{0} {1}' no válida.</target>
-        <note />
-      </trans-unit>
       <trans-unit id="fsiLineTooLong">
         <source>Warning: line too long, ignoring some characters\n</source>
         <target state="translated">Advertencia: línea demasiado larga, omitiendo algunos caracteres.\n</target>
@@ -149,7 +149,7 @@
       </trans-unit>
       <trans-unit id="fsiIntroTextHeader1directives">
         <source>  F# Interactive directives:</source>
-        <target state="translated">Directivas de F# interactivo:</target>
+        <target state="translated"> Directivas de F# interactivo:</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiIntroTextHashrInfo">

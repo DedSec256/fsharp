@@ -2,12 +2,11 @@
 
 /// Defines the global environment for all type checking.
 
-namespace FSharp.Compiler
+module FSharp.Compiler.CompilerGlobalState
 
 open System.Collections.Generic
-open FSharp.Compiler.Range
-open FSharp.Compiler.PrettyNaming
-
+open FSharp.Compiler.Syntax.PrettyNaming
+open FSharp.Compiler.Text
 
 /// Generates compiler-generated names. Each name generated also includes the StartLine number of the range passed in
 /// at the point of first generation.
@@ -75,21 +74,30 @@ type StableNiceNameGenerator() =
 
 type internal CompilerGlobalState () =
     /// A global generator of compiler generated names
-    // ++GLOBAL MUTABLE STATE (concurrency safe by locking inside NiceNameGenerator)
     let globalNng = NiceNameGenerator()
 
-
     /// A global generator of stable compiler generated names
-    // MUTABLE STATE (concurrency safe by locking inside StableNiceNameGenerator)
     let globalStableNameGenerator = StableNiceNameGenerator ()
 
     /// A name generator used by IlxGen for static fields, some generated arguments and other things.
-    /// REVIEW: this will mean the hosted compiler service is not deterministic. We should at least create a new one
-    /// of these for each compilation.
     let ilxgenGlobalNng = NiceNameGenerator ()
 
-    member __.NiceNameGenerator = globalNng
+    member _.NiceNameGenerator = globalNng
 
-    member __.StableNameGenerator = globalStableNameGenerator
+    member _.StableNameGenerator = globalStableNameGenerator
 
-    member __.IlxGenNiceNameGenerator = ilxgenGlobalNng
+    member _.IlxGenNiceNameGenerator = ilxgenGlobalNng
+
+/// Unique name generator for stamps attached to lambdas and object expressions
+type Unique = int64
+
+//++GLOBAL MUTABLE STATE (concurrency-safe)
+let newUnique =
+    let i = ref 0L
+    fun () -> System.Threading.Interlocked.Increment i
+
+/// Unique name generator for stamps attached to to val_specs, tycon_specs etc.
+//++GLOBAL MUTABLE STATE (concurrency-safe)
+let newStamp =
+    let i = ref 0L
+    fun () -> System.Threading.Interlocked.Increment i

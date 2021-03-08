@@ -1,22 +1,15 @@
 // Copyright (c) Microsoft Corporation.  All Rights Reserved.  See License.txt in the project root for license information.
 
-module LegacyMSBuildReferenceResolver
+module FSharp.Compiler.CodeAnalysis.LegacyMSBuildReferenceResolver
 
     open System
     open System.IO
     open System.Reflection
-
-#if FX_RESHAPED_MSBUILD
-    open FSharp.Compiler.MsBuildAdapters
-    open FSharp.Compiler.ToolLocationHelper
-#endif
-
-    open FSharp.Compiler.AbstractIL.Internal.Library 
-    open FSharp.Compiler.ReferenceResolver
+    open Internal.Utilities.Library 
     open Microsoft.Build.Tasks
     open Microsoft.Build.Utilities
     open Microsoft.Build.Framework
-    open FSharp.Compiler
+    open FSharp.Compiler.IO
 
     // Reflection wrapper for properties
     type System.Object with
@@ -33,13 +26,11 @@ module LegacyMSBuildReferenceResolver
             | s -> s 
         PF + @"\Reference Assemblies\Microsoft\Framework\.NETFramework"
 
-
     /// When targeting .NET 2.0-3.5 on Windows, we expand the {WindowsFramework} and {ReferenceAssemblies} paths manually
     let internal ReplaceVariablesForLegacyFxOnWindows(dirs: string list) =
         let windowsFramework = Environment.GetEnvironmentVariable("windir")+ @"\Microsoft.NET\Framework"
         let referenceAssemblies = DotNetFrameworkReferenceAssembliesRootDirectory
         dirs |> List.map(fun d -> d.Replace("{WindowsFramework}",windowsFramework).Replace("{ReferenceAssemblies}",referenceAssemblies))
-
     
     // ATTENTION!: the following code needs to be updated every time we are switching to the new MSBuild version because new .NET framework version was released
     // 1. List of frameworks
@@ -73,7 +64,10 @@ module LegacyMSBuildReferenceResolver
     [<Literal>]    
     let private Net472 = "v4.7.2"
 
-    let SupportedDesktopFrameworkVersions = [ Net472; Net471; Net47; Net462; Net461; Net46; Net452; Net451; Net45 ]
+    [<Literal>]    
+    let private Net48 = "v4.8"
+
+    let SupportedDesktopFrameworkVersions = [ Net48; Net472; Net471; Net47; Net462; Net461; Net46; Net452; Net451; Net45 ]
 
     /// Get the path to the .NET Framework implementation assemblies by using ToolLocationHelper.GetPathToDotNetFramework
     /// This is only used to specify the "last resort" path for assembly resolution.
@@ -82,7 +76,6 @@ module LegacyMSBuildReferenceResolver
             match v with
             | Net45 ->  Some TargetDotNetFrameworkVersion.Version45
             | Net451 -> Some TargetDotNetFrameworkVersion.Version451
-#if MSBUILD_AT_LEAST_15
             | Net452 -> Some TargetDotNetFrameworkVersion.Version452
             | Net46 -> Some TargetDotNetFrameworkVersion.Version46
             | Net461 -> Some TargetDotNetFrameworkVersion.Version461
@@ -90,7 +83,7 @@ module LegacyMSBuildReferenceResolver
             | Net47 -> Some TargetDotNetFrameworkVersion.Version47
             | Net471 -> Some TargetDotNetFrameworkVersion.Version471
             | Net472 -> Some TargetDotNetFrameworkVersion.Version472
-#endif
+            | Net48 -> Some TargetDotNetFrameworkVersion.Version48
             | _ -> assert false; None
         match v with
         | Some v -> 
@@ -114,9 +107,8 @@ module LegacyMSBuildReferenceResolver
     let HighestInstalledRefAssembliesOrDotNETFramework () =
         let getHighestInstalledDotNETFramework () =
             try
-// The Mono build still uses an ancient version of msbuild from around Dev 14
-#if MSBUILD_AT_LEAST_15
-                if box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version472)) <> null then Net472
+                if box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version48)) <> null then Net48
+                elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version472)) <> null then Net472
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version471)) <> null then Net471
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version47)) <> null then Net47
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version462)) <> null then Net462
@@ -125,14 +117,10 @@ module LegacyMSBuildReferenceResolver
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version46)) <> null then Net46
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version452)) <> null then Net452
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version451)) <> null then Net451
-#else
-                if box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version451)) <> null then Net451
-#endif
                 elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version45)) <> null then Net45
                 else Net45 // version is 4.5 assumed since this code is running.
             with _ -> Net45
 
-#if !FX_RESHAPED_MSBUILD
         // 1.   First look to see if we can find the highest installed set of dotnet reference assemblies, if yes then select that framework
         // 2.   Otherwise ask msbuild for the highestinstalled framework
         let checkFrameworkForReferenceAssemblies (dotNetVersion:string) =
@@ -148,9 +136,6 @@ module LegacyMSBuildReferenceResolver
         match SupportedDesktopFrameworkVersions |> Seq.tryFind(fun v -> checkFrameworkForReferenceAssemblies v) with
         | Some v -> v
         | None -> getHighestInstalledDotNETFramework()
-#else
-        getHighestInstalledDotNETFramework()
-#endif
 
     /// Derive the target framework directories.
     let DeriveTargetFrameworkDirectories (targetFrameworkVersion:string, logMessage) =
@@ -239,7 +224,7 @@ module LegacyMSBuildReferenceResolver
             + lineIfExists fusionName  
 
     /// Perform assembly resolution by instantiating the ResolveAssembly task directly from the MSBuild SDK.
-    let ResolveCore(resolutionEnvironment: ResolutionEnvironment,
+    let ResolveCore(resolutionEnvironment: LegacyResolutionEnvironment,
                     references:(string*(*baggage*)string)[], 
                     targetFrameworkVersion: string, 
                     targetFrameworkDirectories: string list,
@@ -264,22 +249,15 @@ module LegacyMSBuildReferenceResolver
 
         let engine = 
             { new IBuildEngine with 
-              member __.BuildProjectFile(projectFileName, targetNames, globalProperties, targetOutputs) = true
-#if FX_RESHAPED_MSBUILD 
-              member __.LogCustomEvent(e) =  protect (fun () -> logMessage ((e.GetPropertyValue("Message")) :?> string))
-              member __.LogErrorEvent(e) =   protect (fun () -> logDiagnostic true ((e.GetPropertyValue("Code")) :?> string) ((e.GetPropertyValue("Message")) :?> string))
-              member __.LogMessageEvent(e) = protect (fun () -> logMessage ((e.GetPropertyValue("Message")) :?> string))
-              member __.LogWarningEvent(e) = protect (fun () -> logDiagnostic false ((e.GetPropertyValue("Code")) :?> string)  ((e.GetPropertyValue("Message")) :?> string))
-#else 
-              member __.LogCustomEvent(e) =  protect (fun () -> logMessage e.Message)
-              member __.LogErrorEvent(e) =   protect (fun () -> logDiagnostic true e.Code e.Message)
-              member __.LogMessageEvent(e) = protect (fun () -> logMessage e.Message)
-              member __.LogWarningEvent(e) = protect (fun () -> logDiagnostic false e.Code e.Message)
-#endif 
-              member __.ColumnNumberOfTaskNode with get() = 1 
-              member __.LineNumberOfTaskNode with get() = 1 
-              member __.ContinueOnError with get() = true 
-              member __.ProjectFileOfTaskNode with get() = "" } 
+              member _.BuildProjectFile(projectFileName, targetNames, globalProperties, targetOutputs) = true
+              member _.LogCustomEvent(e) =  protect (fun () -> logMessage e.Message)
+              member _.LogErrorEvent(e) =   protect (fun () -> logDiagnostic true e.Code e.Message)
+              member _.LogMessageEvent(e) = protect (fun () -> logMessage e.Message)
+              member _.LogWarningEvent(e) = protect (fun () -> logDiagnostic false e.Code e.Message)
+              member _.ColumnNumberOfTaskNode with get() = 1 
+              member _.LineNumberOfTaskNode with get() = 1 
+              member _.ContinueOnError with get() = true 
+              member _.ProjectFileOfTaskNode with get() = "" } 
 
         // Derive the target framework directory if none was supplied.
         let targetFrameworkDirectories =
@@ -300,9 +278,9 @@ module LegacyMSBuildReferenceResolver
             [|  // When compiling scripts using fsc.exe, for some reason we have always historically put TargetFrameworkDirectory first
                 // It is unclear why.  This is the only place we look at the 'isdifference between ResolutionEnvironment.EditingOrCompilation and ResolutionEnvironment.EditingTime.
                 match resolutionEnvironment with
-                | ResolutionEnvironment.EditingOrCompilation false -> yield "{TargetFrameworkDirectory}"
-                | ResolutionEnvironment.EditingOrCompilation true
-                | ResolutionEnvironment.CompilationAndEvaluation -> ()
+                | LegacyResolutionEnvironment.EditingOrCompilation false -> yield "{TargetFrameworkDirectory}"
+                | LegacyResolutionEnvironment.EditingOrCompilation true
+                | LegacyResolutionEnvironment.CompilationAndEvaluation -> ()
 
                 // Quick-resolve straight to filename first 
                 if allowRawFileName then 
@@ -312,9 +290,9 @@ module LegacyMSBuildReferenceResolver
                 yield implicitIncludeDir   // Usually the project directory
 
                 match resolutionEnvironment with
-                | ResolutionEnvironment.EditingOrCompilation true
-                | ResolutionEnvironment.CompilationAndEvaluation -> yield "{TargetFrameworkDirectory}"
-                | ResolutionEnvironment.EditingOrCompilation false -> ()
+                | LegacyResolutionEnvironment.EditingOrCompilation true
+                | LegacyResolutionEnvironment.CompilationAndEvaluation -> yield "{TargetFrameworkDirectory}"
+                | LegacyResolutionEnvironment.EditingOrCompilation false -> ()
 
                 yield registry
                 yield "{AssemblyFolders}"
@@ -324,15 +302,10 @@ module LegacyMSBuildReferenceResolver
              |]    
             
         let assemblies = 
-#if FX_RESHAPED_MSBUILD
-            ignore references
-            [||]
-#else
             [| for (referenceName,baggage) in references -> 
                let item = new Microsoft.Build.Utilities.TaskItem(referenceName) :> ITaskItem
                item.SetMetadata("Baggage", baggage)
                item |]
-#endif
         let rar = 
             ResolveAssemblyReference(BuildEngine=engine, TargetFrameworkDirectories=targetFrameworkDirectories,
                                      FindRelatedFiles=false, FindDependencies=false, FindSatellites=false, 
@@ -344,7 +317,7 @@ module LegacyMSBuildReferenceResolver
 #if ENABLE_MONO_SUPPORT
         // The properties TargetedRuntimeVersion and CopyLocalDependenciesWhenParentReferenceInGac 
         // are not available on Mono. So we only set them if available (to avoid a compile-time dependency). 
-        if not FSharp.Compiler.AbstractIL.IL.runningOnMono then  
+        if not runningOnMono then
             typeof<ResolveAssemblyReference>.InvokeMember("TargetedRuntimeVersion",(BindingFlags.Instance ||| BindingFlags.SetProperty ||| BindingFlags.Public),null,rar,[| box targetedRuntimeVersionValue |])  |> ignore 
             typeof<ResolveAssemblyReference>.InvokeMember("CopyLocalDependenciesWhenParentReferenceInGac",(BindingFlags.Instance ||| BindingFlags.SetProperty ||| BindingFlags.Public),null,rar,[| box true |])  |> ignore 
 #else
@@ -355,7 +328,7 @@ module LegacyMSBuildReferenceResolver
         let succeeded = rar.Execute()
         
         if not succeeded then 
-            raise ResolutionFailure
+            raise LegacyResolutionFailure
 
         let resolvedFiles = 
             [| for p in rar.ResolvedFiles -> 
@@ -369,12 +342,12 @@ module LegacyMSBuildReferenceResolver
         resolvedFiles
 
     let getResolver () =
-       { new ReferenceResolver.Resolver with 
-           member __.HighestInstalledNetFrameworkVersion() = HighestInstalledRefAssembliesOrDotNETFramework()
-           member __.DotNetFrameworkReferenceAssembliesRootDirectory =  DotNetFrameworkReferenceAssembliesRootDirectory
+       { new ILegacyReferenceResolver with 
+           member _.HighestInstalledNetFrameworkVersion() = HighestInstalledRefAssembliesOrDotNETFramework()
+           member _.DotNetFrameworkReferenceAssembliesRootDirectory =  DotNetFrameworkReferenceAssembliesRootDirectory
 
            /// Perform the resolution on rooted and unrooted paths, and then combine the results.
-           member __.Resolve(resolutionEnvironment, references, targetFrameworkVersion, targetFrameworkDirectories, targetProcessorArchitecture,                
+           member _.Resolve(resolutionEnvironment, references, targetFrameworkVersion, targetFrameworkDirectories, targetProcessorArchitecture,                
                              fsharpCoreDir, explicitIncludeDirs, implicitIncludeDir, logMessage, logDiagnostic) =
 
                 // The {RawFileName} target is 'dangerous', in the sense that is uses <c>Directory.GetCurrentDirectory()</c> to resolve unrooted file paths.
@@ -414,3 +387,4 @@ module LegacyMSBuildReferenceResolver
                 // now unify the two sets of results
                 Array.concat [| rootedResults; unrootedResults |]
        } 
+       |> LegacyReferenceResolver

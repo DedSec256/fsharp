@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <NoWarn>$(NoWarn);45;47;52;58;75</NoWarn>
+    <NoWarn>$(NoWarn);44;45;47;52;58;75</NoWarn>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
     <DisableImplicitSystemValueTupleReference>true</DisableImplicitSystemValueTupleReference>
     <DefaultValueTuplePackageVersion>$(SystemValueTupleVersion)</DefaultValueTuplePackageVersion>
@@ -17,7 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="$(FSharpSourcesRoot)\utils\CompilerLocationUtils.fs">
+    <EmbeddedText Include="$(FSharpSourcesRoot)\fsharp\utils\UtilsStrings.txt" />
+    <Compile Include="$(FSharpSourcesRoot)\fsharp\utils\CompilerLocationUtils.fs">
       <Link>CompilerLocationUtils.fs</Link>
     </Compile>
     <Compile Include="..\unittests\TestLib.Utils.fs">
@@ -32,7 +33,7 @@
   <ItemGroup>
     <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Core\FSharp.Core.fsproj" />
     <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Build\FSharp.Build.fsproj" />
-    <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Compiler.Private\FSharp.Compiler.Private.fsproj" />
+    <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Compiler.Service\FSharp.Compiler.Service.fsproj" />
     <ProjectReference Include="..\..\src\FSharp.Editor\FSharp.Editor.fsproj" />
     <ProjectReference Include="..\..\src\FSharp.LanguageService.Base\FSharp.LanguageService.Base.csproj" />
     <ProjectReference Include="..\..\src\FSharp.LanguageService\FSharp.LanguageService.fsproj" />
@@ -52,7 +53,6 @@
     <PackageReference Include="EnvDTE80" Version="$(EnvDTE80Version)" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="$(MicrosoftCodeAnalysisWorkspacesCommonVersion)" />
     <PackageReference Include="Microsoft.VisualStudio.Designer.Interfaces" Version="$(MicrosoftVisualStudioDesignerInterfacesVersion)" />
-    <PackageReference Include="Microsoft.VisualStudio.Editor.Implementation" Version="$(MicrosoftVisualStudioEditorImplementationVersion)" />
     <PackageReference Include="Microsoft.VisualStudio.GraphModel" Version="$(MicrosoftVisualStudioGraphModelVersion)" />
     <PackageReference Include="Microsoft.VisualStudio.ImageCatalog" Version="$(MicrosoftVisualStudioImageCatalogVersion)" />
     <PackageReference Include="Microsoft.VisualStudio.Platform.VSEditor" Version="$(MicrosoftVisualStudioPlatformVSEditorVersion)" />
@@ -69,6 +69,7 @@
     <PackageReference Include="Microsoft.VisualStudio.TextManager.Interop.8.0" Version="$(MicrosoftVisualStudioTextManagerInterop80Version)" />
     <PackageReference Include="Microsoft.VisualStudio.Threading" Version="$(MicrosoftVisualStudioThreadingVersion)" />
     <PackageReference Include="Microsoft.VisualStudio.Utilities" Version="$(MicrosoftVisualStudioUtilitiesVersion)" />
+    <PackageReference Include="Microsoft.VisualStudio.Editor" Version="$(MicrosoftVisualStudioEditorVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="NUnit" Version="$(NUnitVersion)" />
     <PackageReference Include="VSSDK.VSHelp" Version="$(VSSDKVSHelpVersion)" />

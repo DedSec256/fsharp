@@ -2,19 +2,21 @@
 
 module internal FSharp.Compiler.Infos
 
+open System
+open Internal.Utilities.Library
+open Internal.Utilities.Library.Extras
+open FSharp.Compiler
 open FSharp.Compiler.AbstractIL
 open FSharp.Compiler.AbstractIL.IL
-open FSharp.Compiler.AbstractIL.Internal.Library
-open FSharp.Compiler
-open FSharp.Compiler.Range
-open FSharp.Compiler.Ast
 open FSharp.Compiler.ErrorLogger
-open FSharp.Compiler.Tast
-open FSharp.Compiler.Tastops
-open FSharp.Compiler.Tastops.DebugPrint
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.SyntaxTreeOps
 open FSharp.Compiler.TcGlobals
-open FSharp.Compiler.Lib
-open Microsoft.FSharp.Core.Printf
+open FSharp.Compiler.Text
+open FSharp.Compiler.TypedTree
+open FSharp.Compiler.TypedTreeBasics
+open FSharp.Compiler.TypedTreeOps
+open FSharp.Compiler.TypedTreeOps.DebugPrint
 
 #if !NO_EXTENSIONTYPING
 open FSharp.Compiler.ExtensionTyping
@@ -38,13 +40,18 @@ let CanImportILType scoref amap m ilty =
 
 /// Indicates if an F# type is the type associated with an F# exception declaration
 let isExnDeclTy g ty =
-    isAppTy g ty && (tcrefOfAppTy g ty).IsExceptionDecl
+    match tryTcrefOfAppTy g ty with
+    | ValueSome tcref -> tcref.IsExceptionDecl
+    | _ -> false
 
 /// Get the base type of a type, taking into account type instantiations. Return None if the
 /// type has no base type.
 let GetSuperTypeOfType g amap m ty =
 #if !NO_EXTENSIONTYPING
-    let ty = (if isAppTy g ty && (tcrefOfAppTy g ty).IsProvided then stripTyEqns g ty else stripTyEqnsAndMeasureEqns g ty)
+    let ty =
+        match tryTcrefOfAppTy g ty with
+        | ValueSome tcref when tcref.IsProvided -> stripTyEqns g ty 
+        | _ -> stripTyEqnsAndMeasureEqns g ty
 #else
     let ty = stripTyEqnsAndMeasureEqns g ty
 #endif
@@ -73,12 +80,14 @@ let GetSuperTypeOfType g amap m ty =
         elif isRefTy g ty && not (isObjTy g ty) then
             Some g.obj_ty
         elif isStructTupleTy g ty then
-            Some g.obj_ty
+            Some g.system_Value_ty
         elif isFSharpStructOrEnumTy g ty then
             if isFSharpEnumTy g ty then
                 Some g.system_Enum_ty
             else
                 Some g.system_Value_ty
+        elif isStructAnonRecdTy g ty then
+            Some g.system_Value_ty
         elif isAnonRecdTy g ty then
             Some g.obj_ty
         elif isRecdTy g ty || isUnionTy g ty then
@@ -93,10 +102,33 @@ let mkSystemCollectionsGenericIListTy (g: TcGlobals) ty = TType_app(g.tcref_Syst
 /// Indicates whether we can skip interface types that lie outside the reference set
 type SkipUnrefInterfaces = Yes | No
 
-
 /// Collect the set of immediate declared interface types for an F# type, but do not
 /// traverse the type hierarchy to collect further interfaces.
 let rec GetImmediateInterfacesOfType skipUnref g amap m ty =
+
+    let getInterfaces ty (tcref:TyconRef) tinst =
+        match metadataOfTy g ty with
+#if !NO_EXTENSIONTYPING
+        | ProvidedTypeMetadata info ->
+            [ for ity in info.ProvidedType.PApplyArray((fun st -> st.GetInterfaces()), "GetInterfaces", m) do
+                yield Import.ImportProvidedType amap m ity ]
+#endif
+        | ILTypeMetadata (TILObjectReprData(scoref, _, tdef)) ->
+            // ImportILType may fail for an interface if the assembly load set is incomplete and the interface
+            // comes from another assembly. In this case we simply skip the interface:
+            // if we don't skip it, then compilation will just fail here, and if type checking
+            // succeeds with fewer non-dereferencable interfaces reported then it would have
+            // succeeded with more reported. There are pathological corner cases where this
+            // doesn't apply: e.g. for mscorlib interfaces like IComparable, but we can always
+            // assume those are present.
+            tdef.Implements |> List.choose (fun ity ->
+                if skipUnref = SkipUnrefInterfaces.No || CanImportILType scoref amap m ity then
+                    Some (ImportILType scoref amap m tinst ity)
+                else
+                    None)
+        | FSharpOrArrayOrByrefOrTupleOrExnTypeMetadata ->
+            tcref.ImmediateInterfaceTypesOfFSharpTycon |> List.map (instType (mkInstForAppTy g ty))
+
     let itys =
         match tryAppTy g ty with
         | ValueSome(tcref, tinst) ->
@@ -104,38 +136,34 @@ let rec GetImmediateInterfacesOfType skipUnref g amap m ty =
                 [ match tcref.TypeReprInfo with
                   | TMeasureableRepr reprTy ->
                        for ity in GetImmediateInterfacesOfType skipUnref g amap m reprTy do
-                          if isAppTy g ity then
-                              let itcref = tcrefOfAppTy g ity
+                          match tryTcrefOfAppTy g ity with
+                          | ValueNone -> ()
+                          | ValueSome itcref ->
                               if not (tyconRefEq g itcref g.system_GenericIComparable_tcref) &&
-                                 not (tyconRefEq g itcref g.system_GenericIEquatable_tcref)  then
+                                 not (tyconRefEq g itcref g.system_GenericIEquatable_tcref) then
                                    yield ity
                   | _ -> ()
                   yield mkAppTy g.system_GenericIComparable_tcref [ty]
                   yield mkAppTy g.system_GenericIEquatable_tcref [ty]]
             else
-                match metadataOfTy g ty with
-#if !NO_EXTENSIONTYPING
-                | ProvidedTypeMetadata info ->
-                    [ for ity in info.ProvidedType.PApplyArray((fun st -> st.GetInterfaces()), "GetInterfaces", m) do
-                          yield Import.ImportProvidedType amap m ity ]
-#endif
-                | ILTypeMetadata (TILObjectReprData(scoref, _, tdef)) ->
+                getInterfaces ty tcref tinst
+        | _ ->
+            let tyWithMetadata = convertToTypeWithMetadataIfPossible g ty
+            match tryAppTy g tyWithMetadata with
+            | ValueSome (tcref, tinst) ->
+                if isAnyTupleTy g ty then
+                    getInterfaces tyWithMetadata tcref tinst
+                else
+                    []
+            | _ -> []
 
-                    // ImportILType may fail for an interface if the assembly load set is incomplete and the interface
-                    // comes from another assembly. In this case we simply skip the interface:
-                    // if we don't skip it, then compilation will just fail here, and if type checking
-                    // succeeds with fewer non-dereferencable interfaces reported then it would have
-                    // succeeded with more reported. There are pathological corner cases where this
-                    // doesn't apply: e.g. for mscorlib interfaces like IComparable, but we can always
-                    // assume those are present.
-                    tdef.Implements |> List.choose (fun ity ->
-                         if skipUnref = SkipUnrefInterfaces.No || CanImportILType scoref amap m ity then
-                             Some (ImportILType scoref amap m tinst ity)
-                         else None)
-
-                | FSharpOrArrayOrByrefOrTupleOrExnTypeMetadata ->
-                    tcref.ImmediateInterfaceTypesOfFSharpTycon |> List.map (instType (mkInstForAppTy g ty))
-        | _ -> []
+    // NOTE: Anonymous record types are not directly considered to implement IComparable,
+    // IComparable<T> or IEquatable<T>. This is because whether they support these interfaces depend on their
+    // consitutent types, which may not yet be known in type inference.
+    //
+    // NOTE: Tuples could in theory always support IComparable etc. because this
+    // is in the .NET metadata for System.Tuple etc.  However from the F# perspective tuple types don't
+    // always support the 'comparable' and 'equality' constraints (again, it depends on their constitutent types).
 
     // .NET array types are considered to implement IList<T>
     let itys =
@@ -143,10 +171,11 @@ let rec GetImmediateInterfacesOfType skipUnref g amap m ty =
             mkSystemCollectionsGenericIListTy g (destArrayTy g ty) :: itys
         else
             itys
+
     itys
 
-[<RequireQualifiedAccess>]
 /// Indicates whether we should visit multiple instantiations of the same generic interface or not
+[<RequireQualifiedAccess>]
 type AllowMultiIntfInstantiations = Yes | No
 
 /// Traverse the type hierarchy, e.g. f D (f C (f System.Object acc)).
@@ -154,7 +183,10 @@ type AllowMultiIntfInstantiations = Yes | No
 let private FoldHierarchyOfTypeAux followInterfaces allowMultiIntfInst skipUnref visitor g amap m ty acc =
     let rec loop ndeep ty ((visitedTycon, visited: TyconRefMultiMap<_>, acc) as state) =
 
-        let seenThisTycon = isAppTy g ty && Set.contains (tcrefOfAppTy g ty).Stamp visitedTycon
+        let seenThisTycon = 
+            match tryTcrefOfAppTy g ty with
+            | ValueSome tcref -> Set.contains tcref.Stamp visitedTycon
+            | _ -> false
 
         // Do not visit the same type twice. Could only be doing this if we've seen this tycon
         if seenThisTycon && List.exists (typeEquiv g ty) (visited.Find (tcrefOfAppTy g ty)) then state else
@@ -163,11 +195,11 @@ let private FoldHierarchyOfTypeAux followInterfaces allowMultiIntfInst skipUnref
         if seenThisTycon && allowMultiIntfInst = AllowMultiIntfInstantiations.No then state else
 
         let state =
-            if isAppTy g ty then
-                let tcref = tcrefOfAppTy g ty
+            match tryTcrefOfAppTy g ty with
+            | ValueSome tcref ->
                 let visitedTycon = Set.add tcref.Stamp visitedTycon
                 visitedTycon, visited.Add (tcref, ty), acc
-            else
+            | _ ->
                 state
 
         if ndeep > 100 then (errorR(Error((FSComp.SR.recursiveClassHierarchy (showType ty)), m)); (visitedTycon, visited, acc)) else
@@ -254,14 +286,18 @@ let AllInterfacesOfType g amap m allowMultiIntfInst ty =
 
 /// Check if two types have the same nominal head type
 let HaveSameHeadType g ty1 ty2 =
-    isAppTy g ty1 && isAppTy g ty2 &&
-    tyconRefEq g (tcrefOfAppTy g ty1) (tcrefOfAppTy g ty2)
+    match tryTcrefOfAppTy g ty1 with
+    | ValueSome tcref1 ->
+        match tryTcrefOfAppTy g ty2 with
+        | ValueSome tcref2 -> tyconRefEq g tcref1 tcref2
+        | _ -> false
+    | _ -> false
 
 /// Check if a type has a particular head type
 let HasHeadType g tcref ty2 =
-        isAppTy g ty2 &&
-        tyconRefEq g tcref (tcrefOfAppTy g ty2)
-
+    match tryTcrefOfAppTy g ty2 with
+    | ValueSome tcref2 -> tyconRefEq g tcref tcref2
+    | ValueNone -> false
 
 /// Check if a type exists somewhere in the hierarchy which has the same head type as the given type (note, the given type need not have a head type at all)
 let ExistsSameHeadTypeInHierarchy g amap m typeToSearchFrom typeToLookFor =
@@ -270,7 +306,6 @@ let ExistsSameHeadTypeInHierarchy g amap m typeToSearchFrom typeToLookFor =
 /// Check if a type exists somewhere in the hierarchy which has the given head type.
 let ExistsHeadTypeInEntireHierarchy g amap m typeToSearchFrom tcrefToLookFor =
     ExistsInEntireHierarchyOfType (HasHeadType g tcrefToLookFor) g amap m AllowMultiIntfInstantiations.Yes typeToSearchFrom
-
 
 /// Read an Abstract IL type from metadata and convert to an F# type.
 let ImportILTypeFromMetadata amap m scoref tinst minst ilty =
@@ -357,7 +392,6 @@ let FixupNewTypars m (formalEnclosingTypars: Typars) (tinst: TType list) (tpsori
 //-------------------------------------------------------------------------
 // Predicates and properties on values and members
 
-
 type ValRef with
     /// Indicates if an F#-declared function or member value is a CLIEvent property compiled as a .NET event
     member x.IsFSharpEventProperty g =
@@ -422,13 +456,11 @@ let ReparentSlotSigToUseMethodTypars g m ovByMethValRef slotsig =
         // Note: it appears PartitionValRefTypars should never return 'None'
         slotsig
 
-
 /// Construct the data representing a parameter in the signature of an abstract method slot
 let MakeSlotParam (ty, argInfo: ArgReprInfo) = TSlotParam(Option.map textOfId argInfo.Name, ty, false, false, false, argInfo.Attribs)
 
 /// Construct the data representing the signature of an abstract method slot
 let MakeSlotSig (nm, ty, ctps, mtps, paraml, retTy) = copySlotSig (TSlotSig(nm, ty, ctps, mtps, paraml, retTy))
-
 
 /// Split the type of an F# member value into
 ///    - the type parameters associated with method but matching those of the enclosing type
@@ -436,7 +468,7 @@ let MakeSlotSig (nm, ty, ctps, mtps, paraml, retTy) = copySlotSig (TSlotSig(nm, 
 ///    - the return type of the method
 ///    - the actual type arguments of the enclosing type.
 let private AnalyzeTypeOfMemberVal isCSharpExt g (ty, vref: ValRef) =
-    let memberAllTypars, _, retTy, _ = GetTypeOfMemberInMemberForm g vref
+    let memberAllTypars, _, _, retTy, _ = GetTypeOfMemberInMemberForm g vref
     if isCSharpExt || vref.IsExtensionMember then
         [], memberAllTypars, retTy, []
     else
@@ -446,13 +478,15 @@ let private AnalyzeTypeOfMemberVal isCSharpExt g (ty, vref: ValRef) =
 
 /// Get the object type for a member value which is an extension method  (C#-style or F#-style)
 let private GetObjTypeOfInstanceExtensionMethod g (vref: ValRef) =
-    let _, curriedArgInfos, _, _ = GetTopValTypeInCompiledForm g vref.ValReprInfo.Value vref.Type vref.Range
+    let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal vref.Deref
+    let _, _, curriedArgInfos, _, _ = GetTopValTypeInCompiledForm g vref.ValReprInfo.Value numEnclosingTypars vref.Type vref.Range
     curriedArgInfos.Head.Head |> fst
 
-/// Get the object type for a member value which is a C#-style extension method
+/// Get the object type for a member value, which might be a C#-style extension method
 let private GetArgInfosOfMember isCSharpExt g (vref: ValRef) =
     if isCSharpExt then
-        let _, curriedArgInfos, _, _ = GetTopValTypeInCompiledForm g vref.ValReprInfo.Value vref.Type vref.Range
+        let numEnclosingTypars = CountEnclosingTyparsOfActualParentOfVal vref.Deref
+        let _, _, curriedArgInfos, _, _ = GetTopValTypeInCompiledForm g vref.ValReprInfo.Value numEnclosingTypars vref.Type vref.Range
         [ curriedArgInfos.Head.Tail ]
     else
         ArgInfosOfMember  g vref
@@ -501,8 +535,10 @@ type OptionalArgCallerSideValue =
 type OptionalArgInfo =
     /// The argument is not optional
     | NotOptional
+
     /// The argument is optional, and is an F# callee-side optional arg
     | CalleeSide
+
     /// The argument is optional, and is a caller-side .NET optional or default arg.
     /// Note this is correctly termed caller side, even though the default value is optically specified on the callee:
     /// in fact the default value is read from the metadata and passed explicitly to the callee on the caller side.
@@ -577,11 +613,15 @@ type ParamNameAndType =
 [<NoComparison; NoEquality>]
 /// Full information about a parameter returned for use by the type checker and language service.
 type ParamData =
-    ParamData of isParamArray: bool * isInArg: bool * isOut: bool * optArgInfo: OptionalArgInfo * callerInfo: CallerInfo * nameOpt: Ident option * reflArgInfo: ReflectedArgInfo * ttype: TType
-
-
-//-------------------------------------------------------------------------
-// Helper methods associated with type providers
+    ParamData of
+        isParamArray: bool *
+        isInArg: bool *
+        isOut: bool *
+        optArgInfo: OptionalArgInfo *
+        callerInfo: CallerInfo *
+        nameOpt: Ident option *
+        reflArgInfo: ReflectedArgInfo *
+        ttype: TType
 
 #if !NO_EXTENSIONTYPING
 
@@ -654,9 +694,6 @@ let ArbitraryMethodInfoOfPropertyInfo (pi: Tainted<ProvidedPropertyInfo>) m =
 #endif
 
 
-//-------------------------------------------------------------------------
-// ILTypeInfo
-
 /// Describes an F# use of an IL type, including the type instantiation associated with the type at a particular usage point.
 ///
 /// This is really just 1:1 with the subset ot TType which result from building types using IL type definitions.
@@ -708,20 +745,14 @@ type ILTypeInfo =
         else
             failwith "ILTypeInfo.FromType - no IL metadata for type"
 
-//-------------------------------------------------------------------------
-// ILMethInfo
-
-
 /// Describes an F# use of an IL method.
 [<NoComparison; NoEquality>]
 type ILMethInfo =
-    /// ILMethInfo(g, ilApparentType, ilDeclaringTyconRefOpt, ilMethodDef, ilGenericMethodTyArgs)
-    ///	
     /// Describes an F# use of an IL method.
     ///
     /// If ilDeclaringTyconRefOpt is 'Some' then this is an F# use of an C#-style extension method.
     /// If ilDeclaringTyconRefOpt is 'None' then ilApparentType is an IL type definition.
-    | ILMethInfo of TcGlobals * TType * TyconRef option  * ILMethodDef * Typars
+    | ILMethInfo of g: TcGlobals * ilApparentType: TType * ilDeclaringTyconRefOpt: TyconRef option  * ilMethodDef: ILMethodDef * ilGenericMethodTyArgs: Typars
 
     member x.TcGlobals = match x with ILMethInfo(g, _, _, _, _) -> g
 
@@ -866,32 +897,23 @@ type ILMethInfo =
         x.GetCompiledReturnTy(amap, m, minst)
         |> GetFSharpViewOfReturnType amap.g
 
-//-------------------------------------------------------------------------
-// MethInfo
 
-
-#if DEBUG
-[<System.Diagnostics.DebuggerDisplayAttribute("{DebuggerDisplayName}")>]
-#endif
 /// Describes an F# use of a method
+[<System.Diagnostics.DebuggerDisplayAttribute("{DebuggerDisplayName}")>]
 [<NoComparison; NoEquality>]
 type MethInfo =
-    /// FSMeth(tcGlobals, enclosingType, valRef, extensionMethodPriority).
-    ///
     /// Describes a use of a method declared in F# code and backed by F# metadata.
-    | FSMeth of TcGlobals * TType * ValRef  * ExtensionMethodPriority option
+    | FSMeth of tcGlobals: TcGlobals * enclosingType: TType * valRef: ValRef  * extensionMethodPriority: ExtensionMethodPriority option
 
-    /// ILMeth(tcGlobals, ilMethInfo, extensionMethodPriority).
-    ///
     /// Describes a use of a method backed by Abstract IL # metadata
-    | ILMeth of TcGlobals * ILMethInfo * ExtensionMethodPriority option
+    | ILMeth of tcGlobals: TcGlobals * ilMethInfo: ILMethInfo * extensionMethodPriority: ExtensionMethodPriority option
 
     /// Describes a use of a pseudo-method corresponding to the default constructor for a .NET struct type
-    | DefaultStructCtor of TcGlobals * TType
+    | DefaultStructCtor of tcGlobals: TcGlobals * structTy: TType
 
 #if !NO_EXTENSIONTYPING
     /// Describes a use of a method backed by provided metadata
-    | ProvidedMeth of Import.ImportMap * Tainted<ProvidedMethodBase> * ExtensionMethodPriority option  * range
+    | ProvidedMeth of amap: Import.ImportMap * methodBase: Tainted<ProvidedMethodBase> * extensionMethodPriority: ExtensionMethodPriority option * m: range
 #endif
 
     /// Get the enclosing type of the method info.
@@ -939,7 +961,6 @@ type MethInfo =
 #endif
         | DefaultStructCtor _ -> None
 
-
     /// Get the extension method priority of the method, if it has one.
     member x.ExtensionMemberPriorityOption =
         match x with
@@ -950,13 +971,12 @@ type MethInfo =
 #endif
         | DefaultStructCtor _ -> None
 
-     /// Get the extension method priority of the method. If it is not an extension method
-     /// then use the highest possible value since non-extension methods always take priority
-     /// over extension members.
+    /// Get the extension method priority of the method. If it is not an extension method
+    /// then use the highest possible value since non-extension methods always take priority
+    /// over extension members.
     member x.ExtensionMemberPriority = defaultArg x.ExtensionMemberPriorityOption System.UInt64.MaxValue
 
-#if DEBUG
-     /// Get the method name in DebuggerDisplayForm
+    /// Get the method name in DebuggerDisplayForm
     member x.DebuggerDisplayName =
         match x with
         | ILMeth(_, y, _) -> "ILMeth: " + y.ILName
@@ -965,9 +985,8 @@ type MethInfo =
         | ProvidedMeth(_, mi, _, m) -> "ProvidedMeth: " + mi.PUntaint((fun mi -> mi.Name), m)
 #endif
         | DefaultStructCtor _ -> ".ctor"
-#endif
 
-     /// Get the method name in LogicalName form, i.e. the name as it would be stored in .NET metadata
+    /// Get the method name in LogicalName form, i.e. the name as it would be stored in .NET metadata
     member x.LogicalName =
         match x with
         | ILMeth(_, y, _) -> y.ILName
@@ -1025,12 +1044,12 @@ type MethInfo =
         | ProvidedMeth _ -> [] // There will already have been an error if there are generic parameters here.
 #endif
 
-     /// Get the formal generic method parameters for the method as a list of variable types.
+    /// Get the formal generic method parameters for the method as a list of variable types.
     member x.FormalMethodInst = generalizeTypars x.FormalMethodTypars
 
     member x.FormalMethodTyparInst = mkTyparInst x.FormalMethodTypars x.FormalMethodInst
 
-     /// Get the XML documentation associated with the method
+    /// Get the XML documentation associated with the method
     member x.XmlDoc =
         match x with
         | ILMeth(_, _, _) -> XmlDoc.Empty
@@ -1038,7 +1057,8 @@ type MethInfo =
         | DefaultStructCtor _ -> XmlDoc.Empty
 #if !NO_EXTENSIONTYPING
         | ProvidedMeth(_, mi, _, m)->
-            XmlDoc (mi.PUntaint((fun mix -> (mix :> IProvidedCustomAttributeProvider).GetXmlDocAttributes(mi.TypeProvider.PUntaintNoFailure id)), m))
+            let lines = mi.PUntaint((fun mix -> (mix :> IProvidedCustomAttributeProvider).GetXmlDocAttributes(mi.TypeProvider.PUntaintNoFailure id)), m)
+            XmlDoc (lines, m)
 #endif
 
     /// Try to get an arbitrary F# ValRef associated with the member. This is to determine if the member is virtual, amongst other things.
@@ -1071,7 +1091,6 @@ type MethInfo =
         | ProvidedMeth(_, mi, _, m) -> mi.PUntaint((fun mi -> not mi.IsConstructor && not mi.IsStatic), m)
 #endif
 
-
     /// Get the number of generic method parameters for a method.
     /// For an extension method this includes all type parameters, even if it is extending a generic type.
     member x.GenericArity =  x.FormalMethodTypars.Length
@@ -1097,7 +1116,7 @@ type MethInfo =
     member x.IsConstructor =
         match x with
         | ILMeth(_, ilmeth, _) -> ilmeth.IsConstructor
-        | FSMeth(_g, _, vref, _) -> (vref.MemberInfo.Value.MemberFlags.MemberKind = MemberKind.Constructor)
+        | FSMeth(_g, _, vref, _) -> (vref.MemberInfo.Value.MemberFlags.MemberKind = SynMemberKind.Constructor)
         | DefaultStructCtor _ -> true
 #if !NO_EXTENSIONTYPING
         | ProvidedMeth(_, mi, _, m) -> mi.PUntaint((fun mi -> mi.IsConstructor), m)
@@ -1153,7 +1172,6 @@ type MethInfo =
 #endif
 
     member x.IsNewSlot =
-        isInterfaceTy x.TcGlobals x.ApparentEnclosingType  ||
         (x.IsVirtual &&
           (match x with
            | ILMeth(_, x, _) -> x.IsNewSlot
@@ -1162,6 +1180,12 @@ type MethInfo =
            | ProvidedMeth(_, mi, _, m) -> mi.PUntaint((fun mi -> mi.IsHideBySig), m) // REVIEW: Check this is correct
 #endif
            | DefaultStructCtor _ -> false))
+
+    /// Indicates if this is an IL method.
+    member x.IsILMethod =
+        match x with
+        | ILMeth _ -> true
+        | _ -> false
 
     /// Check if this method is an explicit implementation of an interface member
     member x.IsFSharpExplicitInterfaceImplementation =
@@ -1482,10 +1506,10 @@ type MethInfo =
         | ProvidedMeth(amap, mi, _, _) ->
             // A single group of tupled arguments
             [ [for p in mi.PApplyArray((fun mi -> mi.GetParameters()), "GetParameters", m) do
-                let isParamArrayArg = p.PUntaint((fun px -> (px :> IProvidedCustomAttributeProvider).GetAttributeConstructorArgs(p.TypeProvider.PUntaintNoFailure id, typeof<System.ParamArrayAttribute>.FullName).IsSome), m)
+                let isParamArrayArg = p.PUntaint((fun px -> (px :> IProvidedCustomAttributeProvider).GetAttributeConstructorArgs(p.TypeProvider.PUntaintNoFailure id, typeof<ParamArrayAttribute>.FullName).IsSome), m)
                 let optArgInfo =  OptionalArgInfoOfProvidedParameter amap m p
                 let reflArgInfo =
-                    match p.PUntaint((fun px -> (px :> IProvidedCustomAttributeProvider).GetAttributeConstructorArgs(p.TypeProvider.PUntaintNoFailure id, typeof<Microsoft.FSharp.Core.ReflectedDefinitionAttribute>.FullName)), m) with
+                    match p.PUntaint((fun px -> (px :> IProvidedCustomAttributeProvider).GetAttributeConstructorArgs(p.TypeProvider.PUntaintNoFailure id, typeof<ReflectedDefinitionAttribute>.FullName)), m) with
                     | Some ([ Some (:? bool as b) ], _) -> ReflectedArgInfo.Quote b
                     | Some _ -> ReflectedArgInfo.Quote false
                     | None -> ReflectedArgInfo.None
@@ -1493,8 +1517,6 @@ type MethInfo =
                 let isInArg = p.PUntaint((fun p -> p.IsIn && not p.IsOut), m)
                 yield (isParamArrayArg, isInArg, isOutArg, optArgInfo, NoCallerInfo, reflArgInfo)] ]
 #endif
-
-
 
     /// Get the signature of an abstract method slot.
     //
@@ -1507,7 +1529,8 @@ type MethInfo =
             | ValInRecScope false -> error(Error((FSComp.SR.InvalidRecursiveReferenceToAbstractSlot()), m))
             | _ -> ()
 
-            let allTyparsFromMethod, _, retTy, _ = GetTypeOfMemberInMemberForm g vref
+            let allTyparsFromMethod, _, _, retTy, _ = GetTypeOfMemberInMemberForm g vref
+
             // A slot signature is w.r.t. the type variables of the type it is associated with.
             // So we have to rename from the member type variables to the type variables of the type.
             let formalEnclosingTypars = x.ApparentEnclosingTyconRef.Typars m
@@ -1540,7 +1563,7 @@ type MethInfo =
                     let formalRetTy = ImportReturnTypeFromMetadata amap m ilminfo.RawMetadata.Return.Type ilminfo.RawMetadata.Return.CustomAttrs ftinfo.ILScopeRef ftinfo.TypeInstOfRawMetadata formalMethTyparTys
                     let formalParams =
                         [ [ for p in ilminfo.RawMetadata.Parameters do
-                                let paramType = ImportILTypeFromMetadata amap m ftinfo.ILScopeRef ftinfo.TypeInstOfRawMetadata formalMethTyparTys p.Type
+                                let paramType = ImportILTypeFromMetadataWithAttributes amap m ftinfo.ILScopeRef ftinfo.TypeInstOfRawMetadata formalMethTyparTys p.Type p.CustomAttrs
                                 yield TSlotParam(p.Name, paramType, p.IsIn, p.IsOut, p.IsOptional, []) ] ]
                     formalRetTy, formalParams
 #if !NO_EXTENSIONTYPING
@@ -1598,7 +1621,6 @@ type MethInfo =
     member x.HasParamArrayArg(amap, m, minst) =
         x.GetParamDatas(amap, m, minst) |> List.existsSquared (fun (ParamData(isParamArrayArg, _, _, _, _, _, _, _)) -> isParamArrayArg)
 
-
     /// Select all the type parameters of the declaring type of a method.
     ///
     /// For extension methods, no type parameters are returned, because all the
@@ -1623,18 +1645,14 @@ type MethInfo =
             if isByrefTy x.TcGlobals ty then Some ty
             else None)
 
-//-------------------------------------------------------------------------
-// ILFieldInfo
-
-
 /// Represents a single use of a IL or provided field from one point in an F# program
 [<NoComparison; NoEquality>]
 type ILFieldInfo =
      /// Represents a single use of a field backed by Abstract IL metadata
-    | ILFieldInfo of ILTypeInfo * ILFieldDef // .NET IL fields
+    | ILFieldInfo of ilTypeInfo: ILTypeInfo * ilFieldDef: ILFieldDef
 #if !NO_EXTENSIONTYPING
      /// Represents a single use of a field backed by provided metadata
-    | ProvidedField of Import.ImportMap * Tainted<ProvidedFieldInfo> * range
+    | ProvidedField of amap: Import.ImportMap * providedField: Tainted<ProvidedFieldInfo> * range: range
 #endif
 
     /// Get the enclosing ("parent"/"declaring") type of the field.
@@ -1766,7 +1784,7 @@ type ILFieldInfo =
 /// Describes an F# use of a field in an F#-declared record, class or struct type
 [<NoComparison; NoEquality>]
 type RecdFieldInfo =
-    | RecdFieldInfo of TypeInst * Tast.RecdFieldRef
+    | RecdFieldInfo of typeInst: TypeInst * recdFieldRef: RecdFieldRef
 
     /// Get the generic instantiation of the declaring type of the field
     member x.TypeInst = let (RecdFieldInfo(tinst, _)) = x in tinst
@@ -1803,7 +1821,7 @@ type RecdFieldInfo =
 /// Describes an F# use of a union case
 [<NoComparison; NoEquality>]
 type UnionCaseInfo =
-    | UnionCaseInfo of TypeInst * Tast.UnionCaseRef
+    | UnionCaseInfo of TypeInst * UnionCaseRef
 
     /// Get the list of types for the instantiation of the type parameters of the declaring type of the union case
     member x.TypeInst = let (UnionCaseInfo(tinst, _)) = x in tinst
@@ -1828,11 +1846,10 @@ type UnionCaseInfo =
 
     override x.ToString() = x.TyconRef.ToString() + "::" + x.Name
 
-
 /// Describes an F# use of a property backed by Abstract IL metadata
 [<NoComparison; NoEquality>]
 type ILPropInfo =
-    | ILPropInfo of ILTypeInfo * ILPropertyDef
+    | ILPropInfo of ilTypeInfo: ILTypeInfo * ilPropertyDef: ILPropertyDef
 
     /// Get the TcGlobals governing this value
     member x.TcGlobals = match x with ILPropInfo(tinfo, _) -> tinfo.TcGlobals
@@ -1908,18 +1925,18 @@ type ILPropInfo =
 
     override x.ToString() = x.ILTypeInfo.ToString() + "::" + x.PropertyName
 
-
-
 /// Describes an F# use of a property
 [<NoComparison; NoEquality>]
 type PropInfo =
     /// An F# use of a property backed by F#-declared metadata
-    | FSProp of TcGlobals * TType * ValRef option * ValRef option
+    | FSProp of tcGlobals: TcGlobals * apparentEnclTy: TType * getter: ValRef option * setter: ValRef option
+
     /// An F# use of a property backed by Abstract IL metadata
-    | ILProp of ILPropInfo
+    | ILProp of ilPropInfo: ILPropInfo
+
 #if !NO_EXTENSIONTYPING
     /// An F# use of a property backed by provided metadata
-    | ProvidedProp of Import.ImportMap * Tainted<ProvidedPropertyInfo> * range
+    | ProvidedProp of amap: Import.ImportMap * providedProp: Tainted<ProvidedPropertyInfo> * range: range
 #endif
 
     /// Get the enclosing type of the property.
@@ -1998,7 +2015,6 @@ type PropInfo =
         | ProvidedProp(_, pi, m) -> pi.PUntaint((fun pi -> pi.CanWrite), m)
 #endif
 
-
     /// Indicates if this is an extension member
     member x.IsExtensionMember =
         match x.ArbitraryValRef with
@@ -2031,7 +2047,6 @@ type PropInfo =
             let mi = ArbitraryMethodInfoOfPropertyInfo pi m
             mi.PUntaint((fun mi -> mi.IsHideBySig), m)
 #endif
-
 
     /// Indicates if the getter (or, if absent, the setter) for the property is a dispatch slot.
     // REVIEW: for IL properties this is getter OR setter. For F# properties it is getter ELSE setter
@@ -2074,7 +2089,6 @@ type PropInfo =
         | Some vref -> vref.IsFSharpExplicitInterfaceImplementation x.TcGlobals
         | None -> false
 
-
     /// Indicates if this property is an indexer property, i.e. a property with arguments.
     member x.IsIndexer =
         match x with
@@ -2109,14 +2123,13 @@ type PropInfo =
     ///
     /// Property infos can combine getters and setters, assuming they are consistent w.r.t. 'virtual', indexer argument types etc.
     /// When checking consistency we split these apart
-    member x.DropSetter =
+    member x.DropSetter() =
         match x with
         | FSProp(g, ty, Some vref, _)  -> FSProp(g, ty, Some vref, None)
         | _ -> x
 
-
     /// Return a new property info where there is no associated getter, only an associated setter.
-    member x.DropGetter =
+    member x.DropGetter() =
         match x with
         | FSProp(g, ty, _, Some vref)  -> FSProp(g, ty, None, Some vref)
         | _ -> x
@@ -2130,7 +2143,8 @@ type PropInfo =
         | FSProp(_, _, None, None) -> failwith "unreachable"
 #if !NO_EXTENSIONTYPING
         | ProvidedProp(_, pi, m) ->
-            XmlDoc (pi.PUntaint((fun pix -> (pix :> IProvidedCustomAttributeProvider).GetXmlDocAttributes(pi.TypeProvider.PUntaintNoFailure id)), m))
+            let lines = pi.PUntaint((fun pix -> (pix :> IProvidedCustomAttributeProvider).GetXmlDocAttributes(pi.TypeProvider.PUntaintNoFailure id)), m)
+            XmlDoc (lines, m)
 #endif
 
     /// Get the TcGlobals associated with the object
@@ -2147,7 +2161,6 @@ type PropInfo =
     /// For an extension property, this indicates if the property extends a struct type.
     member x.IsValueType = isStructTy x.TcGlobals x.ApparentEnclosingType
 
-
     /// Get the result type of the property
     member x.GetPropertyType (amap, m) =
         match x with
@@ -2163,7 +2176,6 @@ type PropInfo =
         | ProvidedProp(_, pi, m) ->
             Import.ImportProvidedType amap m (pi.PApply((fun pi -> pi.PropertyType), m))
 #endif
-
 
     /// Get the names and types of the indexer parameters associated with the property
     ///
@@ -2247,6 +2259,8 @@ type PropInfo =
         | ProvidedProp(_, pi, _) -> ProvidedPropertyInfo.TaintedGetHashCode pi
 #endif
 
+    override x.ToString() = "property " + x.PropertyName
+
 //-------------------------------------------------------------------------
 // ILEventInfo
 
@@ -2254,7 +2268,7 @@ type PropInfo =
 /// Describes an F# use of an event backed by Abstract IL metadata
 [<NoComparison; NoEquality>]
 type ILEventInfo =
-    | ILEventInfo of ILTypeInfo * ILEventDef
+    | ILEventInfo of ilTypeInfo: ILTypeInfo * ilEventDef: ILEventDef
 
     /// Get the enclosing ("parent"/"declaring") type of the field.
     member x.ApparentEnclosingType = match x with ILEventInfo(tinfo, _) -> tinfo.ToType
@@ -2330,12 +2344,14 @@ let FindDelegateTypeOfPropertyEvent g amap nm m ty =
 [<NoComparison; NoEquality>]
 type EventInfo =
     /// An F# use of an event backed by F#-declared metadata
-    | FSEvent of TcGlobals * PropInfo * ValRef * ValRef
+    | FSEvent of tcGlobals: TcGlobals * propInfo: PropInfo * addMethod: ValRef * removeMethod: ValRef
+
     /// An F# use of an event backed by .NET metadata
-    | ILEvent of ILEventInfo
+    | ILEvent of ilEventInfo: ILEventInfo
+
 #if !NO_EXTENSIONTYPING
     /// An F# use of an event backed by provided metadata
-    | ProvidedEvent of Import.ImportMap * Tainted<ProvidedEventInfo> * range
+    | ProvidedEvent of amap: Import.ImportMap * providedEvent: Tainted<ProvidedEventInfo> * range: range
 #endif
 
     /// Get the enclosing type of the event.
@@ -2365,7 +2381,6 @@ type EventInfo =
         | Some vref when x.IsExtensionMember && vref.HasDeclaringEntity -> vref.TopValDeclaringEntity
         | _ -> x.ApparentEnclosingTyconRef
 
-
     /// Indicates if this event has an associated XML comment authored in this assembly.
     member x.HasDirectXmlComment =
         match x with
@@ -2382,7 +2397,8 @@ type EventInfo =
         | FSEvent (_, p, _, _) -> p.XmlDoc
 #if !NO_EXTENSIONTYPING
         | ProvidedEvent (_, ei, m) ->
-            XmlDoc (ei.PUntaint((fun eix -> (eix :> IProvidedCustomAttributeProvider).GetXmlDocAttributes(ei.TypeProvider.PUntaintNoFailure id)), m))
+            let lines = ei.PUntaint((fun eix -> (eix :> IProvidedCustomAttributeProvider).GetXmlDocAttributes(ei.TypeProvider.PUntaintNoFailure id)), m)
+            XmlDoc (lines, m)
 #endif
 
     /// Get the logical name of the event.
@@ -2472,7 +2488,6 @@ type EventInfo =
             Import.ImportProvidedType amap m (ei.PApply((fun ei -> ei.EventHandlerType), m))
 #endif
 
-
     /// Test whether two event infos have the same underlying definition.
     /// Must be compatible with ItemsAreEffectivelyEqual relation.
     static member EventInfosUseIdenticalDefinitions x1 x2 =
@@ -2494,6 +2509,7 @@ type EventInfo =
 #if !NO_EXTENSIONTYPING
         | ProvidedEvent (_, ei, _) -> ProvidedEventInfo.TaintedGetHashCode ei
 #endif
+    override x.ToString() = "event " + x.EventName
 
 //-------------------------------------------------------------------------
 // Helpers associated with getting and comparing method signatures
@@ -2505,7 +2521,7 @@ let stripByrefTy g ty =
 
 /// Represents the information about the compiled form of a method signature. Used when analyzing implementation
 /// relations between members and abstract slots.
-type CompiledSig = CompiledSig  of TType list list * TType option * Typars * TyparInst
+type CompiledSig = CompiledSig of argTys: TType list list * returnTy: TType option * formalMethTypars: Typars * formalMethTyparInst: TyparInst
 
 /// Get the information about the compiled form of a method signature. Used when analyzing implementation
 /// relations between members and abstract slots.
@@ -2525,10 +2541,8 @@ let CompiledSigOfMeth g amap m (minfo: MethInfo) =
 
     CompiledSig(vargtys, vrty, formalMethTypars, fmtpinst)
 
-/// Used to hide/filter members from super classes based on signature
 /// Inref and outref parameter types will be treated as a byref type for equivalency.
-let MethInfosEquivByNameAndPartialSig erasureFlag ignoreFinal g amap m (minfo: MethInfo) (minfo2: MethInfo) =
-    (minfo.LogicalName = minfo2.LogicalName) &&
+let MethInfosEquivByPartialSig erasureFlag ignoreFinal g amap m (minfo: MethInfo) (minfo2: MethInfo) =
     (minfo.GenericArity = minfo2.GenericArity) &&
     (ignoreFinal || minfo.IsFinal = minfo2.IsFinal) &&
     let formalMethTypars = minfo.FormalMethodTypars
@@ -2541,13 +2555,19 @@ let MethInfosEquivByNameAndPartialSig erasureFlag ignoreFinal g amap m (minfo: M
         typeAEquivAux erasureFlag g (TypeEquivEnv.FromEquivTypars formalMethTypars formalMethTypars2) (stripByrefTy g ty1) (stripByrefTy g ty2)))
 
 /// Used to hide/filter members from super classes based on signature
+/// Inref and outref parameter types will be treated as a byref type for equivalency.
+let MethInfosEquivByNameAndPartialSig erasureFlag ignoreFinal g amap m (minfo: MethInfo) (minfo2: MethInfo) =
+    (minfo.LogicalName = minfo2.LogicalName) &&
+    MethInfosEquivByPartialSig erasureFlag ignoreFinal g amap m minfo minfo2
+
+/// Used to hide/filter members from base classes based on signature
 let PropInfosEquivByNameAndPartialSig erasureFlag g amap m (pinfo: PropInfo) (pinfo2: PropInfo) =
     pinfo.PropertyName = pinfo2.PropertyName &&
     let argtys = pinfo.GetParamTypes(amap, m)
     let argtys2 = pinfo2.GetParamTypes(amap, m)
     List.lengthsEqAndForall2 (typeEquivAux erasureFlag g) argtys argtys2
 
-/// Used to hide/filter members from super classes based on signature
+/// Used to hide/filter members from base classes based on signature
 let MethInfosEquivByNameAndSig erasureFlag ignoreFinal g amap m minfo minfo2 =
     MethInfosEquivByNameAndPartialSig erasureFlag ignoreFinal g amap m minfo minfo2 &&
     let (CompiledSig(_, retTy, formalMethTypars, _)) = CompiledSigOfMeth g amap m minfo
@@ -2565,5 +2585,5 @@ let PropInfosEquivByNameAndSig erasureFlag g amap m (pinfo: PropInfo) (pinfo2: P
     typeEquivAux erasureFlag g retTy retTy2
 
 let SettersOfPropInfos (pinfos: PropInfo list) = pinfos |> List.choose (fun pinfo -> if pinfo.HasSetter then Some(pinfo.SetterMethod, Some pinfo) else None)
-let GettersOfPropInfos (pinfos: PropInfo list) = pinfos |> List.choose (fun pinfo -> if pinfo.HasGetter then Some(pinfo.GetterMethod, Some pinfo) else None)
 
+let GettersOfPropInfos (pinfos: PropInfo list) = pinfos |> List.choose (fun pinfo -> if pinfo.HasGetter then Some(pinfo.GetterMethod, Some pinfo) else None)

@@ -6,29 +6,37 @@ module internal FSharp.Compiler.SignatureConformance
 
 open System.Text
 
+open Internal.Utilities.Collections
+open Internal.Utilities.Library 
+open Internal.Utilities.Library.Extras
 open FSharp.Compiler 
-open FSharp.Compiler.AbstractIL.Internal 
-open FSharp.Compiler.AbstractIL.Internal.Library 
-open FSharp.Compiler.Range
-open FSharp.Compiler.Ast
+open FSharp.Compiler.AbstractIL 
 open FSharp.Compiler.ErrorLogger
-open FSharp.Compiler.Tast
-open FSharp.Compiler.Tastops
-open FSharp.Compiler.Lib
 open FSharp.Compiler.Infos
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.SyntaxTreeOps
+open FSharp.Compiler.Text
+open FSharp.Compiler.Text.Range
+open FSharp.Compiler.Text
+open FSharp.Compiler.TypedTree
+open FSharp.Compiler.TypedTreeBasics
+open FSharp.Compiler.TypedTreeOps
 
 #if !NO_EXTENSIONTYPING
 open FSharp.Compiler.ExtensionTyping
 #endif
 
+exception RequiredButNotSpecified of DisplayEnv * ModuleOrNamespaceRef * string * (StringBuilder -> unit) * range
 
-exception RequiredButNotSpecified of DisplayEnv * Tast.ModuleOrNamespaceRef * string * (StringBuilder -> unit) * range
-exception ValueNotContained       of DisplayEnv * Tast.ModuleOrNamespaceRef * Val * Val * (string * string * string -> string)
-exception ConstrNotContained      of DisplayEnv * UnionCase * UnionCase * (string * string -> string)
-exception ExnconstrNotContained   of DisplayEnv * Tycon * Tycon * (string * string -> string)
-exception FieldNotContained       of DisplayEnv * RecdField * RecdField * (string * string -> string)
-exception InterfaceNotRevealed    of DisplayEnv * TType * range
+exception ValueNotContained of DisplayEnv * ModuleOrNamespaceRef * Val * Val * (string * string * string -> string)
 
+exception ConstrNotContained of DisplayEnv * UnionCase * UnionCase * (string * string -> string)
+
+exception ExnconstrNotContained of DisplayEnv * Tycon * Tycon * (string * string -> string)
+
+exception FieldNotContained of DisplayEnv * RecdField * RecdField * (string * string -> string)
+
+exception InterfaceNotRevealed of DisplayEnv * TType * range
 
 // Use a type to capture the constant, common parameters 
 type Checker(g, amap, denv, remapInfo: SignatureRepackageInfo, checkingSig) = 
@@ -131,7 +139,7 @@ type Checker(g, amap, denv, remapInfo: SignatureRepackageInfo, checkingSig) =
                       | TyparConstraint.DefaultsTo(_, _acty, _) -> true
                       | _ -> 
                           if not (List.exists  (typarConstraintsAEquiv g aenv implTyparCx) sigTypar.Constraints)
-                          then (errorR(Error(FSComp.SR.typrelSigImplNotCompatibleConstraintsDiffer(sigTypar.Name, Layout.showL(NicePrint.layoutTyparConstraint denv (implTypar, implTyparCx))), m)); false)
+                          then (errorR(Error(FSComp.SR.typrelSigImplNotCompatibleConstraintsDiffer(sigTypar.Name, LayoutRender.showL(NicePrint.layoutTyparConstraint denv (implTypar, implTyparCx))), m)); false)
                           else  true) &&
 
                   // Check the constraints in the signature are present in the implementation
@@ -144,7 +152,7 @@ type Checker(g, amap, denv, remapInfo: SignatureRepackageInfo, checkingSig) =
                       | TyparConstraint.SupportsEquality _ -> true
                       | _ -> 
                           if not (List.exists  (fun implTyparCx -> typarConstraintsAEquiv g aenv implTyparCx sigTyparCx) implTypar.Constraints) then
-                              (errorR(Error(FSComp.SR.typrelSigImplNotCompatibleConstraintsDifferRemove(sigTypar.Name, Layout.showL(NicePrint.layoutTyparConstraint denv (sigTypar, sigTyparCx))), m)); false)
+                              (errorR(Error(FSComp.SR.typrelSigImplNotCompatibleConstraintsDifferRemove(sigTypar.Name, LayoutRender.showL(NicePrint.layoutTyparConstraint denv (sigTypar, sigTyparCx))), m)); false)
                           else  
                               true) &&
                   (not checkingSig || checkAttribs aenv implTypar.Attribs sigTypar.Attribs (fun attribs -> implTypar.SetAttribs attribs)))
@@ -400,14 +408,6 @@ type Checker(g, amap, denv, remapInfo: SignatureRepackageInfo, checkingSig) =
 
             | _ -> false
 
-        // -------------------------------------------------------------------------------
-        // WARNING!!!!
-        // checkRecordFields and checkRecordFieldsForExn are the EXACT SAME FUNCTION.
-        // The only difference is the signature for err - this is because err is a function
-        // that reports errors, and checkRecordFields is called with a different
-        // sig for err then checkRecordFieldsForExn.
-        // -------------------------------------------------------------------------------
-
         and checkRecordFields m aenv (implTycon: Tycon) (implFields: TyconRecdFields) (sigFields: TyconRecdFields) =
             let implFields = implFields.TrueFieldsAsList
             let sigFields = sigFields.TrueFieldsAsList
@@ -637,10 +637,10 @@ type Checker(g, amap, denv, remapInfo: SignatureRepackageInfo, checkingSig) =
             checkModuleOrNamespaceContents implModRef.Range aenv implModRef sigModRef.ModuleOrNamespaceType &&
             checkAttribs aenv implModRef.Attribs sigModRef.Attribs implModRef.Deref.SetAttribs
 
-        member __.CheckSignature aenv (implModRef: ModuleOrNamespaceRef) (signModType: ModuleOrNamespaceType) = 
+        member _.CheckSignature aenv (implModRef: ModuleOrNamespaceRef) (signModType: ModuleOrNamespaceType) = 
             checkModuleOrNamespaceContents implModRef.Range aenv implModRef signModType
 
-        member __.CheckTypars m aenv (implTypars: Typars) (signTypars: Typars) = 
+        member _.CheckTypars m aenv (implTypars: Typars) (signTypars: Typars) = 
             checkTypars m aenv implTypars signTypars
 
 

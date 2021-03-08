@@ -8,18 +8,24 @@ namespace Microsoft.VisualStudio.FSharp.LanguageService
 
 open System
 open System.Collections.Generic
+open System.Collections.Immutable
 open Microsoft.VisualStudio
 open Microsoft.VisualStudio.Shell.Interop 
 open Microsoft.VisualStudio.TextManager.Interop 
 open Microsoft.VisualStudio.Text
 open Microsoft.VisualStudio.OLE.Interop
 open FSharp.Compiler
-open FSharp.Compiler.Range
-open FSharp.Compiler.SourceCodeServices
-
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Syntax
+open FSharp.Compiler.Text
+open FSharp.Compiler.Text
+open FSharp.Compiler.Tokenization
 
 module internal TaggedText =
-    let appendTo (sb: System.Text.StringBuilder) (t: Layout.TaggedText) = sb.Append t.Text |> ignore 
+    let appendTo (sb: System.Text.StringBuilder) (t: TaggedText) = sb.Append t.Text |> ignore 
+    let toString (tts: TaggedText[]) =
+        tts |> Array.map (fun tt -> tt.Text) |> String.concat ""
  
 // Note: DEPRECATED CODE ONLY ACTIVE IN UNIT TESTING VIA "UNROSLYNIZED" UNIT TESTS. 
 //
@@ -28,19 +34,19 @@ module internal TaggedText =
 // functionality and thus have considerable value, they should ony be deleted if we are sure this 
 // is not the case.
 //
-type internal FSharpMethodListForAMethodTip_DEPRECATED(documentationBuilder: IDocumentationBuilder_DEPRECATED, methodsName, methods: FSharpMethodGroupItem[], nwpl: FSharpNoteworthyParamInfoLocations, snapshot: ITextSnapshot, isThisAStaticArgumentsTip: bool) =
+type internal FSharpMethodListForAMethodTip_DEPRECATED(documentationBuilder: IDocumentationBuilder_DEPRECATED, methodsName, methods: MethodGroupItem[], nwpl: ParameterLocations, snapshot: ITextSnapshot, isThisAStaticArgumentsTip: bool) =
     inherit MethodListForAMethodTip_DEPRECATED() 
 
     // Compute the tuple end points
     let tupleEnds = 
-        let oneColAfter ((l,c): Pos01) = (l,c+1)
-        let oneColBefore ((l,c): Pos01) = (l,c-1)
-        [| yield Pos.toZ nwpl.LongIdStartLocation
-           yield Pos.toZ nwpl.LongIdEndLocation
-           yield oneColAfter (Pos.toZ nwpl.OpenParenLocation)
+        let oneColAfter ((l,c): Position01) = (l,c+1)
+        let oneColBefore ((l,c): Position01) = (l,c-1)
+        [| yield Position.toZ nwpl.LongIdStartLocation
+           yield Position.toZ nwpl.LongIdEndLocation
+           yield oneColAfter (Position.toZ nwpl.OpenParenLocation)
            for i in 0..nwpl.TupleEndLocations.Length-2 do
-                yield Pos.toZ nwpl.TupleEndLocations.[i]
-           let last = Pos.toZ nwpl.TupleEndLocations.[nwpl.TupleEndLocations.Length-1]
+                yield Position.toZ nwpl.TupleEndLocations.[i]
+           let last = Position.toZ nwpl.TupleEndLocations.[nwpl.TupleEndLocations.Length-1]
            yield if nwpl.IsThereACloseParen then oneColBefore last else last  |]
 
     let safe i dflt f = if 0 <= i && i < methods.Length then f methods.[i] else dflt
@@ -52,7 +58,7 @@ type internal FSharpMethodListForAMethodTip_DEPRECATED(documentationBuilder: IDo
                 let span = ss.CreateTrackingSpan(MakeSpan(ss,sl,sc,el,ec), SpanTrackingMode.EdgeInclusive)
                 yield span  |]
 
-    let getParameters (m : FSharpMethodGroupItem) =  if isThisAStaticArgumentsTip then m.StaticParameters else m.Parameters
+    let getParameters (m : MethodGroupItem) =  if isThisAStaticArgumentsTip then m.StaticParameters else m.Parameters
 
     do assert(methods.Length > 0)
 
@@ -60,7 +66,7 @@ type internal FSharpMethodListForAMethodTip_DEPRECATED(documentationBuilder: IDo
 
     override x.IsThereACloseParen() = nwpl.IsThereACloseParen
 
-    override x.GetNoteworthyParamInfoLocations() = tupleEnds
+    override x.GetParameterLocations() = tupleEnds
 
     override x.GetParameterNames() = nwpl.NamedParamNames |> Array.map Option.toObj
 
@@ -70,16 +76,16 @@ type internal FSharpMethodListForAMethodTip_DEPRECATED(documentationBuilder: IDo
 
     override x.GetDescription(methodIndex) = safe methodIndex "" (fun m -> 
         let buf = Text.StringBuilder()
-        XmlDocumentation.BuildMethodOverloadTipText_DEPRECATED(documentationBuilder, TaggedText.appendTo buf, TaggedText.appendTo buf, m.StructuredDescription, true)
+        XmlDocumentation.BuildMethodOverloadTipText_DEPRECATED(documentationBuilder, TaggedText.appendTo buf, TaggedText.appendTo buf, m.Description, true)
         buf.ToString()
         )
             
-    override x.GetReturnTypeText(methodIndex) = safe methodIndex "" (fun m -> m.ReturnTypeText)
+    override x.GetReturnTypeText(methodIndex) = safe methodIndex "" (fun m -> m.ReturnTypeText |> TaggedText.toString)
 
     override x.GetParameterCount(methodIndex) =  safe methodIndex 0 (fun m -> getParameters(m).Length)
             
     override x.GetParameterInfo(methodIndex, parameterIndex, nameOut, displayOut, descriptionOut) =
-        let name,display = safe methodIndex ("","") (fun m -> let p = getParameters(m).[parameterIndex] in p.ParameterName, p.Display )
+        let name,display = safe methodIndex ("","") (fun m -> let p = getParameters(m).[parameterIndex] in p.ParameterName, TaggedText.toString p.Display )
            
         nameOut <- name
         displayOut <- display
@@ -116,7 +122,7 @@ type internal ObsoleteGlyph =
 // functionality and thus have considerable value, they should ony be deleted if we are sure this 
 // is not the case.
 //
-type internal FSharpDeclarations_DEPRECATED(documentationBuilder, declarations: FSharpDeclarationListItem[], reason: BackgroundRequestReason) = 
+type internal FSharpDeclarations_DEPRECATED(documentationBuilder, declarations: DeclarationListItem[], reason: BackgroundRequestReason) = 
         
     inherit Declarations_DEPRECATED()  
 
@@ -125,7 +131,7 @@ type internal FSharpDeclarations_DEPRECATED(documentationBuilder, declarations: 
     let mutable lastBestMatch = ""
     let isEmpty = (declarations.Length = 0)
 
-    let tab = Dictionary<string,FSharpDeclarationListItem[]>()
+    let tab = Dictionary<string,DeclarationListItem[]>()
 
     // Given a prefix, narrow the items to the include the ones containing that prefix, and store in a lookaside table
     // attached to this declaration set.
@@ -183,7 +189,7 @@ type internal FSharpDeclarations_DEPRECATED(documentationBuilder, declarations: 
         let decls = trimmedDeclarations filterText
         if (index >= 0 && index < decls.Length) then
             let buf = Text.StringBuilder()
-            XmlDocumentation.BuildDataTipText_DEPRECATED(documentationBuilder, TaggedText.appendTo buf, TaggedText.appendTo buf, decls.[index].StructuredDescriptionText) 
+            XmlDocumentation.BuildDataTipText_DEPRECATED(documentationBuilder, TaggedText.appendTo buf, TaggedText.appendTo buf, decls.[index].Description) 
             buf.ToString()
         else ""
 
@@ -224,7 +230,7 @@ type internal FSharpDeclarations_DEPRECATED(documentationBuilder, declarations: 
         // We intercept this call only to get the initial extent
         // of what was committed to the source buffer.
         let result = decl.GetName(filterText, index)
-        Keywords.QuoteIdentifierIfNeeded result
+        FSharpKeywords.QuoteIdentifierIfNeeded result
 
     override decl.IsCommitChar(commitCharacter) =
         // Usual language identifier rules...
@@ -314,7 +320,7 @@ type internal FSharpIntellisenseInfo_DEPRECATED
           if provideMethodList then 
             try
                 // go ahead and compute this now, on this background thread, so will have info ready when UI thread asks
-                let noteworthyParamInfoLocations = untypedResults.FindNoteworthyParamInfoLocations(Range.Pos.fromZ brLine brCol)
+                let noteworthyParamInfoLocations = untypedResults.FindParameterLocations(Position.fromZ brLine brCol)
 
                 // we need some typecheck info, even if stale, in order to look up e.g. method overload types/xmldocs
                 if typedResults.HasFullTypeCheckInfo then 
@@ -329,7 +335,7 @@ type internal FSharpIntellisenseInfo_DEPRECATED
                         // This can happen e.g. if you are typing quickly and the typecheck results are stale enough that you don't have a captured resolution for
                         // the name you just typed, but fresh enough that you do have the right name-resolution-environment to look up the name.
                         let lidEnd = nwpl.LongIdEndLocation
-                        let methods = typedResults.GetMethods(lidEnd.Line, lidEnd.Column, "", Some names)  |> Async.RunSynchronously
+                        let methods = typedResults.GetMethods(lidEnd.Line, lidEnd.Column, "", Some names)
                         
                         // If the name is an operator ending with ">" then it is a mistake 
                         // we can't tell whether "  >(" is a generic method call or an operator use 
@@ -344,7 +350,7 @@ type internal FSharpIntellisenseInfo_DEPRECATED
                             // both point to the same longId.  However we can look at the character at the 'OpenParen' location and see if it is a '(' or a '<' and then
                             // filter the "methods" list accordingly.
                             let isThisAStaticArgumentsTip =
-                                let parenLine, parenCol = Pos.toZ nwpl.OpenParenLocation 
+                                let parenLine, parenCol = Position.toZ nwpl.OpenParenLocation 
                                 let textAtOpenParenLocation =
                                     if brSnapshot=null then
                                         // we are unit testing, use the view
@@ -376,41 +382,6 @@ type internal FSharpIntellisenseInfo_DEPRECATED
                 Assert.Exception(e)
                 reraise()
           else None
-
-        let hasTextChangedSinceLastTypecheck (curTextSnapshot: ITextSnapshot, oldTextSnapshot: ITextSnapshot, ((sl:int,sc:int),(el:int,ec:int))) = 
-            // compare the text from (sl,sc) to (el,ec) to see if it changed from the old snapshot to the current one
-            // (sl,sc)-(el,ec) are line/col positions in the current snapshot
-            if el >= oldTextSnapshot.LineCount then
-                true  // old did not even have 'el' many lines, note 'el' is zero-based
-            else
-                assert(el < curTextSnapshot.LineCount)
-                let oldFirstLine = oldTextSnapshot.GetLineFromLineNumber sl  
-                let oldLastLine = oldTextSnapshot.GetLineFromLineNumber el
-                if oldFirstLine.Length < sc || oldLastLine.Length < ec then
-                    true  // one of old lines was not even long enough to contain the position we're looking at
-                else
-                    let posOfStartInOld = oldFirstLine.Start.Position + sc
-                    let posOfEndInOld = oldLastLine.Start.Position + ec
-                    let curFirstLine = curTextSnapshot.GetLineFromLineNumber sl  
-                    let curLastLine = curTextSnapshot.GetLineFromLineNumber el  
-                    assert(curFirstLine.Length >= sc)
-                    assert(curLastLine.Length >= ec)
-                    let posOfStartInCur = curFirstLine.Start.Position + sc
-                    let posOfEndInCur = curLastLine.Start.Position + ec
-                    if posOfEndInCur - posOfStartInCur <> posOfEndInOld - posOfStartInOld then
-                        true  // length of text between two endpoints changed
-                    else
-                        let mutable oldPos = posOfStartInOld
-                        let mutable curPos = posOfStartInCur
-                        let mutable ok = true
-                        while ok && oldPos < posOfEndInOld do
-                            let oldChar = oldTextSnapshot.[oldPos]
-                            let curChar = curTextSnapshot.[curPos]
-                            if oldChar <> curChar then
-                                ok <- false
-                            oldPos <- oldPos + 1
-                            curPos <- curPos + 1
-                        not ok
 
         /// Implements the corresponding abstract member from IntellisenseInfo in MPF.
         override scope.GetDataTipText(line, col) =
@@ -453,10 +424,10 @@ type internal FSharpIntellisenseInfo_DEPRECATED
                                                 
                             // Correct the identifier (e.g. to correctly handle active pattern names that end with "BAR" token)
                             let tokenTag = QuickParse.CorrectIdentifierToken s tokenTag
-                            let dataTip = typedResults.GetStructuredToolTipText(Range.Line.fromZ line, colAtEndOfNames, lineText, qualId, tokenTag) |> Async.RunSynchronously
+                            let dataTip = typedResults.GetToolTip(Line.fromZ line, colAtEndOfNames, lineText, qualId, tokenTag)
 
                             match dataTip with
-                            | FSharpStructuredToolTipText.FSharpToolTipText [] when makeSecondAttempt -> getDataTip true
+                            | ToolTipText.ToolTipText [] when makeSecondAttempt -> getDataTip true
                             | _ -> 
                                 let buf = Text.StringBuilder()
                                 XmlDocumentation.BuildDataTipText_DEPRECATED(documentationBuilder, TaggedText.appendTo buf, TaggedText.appendTo buf, dataTip)
@@ -484,11 +455,11 @@ type internal FSharpIntellisenseInfo_DEPRECATED
             | BackgroundRequestReason.MethodTip // param info...
             | BackgroundRequestReason.MatchBracesAndMethodTip // param info...
             | BackgroundRequestReason.CompleteWord | BackgroundRequestReason.MemberSelect | BackgroundRequestReason.DisplayMemberList // and intellisense-completion...
-                -> true // ...require a sync parse (so as to call FindNoteworthyParamInfoLocations and GetRangeOfExprLeftOfDot, respectively)
+                -> true // ...require a sync parse (so as to call FindParameterLocations and GetRangeOfExprLeftOfDot, respectively)
             | _ -> false
 
         /// Implements the corresponding abstract member from IntellisenseInfo in MPF.
-        override scope.GetDeclarations(textSnapshot, line, col, reason) =
+        override scope.GetDeclarations(_textSnapshot, line, col, reason) =
             assert(FSharpIntellisenseInfo_DEPRECATED.IsReasonRequiringSyncParse(reason))
             async {
                 try
@@ -531,11 +502,7 @@ type internal FSharpIntellisenseInfo_DEPRECATED
                             let pname = QuickParse.GetPartialLongNameEx(lineText, col-1) 
                             let _x = 1 // for breakpoint
 
-                            let detectTextChange (oldTextSnapshotInfo: obj, range) = 
-                                let oldTextSnapshot = oldTextSnapshotInfo :?> ITextSnapshot
-                                hasTextChangedSinceLastTypecheck (textSnapshot, oldTextSnapshot, Range.Range.toZ range)
-
-                            let! decls = typedResults.GetDeclarationListInfo(untypedParseInfoOpt, Range.Line.fromZ line, lineText, pname, (fun() -> []), detectTextChange) 
+                            let decls = typedResults.GetDeclarationListInfo(untypedParseInfoOpt, Line.fromZ line, lineText, pname, (fun() -> [])) 
                             return (new FSharpDeclarations_DEPRECATED(documentationBuilder, decls.Items, reason) :> Declarations_DEPRECATED) 
                     else
                         // no TypeCheckInfo in ParseResult.
@@ -595,7 +562,7 @@ type internal FSharpIntellisenseInfo_DEPRECATED
                                     |   Some(s,colAtEndOfNames, _) ->
                                             if typedResults.HasFullTypeCheckInfo then 
                                                 let qualId = PrettyNaming.GetLongNameFromString s
-                                                match typedResults.GetF1Keyword(Range.Line.fromZ line,colAtEndOfNames, lineText, qualId) |> Async.RunSynchronously with
+                                                match typedResults.GetF1Keyword(Line.fromZ line,colAtEndOfNames, lineText, qualId) with
                                                 | Some s -> Some s
                                                 | None -> None 
                                             else None                           

@@ -1,5 +1,5 @@
 
-//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.6.1055.0
+//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.8.3928.0
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 
 
@@ -13,11 +13,16 @@
 .assembly extern FSharp.Core
 {
   .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A )                         // .?_....:
-  .ver 4:5:0:0
+  .ver 5:0:0:0
 }
 .assembly extern Utils
 {
   .ver 0:0:0:0
+}
+.assembly extern netstandard
+{
+  .publickeytoken = (CC 7B 13 FF CD 2D DD 51 )                         // .{...-.Q
+  .ver 2:0:0:0
 }
 .assembly Linq101Select01
 {
@@ -33,20 +38,20 @@
 }
 .mresource public FSharpSignatureData.Linq101Select01
 {
-  // Offset: 0x00000000 Length: 0x00000663
+  // Offset: 0x00000000 Length: 0x00000643
 }
 .mresource public FSharpOptimizationData.Linq101Select01
 {
-  // Offset: 0x00000668 Length: 0x00000204
+  // Offset: 0x00000648 Length: 0x00000204
 }
 .module Linq101Select01.exe
-// MVID: {5B9A632A-6057-8F80-A745-03832A639A5B}
+// MVID: {5FCFFD0D-6057-8F80-A745-03830DFDCF5F}
 .imagebase 0x00400000
 .file alignment 0x00000200
 .stackreserve 0x00100000
 .subsystem 0x0003       // WINDOWS_CUI
 .corflags 0x00000001    //  ILONLY
-// Image base: 0x00FF0000
+// Image base: 0x053E0000
 
 
 // =============== CLASS MEMBERS DECLARATION ===================
@@ -58,6 +63,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'numsPlusOne@12-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<int32,class [mscorlib]System.Collections.Generic.IEnumerable`1<int32>>
   {
+    .field static assembly initonly class Linq101Select01/'numsPlusOne@12-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -77,7 +83,7 @@
       .maxstack  5
       .locals init ([0] int32 n)
       .language '{AB4F38C9-B6E6-43BA-BE3B-58080B2CCCE3}', '{994B45C4-E6E9-11D2-903F-00C04FA302A1}', '{5A869D0B-6611-11D3-BD2A-0000F80849BD}'
-      .line 12,12 : 9,28 'C:\\GitHub\\dsyme\\visualfsharp\\tests\\fsharpqa\\Source\\CodeGen\\EmittedIL\\QueryExpressionStepping\\Linq101Select01.fs'
+      .line 12,12 : 9,28 'C:\\GitHub\\dsyme\\fsharp\\tests\\fsharpqa\\source\\CodeGen\\EmittedIL\\QueryExpressionStepping\\Linq101Select01.fs'
       IL_0000:  ldarg.1
       IL_0001:  stloc.0
       .line 13,13 : 9,23 ''
@@ -86,6 +92,16 @@
       IL_0005:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Singleton<int32>(!!0)
       IL_000a:  ret
     } // end of method 'numsPlusOne@12-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'numsPlusOne@12-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'numsPlusOne@12-1' Linq101Select01/'numsPlusOne@12-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'numsPlusOne@12-1'::.cctor
 
   } // end of class 'numsPlusOne@12-1'
 
@@ -165,7 +181,7 @@
       IL_002a:  nop
       .line 13,13 : 9,23 ''
       IL_002b:  ldarg.0
-      IL_002c:  newobj     instance void Linq101Select01/'numsPlusOne@12-1'::.ctor()
+      IL_002c:  ldsfld     class Linq101Select01/'numsPlusOne@12-1' Linq101Select01/'numsPlusOne@12-1'::@_instance
       IL_0031:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> Linq101Select01::get_numbers()
       IL_0036:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!2> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Collect<int32,class [mscorlib]System.Collections.Generic.IEnumerable`1<int32>,int32>(class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,
                                                                                                                                                                                                                                    class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
@@ -423,6 +439,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'productNames@21-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Product,class [mscorlib]System.Collections.Generic.IEnumerable`1<class [Utils]Utils/Product>>
   {
+    .field static assembly initonly class Linq101Select01/'productNames@21-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -450,6 +467,16 @@
       IL_0005:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Singleton<class [Utils]Utils/Product>(!!0)
       IL_000a:  ret
     } // end of method 'productNames@21-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'productNames@21-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'productNames@21-1' Linq101Select01/'productNames@21-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'productNames@21-1'::.cctor
 
   } // end of class 'productNames@21-1'
 
@@ -529,7 +556,7 @@
       IL_002a:  nop
       .line 22,22 : 9,31 ''
       IL_002b:  ldarg.0
-      IL_002c:  newobj     instance void Linq101Select01/'productNames@21-1'::.ctor()
+      IL_002c:  ldsfld     class Linq101Select01/'productNames@21-1' Linq101Select01/'productNames@21-1'::@_instance
       IL_0031:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> Linq101Select01::get_products()
       IL_0036:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!2> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Collect<class [Utils]Utils/Product,class [mscorlib]System.Collections.Generic.IEnumerable`1<class [Utils]Utils/Product>,class [Utils]Utils/Product>(class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                   class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
@@ -786,6 +813,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'textNums@29-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<int32,class [mscorlib]System.Collections.Generic.IEnumerable`1<int32>>
   {
+    .field static assembly initonly class Linq101Select01/'textNums@29-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -813,6 +841,16 @@
       IL_0005:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Singleton<int32>(!!0)
       IL_000a:  ret
     } // end of method 'textNums@29-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'textNums@29-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'textNums@29-1' Linq101Select01/'textNums@29-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'textNums@29-1'::.cctor
 
   } // end of class 'textNums@29-1'
 
@@ -892,7 +930,7 @@
       IL_002a:  nop
       .line 30,30 : 9,29 ''
       IL_002b:  ldarg.0
-      IL_002c:  newobj     instance void Linq101Select01/'textNums@29-1'::.ctor()
+      IL_002c:  ldsfld     class Linq101Select01/'textNums@29-1' Linq101Select01/'textNums@29-1'::@_instance
       IL_0031:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> Linq101Select01::get_numbers()
       IL_0036:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!2> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Collect<int32,class [mscorlib]System.Collections.Generic.IEnumerable`1<int32>,int32>(class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,
                                                                                                                                                                                                                                    class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
@@ -1150,6 +1188,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'upperLowerWords@38-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<string,class [mscorlib]System.Collections.Generic.IEnumerable`1<string>>
   {
+    .field static assembly initonly class Linq101Select01/'upperLowerWords@38-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -1177,6 +1216,16 @@
       IL_0005:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Singleton<string>(!!0)
       IL_000a:  ret
     } // end of method 'upperLowerWords@38-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'upperLowerWords@38-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'upperLowerWords@38-1' Linq101Select01/'upperLowerWords@38-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'upperLowerWords@38-1'::.cctor
 
   } // end of class 'upperLowerWords@38-1'
 
@@ -1256,7 +1305,7 @@
       IL_002d:  nop
       .line 39,39 : 8,41 ''
       IL_002e:  ldarg.0
-      IL_002f:  newobj     instance void Linq101Select01/'upperLowerWords@38-1'::.ctor()
+      IL_002f:  ldsfld     class Linq101Select01/'upperLowerWords@38-1' Linq101Select01/'upperLowerWords@38-1'::@_instance
       IL_0034:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> Linq101Select01::get_words()
       IL_0039:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!2> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Collect<string,class [mscorlib]System.Collections.Generic.IEnumerable`1<string>,string>(class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,
                                                                                                                                                                                                                                       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
@@ -1517,6 +1566,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'digitOddEvens@45-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<int32,class [mscorlib]System.Collections.Generic.IEnumerable`1<int32>>
   {
+    .field static assembly initonly class Linq101Select01/'digitOddEvens@45-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -1544,6 +1594,16 @@
       IL_0005:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Singleton<int32>(!!0)
       IL_000a:  ret
     } // end of method 'digitOddEvens@45-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'digitOddEvens@45-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'digitOddEvens@45-1' Linq101Select01/'digitOddEvens@45-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'digitOddEvens@45-1'::.cctor
 
   } // end of class 'digitOddEvens@45-1'
 
@@ -1623,7 +1683,7 @@
       IL_002d:  nop
       .line 46,46 : 9,42 ''
       IL_002e:  ldarg.0
-      IL_002f:  newobj     instance void Linq101Select01/'digitOddEvens@45-1'::.ctor()
+      IL_002f:  ldsfld     class Linq101Select01/'digitOddEvens@45-1' Linq101Select01/'digitOddEvens@45-1'::@_instance
       IL_0034:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> Linq101Select01::get_numbers()
       IL_0039:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!2> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Collect<int32,class [mscorlib]System.Collections.Generic.IEnumerable`1<int32>,int32>(class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,
                                                                                                                                                                                                                                    class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
@@ -1888,6 +1948,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'productInfos@52-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Product,class [mscorlib]System.Collections.Generic.IEnumerable`1<class [Utils]Utils/Product>>
   {
+    .field static assembly initonly class Linq101Select01/'productInfos@52-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -1915,6 +1976,16 @@
       IL_0005:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Singleton<class [Utils]Utils/Product>(!!0)
       IL_000a:  ret
     } // end of method 'productInfos@52-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'productInfos@52-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'productInfos@52-1' Linq101Select01/'productInfos@52-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'productInfos@52-1'::.cctor
 
   } // end of class 'productInfos@52-1'
 
@@ -1994,7 +2065,7 @@
       IL_002d:  nop
       .line 53,53 : 9,56 ''
       IL_002e:  ldarg.0
-      IL_002f:  newobj     instance void Linq101Select01/'productInfos@52-1'::.ctor()
+      IL_002f:  ldsfld     class Linq101Select01/'productInfos@52-1' Linq101Select01/'productInfos@52-1'::@_instance
       IL_0034:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> Linq101Select01::get_products()
       IL_0039:  call       class [mscorlib]System.Collections.Generic.IEnumerable`1<!!2> [FSharp.Core]Microsoft.FSharp.Collections.SeqModule::Collect<class [Utils]Utils/Product,class [mscorlib]System.Collections.Generic.IEnumerable`1<class [Utils]Utils/Product>,class [Utils]Utils/Product>(class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                   class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
@@ -2300,6 +2371,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'lowNums@61-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<int32,bool>
   {
+    .field static assembly initonly class Linq101Select01/'lowNums@61-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2324,11 +2396,22 @@
       IL_0004:  ret
     } // end of method 'lowNums@61-1'::Invoke
 
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'lowNums@61-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'lowNums@61-1' Linq101Select01/'lowNums@61-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'lowNums@61-1'::.cctor
+
   } // end of class 'lowNums@61-1'
 
   .class auto ansi serializable sealed nested assembly beforefieldinit 'lowNums@62-2'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<int32,string>
   {
+    .field static assembly initonly class Linq101Select01/'lowNums@62-2' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2353,6 +2436,16 @@
       IL_0008:  callvirt   instance !0 class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string>::get_Item(int32)
       IL_000d:  ret
     } // end of method 'lowNums@62-2'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'lowNums@62-2'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'lowNums@62-2' Linq101Select01/'lowNums@62-2'::@_instance
+      IL_000a:  ret
+    } // end of method 'lowNums@62-2'::.cctor
 
   } // end of class 'lowNums@62-2'
 
@@ -2461,6 +2554,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'pairs@74-2'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<int32,int32>,bool>
   {
+    .field static assembly initonly class Linq101Select01/'pairs@74-2' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2494,11 +2588,22 @@
       IL_0012:  ret
     } // end of method 'pairs@74-2'::Invoke
 
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'pairs@74-2'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'pairs@74-2' Linq101Select01/'pairs@74-2'::@_instance
+      IL_000a:  ret
+    } // end of method 'pairs@74-2'::.cctor
+
   } // end of class 'pairs@74-2'
 
   .class auto ansi serializable sealed nested assembly beforefieldinit 'pairs@75-3'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<int32,int32>,class [mscorlib]System.Tuple`2<int32,int32>>
   {
+    .field static assembly initonly class Linq101Select01/'pairs@75-3' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2533,9 +2638,19 @@
       IL_0015:  ret
     } // end of method 'pairs@75-3'::Invoke
 
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'pairs@75-3'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'pairs@75-3' Linq101Select01/'pairs@75-3'::@_instance
+      IL_000a:  ret
+    } // end of method 'pairs@75-3'::.cctor
+
   } // end of class 'pairs@75-3'
 
-  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@83-3'
+  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@83-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Order,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,object>>
   {
     .field public class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder builder@
@@ -2555,12 +2670,12 @@
       IL_0001:  call       instance void class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Order,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,object>>::.ctor()
       IL_0006:  ldarg.0
       IL_0007:  ldarg.1
-      IL_0008:  stfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@83-3'::builder@
+      IL_0008:  stfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@83-1'::builder@
       IL_000d:  ldarg.0
       IL_000e:  ldarg.2
-      IL_000f:  stfld      class [Utils]Utils/Customer Linq101Select01/'orders@83-3'::c
+      IL_000f:  stfld      class [Utils]Utils/Customer Linq101Select01/'orders@83-1'::c
       IL_0014:  ret
-    } // end of method 'orders@83-3'::.ctor
+    } // end of method 'orders@83-1'::.ctor
 
     .method public strict virtual instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,object> 
             Invoke(class [Utils]Utils/Order _arg2) cil managed
@@ -2573,20 +2688,20 @@
       IL_0001:  stloc.0
       .line 84,84 : 9,34 ''
       IL_0002:  ldarg.0
-      IL_0003:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@83-3'::builder@
+      IL_0003:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@83-1'::builder@
       IL_0008:  ldarg.0
-      IL_0009:  ldfld      class [Utils]Utils/Customer Linq101Select01/'orders@83-3'::c
+      IL_0009:  ldfld      class [Utils]Utils/Customer Linq101Select01/'orders@83-1'::c
       IL_000e:  ldloc.0
       IL_000f:  newobj     instance void class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>::.ctor(!0,
                                                                                                                                      !1)
       IL_0014:  tail.
       IL_0016:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Yield<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,object>(!!0)
       IL_001b:  ret
-    } // end of method 'orders@83-3'::Invoke
+    } // end of method 'orders@83-1'::Invoke
 
-  } // end of class 'orders@83-3'
+  } // end of class 'orders@83-1'
 
-  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@82-2'
+  .class auto ansi serializable sealed nested assembly beforefieldinit orders@82
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Customer,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>>
   {
     .field public class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder builder@
@@ -2604,9 +2719,9 @@
       IL_0001:  call       instance void class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Customer,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>>::.ctor()
       IL_0006:  ldarg.0
       IL_0007:  ldarg.1
-      IL_0008:  stfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@82-2'::builder@
+      IL_0008:  stfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/orders@82::builder@
       IL_000d:  ret
-    } // end of method 'orders@82-2'::.ctor
+    } // end of method orders@82::.ctor
 
     .method public strict virtual instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable> 
             Invoke(class [Utils]Utils/Customer _arg1) cil managed
@@ -2619,28 +2734,29 @@
       IL_0001:  stloc.0
       .line 83,83 : 9,29 ''
       IL_0002:  ldarg.0
-      IL_0003:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@82-2'::builder@
+      IL_0003:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/orders@82::builder@
       IL_0008:  ldarg.0
-      IL_0009:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@82-2'::builder@
+      IL_0009:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/orders@82::builder@
       IL_000e:  ldloc.0
       IL_000f:  callvirt   instance class [Utils]Utils/Order[] [Utils]Utils/Customer::get_Orders()
       IL_0014:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,class [mscorlib]System.Collections.IEnumerable> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Source<class [Utils]Utils/Order>(class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
       IL_0019:  ldarg.0
-      IL_001a:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/'orders@82-2'::builder@
+      IL_001a:  ldfld      class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder Linq101Select01/orders@82::builder@
       IL_001f:  ldloc.0
-      IL_0020:  newobj     instance void Linq101Select01/'orders@83-3'::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder,
+      IL_0020:  newobj     instance void Linq101Select01/'orders@83-1'::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder,
                                                                               class [Utils]Utils/Customer)
       IL_0025:  tail.
       IL_0027:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<class [Utils]Utils/Order,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,object>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                               class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
       IL_002c:  ret
-    } // end of method 'orders@82-2'::Invoke
+    } // end of method orders@82::Invoke
 
-  } // end of class 'orders@82-2'
+  } // end of class orders@82
 
-  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@84-4'
+  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@84-2'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,bool>
   {
+    .field static assembly initonly class Linq101Select01/'orders@84-2' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2651,7 +2767,7 @@
       IL_0000:  ldarg.0
       IL_0001:  call       instance void class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,bool>::.ctor()
       IL_0006:  ret
-    } // end of method 'orders@84-4'::.ctor
+    } // end of method 'orders@84-2'::.ctor
 
     .method public strict virtual instance bool 
             Invoke(class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order> tupledArg) cil managed
@@ -2675,21 +2791,32 @@
       IL_001a:  ldc.i4.0
       IL_001b:  ldc.i4.0
       IL_001c:  ldc.i4.2
-      IL_001d:  newobj     instance void [mscorlib]System.Decimal::.ctor(int32,
-                                                                         int32,
-                                                                         int32,
-                                                                         bool,
-                                                                         uint8)
-      IL_0022:  call       bool [mscorlib]System.Decimal::op_LessThan(valuetype [mscorlib]System.Decimal,
-                                                                      valuetype [mscorlib]System.Decimal)
+      IL_001d:  newobj     instance void [netstandard]System.Decimal::.ctor(int32,
+                                                                            int32,
+                                                                            int32,
+                                                                            bool,
+                                                                            uint8)
+      IL_0022:  call       bool [netstandard]System.Decimal::op_LessThan(valuetype [netstandard]System.Decimal,
+                                                                         valuetype [netstandard]System.Decimal)
       IL_0027:  ret
-    } // end of method 'orders@84-4'::Invoke
+    } // end of method 'orders@84-2'::Invoke
 
-  } // end of class 'orders@84-4'
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders@84-2'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders@84-2' Linq101Select01/'orders@84-2'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders@84-2'::.cctor
 
-  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@85-5'
+  } // end of class 'orders@84-2'
+
+  .class auto ansi serializable sealed nested assembly beforefieldinit 'orders@85-3'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>>
   {
+    .field static assembly initonly class Linq101Select01/'orders@85-3' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2700,7 +2827,7 @@
       IL_0000:  ldarg.0
       IL_0001:  call       instance void class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>>::.ctor()
       IL_0006:  ret
-    } // end of method 'orders@85-5'::.ctor
+    } // end of method 'orders@85-3'::.ctor
 
     .method public strict virtual instance class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal> 
             Invoke(class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order> tupledArg) cil managed
@@ -2727,9 +2854,19 @@
                                                                                                                                 !1,
                                                                                                                                 !2)
       IL_0025:  ret
-    } // end of method 'orders@85-5'::Invoke
+    } // end of method 'orders@85-3'::Invoke
 
-  } // end of class 'orders@85-5'
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders@85-3'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders@85-3' Linq101Select01/'orders@85-3'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders@85-3'::.cctor
+
+  } // end of class 'orders@85-3'
 
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders2@92-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Order,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,object>>
@@ -2837,6 +2974,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders2@93-2'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,bool>
   {
+    .field static assembly initonly class Linq101Select01/'orders2@93-2' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2852,10 +2990,12 @@
     .method public strict virtual instance bool 
             Invoke(class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order> tupledArg) cil managed
     {
-      // Code size       40 (0x28)
-      .maxstack  8
+      // Code size       48 (0x30)
+      .maxstack  7
       .locals init ([0] class [Utils]Utils/Customer c,
-               [1] class [Utils]Utils/Order o)
+               [1] class [Utils]Utils/Order o,
+               [2] valuetype [mscorlib]System.DateTime V_2,
+               [3] valuetype [mscorlib]System.DateTime V_3)
       .line 100001,100001 : 0,0 ''
       IL_0000:  ldarg.1
       IL_0001:  call       instance !0 class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>::get_Item1()
@@ -2866,23 +3006,41 @@
       .line 93,93 : 16,50 ''
       IL_000e:  ldloc.1
       IL_000f:  callvirt   instance valuetype [mscorlib]System.DateTime [Utils]Utils/Order::get_OrderDate()
-      IL_0014:  ldc.i4     0x7ce
-      IL_0019:  ldc.i4.1
+      IL_0014:  stloc.2
+      IL_0015:  ldc.i4     0x7ce
       IL_001a:  ldc.i4.1
-      IL_001b:  newobj     instance void [mscorlib]System.DateTime::.ctor(int32,
+      IL_001b:  ldc.i4.1
+      IL_001c:  newobj     instance void [mscorlib]System.DateTime::.ctor(int32,
                                                                           int32,
                                                                           int32)
-      IL_0020:  tail.
-      IL_0022:  call       bool [FSharp.Core]Microsoft.FSharp.Core.LanguagePrimitives/HashCompare::GenericGreaterOrEqualIntrinsic<valuetype [mscorlib]System.DateTime>(!!0,
-                                                                                                                                                                       !!0)
-      IL_0027:  ret
+      IL_0021:  stloc.3
+      IL_0022:  ldloc.2
+      IL_0023:  ldloc.3
+      IL_0024:  call       int32 [netstandard]System.DateTime::Compare(valuetype [netstandard]System.DateTime,
+                                                                       valuetype [netstandard]System.DateTime)
+      IL_0029:  ldc.i4.0
+      IL_002a:  clt
+      IL_002c:  ldc.i4.0
+      IL_002d:  ceq
+      IL_002f:  ret
     } // end of method 'orders2@93-2'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders2@93-2'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders2@93-2' Linq101Select01/'orders2@93-2'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders2@93-2'::.cctor
 
   } // end of class 'orders2@93-2'
 
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders2@94-3'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.DateTime>>
   {
+    .field static assembly initonly class Linq101Select01/'orders2@94-3' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -2921,6 +3079,16 @@
                                                                                                                                  !2)
       IL_0025:  ret
     } // end of method 'orders2@94-3'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders2@94-3'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders2@94-3' Linq101Select01/'orders2@94-3'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders2@94-3'::.cctor
 
   } // end of class 'orders2@94-3'
 
@@ -3030,6 +3198,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders3@102-2'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,bool>
   {
+    .field static assembly initonly class Linq101Select01/'orders3@102-2' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -3064,21 +3233,32 @@
       IL_001a:  ldc.i4.0
       IL_001b:  ldc.i4.0
       IL_001c:  ldc.i4.1
-      IL_001d:  newobj     instance void [mscorlib]System.Decimal::.ctor(int32,
-                                                                         int32,
-                                                                         int32,
-                                                                         bool,
-                                                                         uint8)
-      IL_0022:  call       bool [mscorlib]System.Decimal::op_GreaterThanOrEqual(valuetype [mscorlib]System.Decimal,
-                                                                                valuetype [mscorlib]System.Decimal)
+      IL_001d:  newobj     instance void [netstandard]System.Decimal::.ctor(int32,
+                                                                            int32,
+                                                                            int32,
+                                                                            bool,
+                                                                            uint8)
+      IL_0022:  call       bool [netstandard]System.Decimal::op_GreaterThanOrEqual(valuetype [netstandard]System.Decimal,
+                                                                                   valuetype [netstandard]System.Decimal)
       IL_0027:  ret
     } // end of method 'orders3@102-2'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders3@102-2'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders3@102-2' Linq101Select01/'orders3@102-2'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders3@102-2'::.cctor
 
   } // end of class 'orders3@102-2'
 
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders3@103-3'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>>
   {
+    .field static assembly initonly class Linq101Select01/'orders3@103-3' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -3117,6 +3297,16 @@
                                                                                                                                 !2)
       IL_0025:  ret
     } // end of method 'orders3@103-3'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders3@103-3'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders3@103-3' Linq101Select01/'orders3@103-3'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders3@103-3'::.cctor
 
   } // end of class 'orders3@103-3'
 
@@ -3165,6 +3355,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders4@112-1'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [Utils]Utils/Customer,bool>
   {
+    .field static assembly initonly class Linq101Select01/'orders4@112-1' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -3186,10 +3377,20 @@
       IL_0000:  ldarg.1
       IL_0001:  callvirt   instance string [Utils]Utils/Customer::get_Region()
       IL_0006:  ldstr      "WA"
-      IL_000b:  call       bool [mscorlib]System.String::Equals(string,
-                                                                string)
+      IL_000b:  call       bool [netstandard]System.String::Equals(string,
+                                                                   string)
       IL_0010:  ret
     } // end of method 'orders4@112-1'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders4@112-1'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders4@112-1' Linq101Select01/'orders4@112-1'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders4@112-1'::.cctor
 
   } // end of class 'orders4@112-1'
 
@@ -3298,6 +3499,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders4@114-4'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,bool>
   {
+    .field static assembly initonly class Linq101Select01/'orders4@114-4' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -3313,10 +3515,12 @@
     .method public strict virtual instance bool 
             Invoke(class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order> tupledArg) cil managed
     {
-      // Code size       33 (0x21)
+      // Code size       41 (0x29)
       .maxstack  6
       .locals init ([0] class [Utils]Utils/Customer c,
-               [1] class [Utils]Utils/Order o)
+               [1] class [Utils]Utils/Order o,
+               [2] valuetype [mscorlib]System.DateTime V_2,
+               [3] valuetype [mscorlib]System.DateTime V_3)
       .line 100001,100001 : 0,0 ''
       IL_0000:  ldarg.1
       IL_0001:  call       instance !0 class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>::get_Item1()
@@ -3327,18 +3531,36 @@
       .line 114,114 : 16,41 ''
       IL_000e:  ldloc.1
       IL_000f:  callvirt   instance valuetype [mscorlib]System.DateTime [Utils]Utils/Order::get_OrderDate()
-      IL_0014:  call       valuetype [mscorlib]System.DateTime Linq101Select01::get_cutOffDate()
-      IL_0019:  tail.
-      IL_001b:  call       bool [FSharp.Core]Microsoft.FSharp.Core.LanguagePrimitives/HashCompare::GenericGreaterOrEqualIntrinsic<valuetype [mscorlib]System.DateTime>(!!0,
-                                                                                                                                                                       !!0)
-      IL_0020:  ret
+      IL_0014:  stloc.2
+      IL_0015:  call       valuetype [mscorlib]System.DateTime Linq101Select01::get_cutOffDate()
+      IL_001a:  stloc.3
+      IL_001b:  ldloc.2
+      IL_001c:  ldloc.3
+      IL_001d:  call       int32 [netstandard]System.DateTime::Compare(valuetype [netstandard]System.DateTime,
+                                                                       valuetype [netstandard]System.DateTime)
+      IL_0022:  ldc.i4.0
+      IL_0023:  clt
+      IL_0025:  ldc.i4.0
+      IL_0026:  ceq
+      IL_0028:  ret
     } // end of method 'orders4@114-4'::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders4@114-4'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders4@114-4' Linq101Select01/'orders4@114-4'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders4@114-4'::.cctor
 
   } // end of class 'orders4@114-4'
 
   .class auto ansi serializable sealed nested assembly beforefieldinit 'orders4@115-5'
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Tuple`2<string,int32>>
   {
+    .field static assembly initonly class Linq101Select01/'orders4@115-5' @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -3375,6 +3597,16 @@
       IL_001f:  ret
     } // end of method 'orders4@115-5'::Invoke
 
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Linq101Select01/'orders4@115-5'::.ctor()
+      IL_0005:  stsfld     class Linq101Select01/'orders4@115-5' Linq101Select01/'orders4@115-5'::@_instance
+      IL_000a:  ret
+    } // end of method 'orders4@115-5'::.cctor
+
   } // end of class 'orders4@115-5'
 
   .method public specialname static class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> 
@@ -3382,7 +3614,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101Select01>'.$Linq101Select01::'numbers@7-9'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101Select01>'.$Linq101Select01::numbers@7
     IL_0005:  ret
   } // end of method Linq101Select01::get_numbers
 
@@ -3400,7 +3632,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101Select01>'.$Linq101Select01::'products@17-12'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101Select01>'.$Linq101Select01::products@17
     IL_0005:  ret
   } // end of method Linq101Select01::get_products
 
@@ -3418,7 +3650,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::'strings@26-2'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::strings@26
     IL_0005:  ret
   } // end of method Linq101Select01::get_strings
 
@@ -3436,7 +3668,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::'words@34-8'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::words@34
     IL_0005:  ret
   } // end of method Linq101Select01::get_words
 
@@ -3472,7 +3704,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::'digits@57-4'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::digits@57
     IL_0005:  ret
   } // end of method Linq101Select01::get_digits
 
@@ -3517,7 +3749,7 @@
   {
     // Code size       6 (0x6)
     .maxstack  8
-    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> '<StartupCode$Linq101Select01>'.$Linq101Select01::'customers@79-4'
+    IL_0000:  ldsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> '<StartupCode$Linq101Select01>'.$Linq101Select01::customers@79
     IL_0005:  ret
   } // end of method Linq101Select01::get_customers
 
@@ -3697,19 +3929,19 @@
 .class private abstract auto ansi sealed '<StartupCode$Linq101Select01>'.$Linq101Select01
        extends [mscorlib]System.Object
 {
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> 'numbers@7-9'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> numbers@7
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> numsPlusOne@10
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> 'products@17-12'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> products@17
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [mscorlib]System.Collections.Generic.IEnumerable`1<string> productNames@19
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> 'strings@26-2'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> strings@26
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> textNums@27
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> 'words@34-8'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> words@34
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [mscorlib]System.Tuple`2<string,string>[] upperLowerWords@36
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
@@ -3717,7 +3949,7 @@
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [mscorlib]System.Tuple`3<string,string,valuetype [mscorlib]System.Decimal>[] productInfos@50
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> 'digits@57-4'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> digits@57
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> lowNums@58
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
@@ -3727,7 +3959,7 @@
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [mscorlib]System.Tuple`2<int32,int32>[] pairs@70
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
-  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> 'customers@79-4'
+  .field static assembly class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> customers@79
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
   .field static assembly class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>[] orders@80
   .custom instance void [mscorlib]System.Diagnostics.DebuggerBrowsableAttribute::.ctor(valuetype [mscorlib]System.Diagnostics.DebuggerBrowsableState) = ( 01 00 00 00 00 00 00 00 ) 
@@ -3816,7 +4048,7 @@
     IL_003d:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0> class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32>::Cons(!0,
                                                                                                                                                                     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0>)
     IL_0042:  dup
-    IL_0043:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101Select01>'.$Linq101Select01::'numbers@7-9'
+    IL_0043:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<int32> '<StartupCode$Linq101Select01>'.$Linq101Select01::numbers@7
     IL_0048:  stloc.0
     .line 10,14 : 1,20 ''
     IL_0049:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
@@ -3834,7 +4066,7 @@
     .line 17,17 : 1,32 ''
     IL_0064:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> [Utils]Utils::getProductList()
     IL_0069:  dup
-    IL_006a:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101Select01>'.$Linq101Select01::'products@17-12'
+    IL_006a:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Product> '<StartupCode$Linq101Select01>'.$Linq101Select01::products@17
     IL_006f:  stloc.2
     IL_0070:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
     IL_0075:  stloc.s    V_22
@@ -3880,7 +4112,7 @@
     IL_00ea:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0> class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string>::Cons(!0,
                                                                                                                                                                      class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0>)
     IL_00ef:  dup
-    IL_00f0:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::'strings@26-2'
+    IL_00f0:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::strings@26
     IL_00f5:  stloc.s    strings
     .line 27,31 : 1,20 ''
     IL_00f7:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
@@ -3907,7 +4139,7 @@
     IL_0131:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0> class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string>::Cons(!0,
                                                                                                                                                                      class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<!0>)
     IL_0136:  dup
-    IL_0137:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::'words@34-8'
+    IL_0137:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::words@34
     IL_013c:  stloc.s    words
     .line 36,40 : 1,20 ''
     IL_013e:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
@@ -3951,7 +4183,7 @@
     .line 57,57 : 1,21 ''
     IL_0192:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> Linq101Select01::get_strings()
     IL_0197:  dup
-    IL_0198:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::'digits@57-4'
+    IL_0198:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<string> '<StartupCode$Linq101Select01>'.$Linq101Select01::digits@57
     IL_019d:  stloc.s    digits
     .line 58,63 : 1,20 ''
     IL_019f:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
@@ -3966,10 +4198,10 @@
     IL_01ba:  newobj     instance void Linq101Select01/lowNums@60::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_01bf:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<int32,class [mscorlib]System.Collections.IEnumerable,int32,object>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                           class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_01c4:  newobj     instance void Linq101Select01/'lowNums@61-1'::.ctor()
+    IL_01c4:  ldsfld     class Linq101Select01/'lowNums@61-1' Linq101Select01/'lowNums@61-1'::@_instance
     IL_01c9:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<int32,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
-    IL_01ce:  newobj     instance void Linq101Select01/'lowNums@62-2'::.ctor()
+    IL_01ce:  ldsfld     class Linq101Select01/'lowNums@62-2' Linq101Select01/'lowNums@62-2'::@_instance
     IL_01d3:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Select<int32,class [mscorlib]System.Collections.IEnumerable,string>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                        class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>)
     IL_01d8:  callvirt   instance class [mscorlib]System.Collections.Generic.IEnumerable`1<!0> class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<string,class [mscorlib]System.Collections.IEnumerable>::get_Source()
@@ -4084,10 +4316,10 @@
     IL_02da:  newobj     instance void Linq101Select01/pairs@72::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_02df:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<int32,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<int32,int32>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                         class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_02e4:  newobj     instance void Linq101Select01/'pairs@74-2'::.ctor()
+    IL_02e4:  ldsfld     class Linq101Select01/'pairs@74-2' Linq101Select01/'pairs@74-2'::@_instance
     IL_02e9:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [mscorlib]System.Tuple`2<int32,int32>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                      class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
-    IL_02ee:  newobj     instance void Linq101Select01/'pairs@75-3'::.ctor()
+    IL_02ee:  ldsfld     class Linq101Select01/'pairs@75-3' Linq101Select01/'pairs@75-3'::@_instance
     IL_02f3:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Select<class [mscorlib]System.Tuple`2<int32,int32>,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<int32,int32>>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                   class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>)
     IL_02f8:  callvirt   instance class [mscorlib]System.Collections.Generic.IEnumerable`1<!0> class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<int32,int32>,class [mscorlib]System.Collections.IEnumerable>::get_Source()
@@ -4098,7 +4330,7 @@
     .line 79,79 : 1,34 ''
     IL_030a:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> [Utils]Utils::getCustomerList()
     IL_030f:  dup
-    IL_0310:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> '<StartupCode$Linq101Select01>'.$Linq101Select01::'customers@79-4'
+    IL_0310:  stsfld     class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> '<StartupCode$Linq101Select01>'.$Linq101Select01::customers@79
     IL_0315:  stloc.s    customers
     .line 80,86 : 1,21 ''
     IL_0317:  call       class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder [FSharp.Core]Microsoft.FSharp.Core.ExtraTopLevelOperators::get_query()
@@ -4110,13 +4342,13 @@
     IL_0326:  call       class [FSharp.Core]Microsoft.FSharp.Collections.FSharpList`1<class [Utils]Utils/Customer> Linq101Select01::get_customers()
     IL_032b:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,class [mscorlib]System.Collections.IEnumerable> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Source<class [Utils]Utils/Customer>(class [mscorlib]System.Collections.Generic.IEnumerable`1<!!0>)
     IL_0330:  ldloc.s    V_31
-    IL_0332:  newobj     instance void Linq101Select01/'orders@82-2'::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
+    IL_0332:  newobj     instance void Linq101Select01/orders@82::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_0337:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<class [Utils]Utils/Customer,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                        class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_033c:  newobj     instance void Linq101Select01/'orders@84-4'::.ctor()
+    IL_033c:  ldsfld     class Linq101Select01/'orders@84-2' Linq101Select01/'orders@84-2'::@_instance
     IL_0341:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                               class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
-    IL_0346:  newobj     instance void Linq101Select01/'orders@85-5'::.ctor()
+    IL_0346:  ldsfld     class Linq101Select01/'orders@85-3' Linq101Select01/'orders@85-3'::@_instance
     IL_034b:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Select<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                                class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>)
     IL_0350:  callvirt   instance class [mscorlib]System.Collections.Generic.IEnumerable`1<!0> class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>,class [mscorlib]System.Collections.IEnumerable>::get_Source()
@@ -4137,10 +4369,10 @@
     IL_037d:  newobj     instance void Linq101Select01/orders2@91::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_0382:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<class [Utils]Utils/Customer,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                        class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_0387:  newobj     instance void Linq101Select01/'orders2@93-2'::.ctor()
+    IL_0387:  ldsfld     class Linq101Select01/'orders2@93-2' Linq101Select01/'orders2@93-2'::@_instance
     IL_038c:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                               class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
-    IL_0391:  newobj     instance void Linq101Select01/'orders2@94-3'::.ctor()
+    IL_0391:  ldsfld     class Linq101Select01/'orders2@94-3' Linq101Select01/'orders2@94-3'::@_instance
     IL_0396:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Select<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.DateTime>>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                                 class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>)
     IL_039b:  callvirt   instance class [mscorlib]System.Collections.Generic.IEnumerable`1<!0> class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.DateTime>,class [mscorlib]System.Collections.IEnumerable>::get_Source()
@@ -4160,10 +4392,10 @@
     IL_03c8:  newobj     instance void Linq101Select01/orders3@100::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_03cd:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<class [Utils]Utils/Customer,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                        class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_03d2:  newobj     instance void Linq101Select01/'orders3@102-2'::.ctor()
+    IL_03d2:  ldsfld     class Linq101Select01/'orders3@102-2' Linq101Select01/'orders3@102-2'::@_instance
     IL_03d7:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                               class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
-    IL_03dc:  newobj     instance void Linq101Select01/'orders3@103-3'::.ctor()
+    IL_03dc:  ldsfld     class Linq101Select01/'orders3@103-3' Linq101Select01/'orders3@103-3'::@_instance
     IL_03e1:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Select<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                                class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>)
     IL_03e6:  callvirt   instance class [mscorlib]System.Collections.Generic.IEnumerable`1<!0> class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`3<string,int32,valuetype [mscorlib]System.Decimal>,class [mscorlib]System.Collections.IEnumerable>::get_Source()
@@ -4194,17 +4426,17 @@
     IL_0426:  newobj     instance void Linq101Select01/orders4@111::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_042b:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<class [Utils]Utils/Customer,class [mscorlib]System.Collections.IEnumerable,class [Utils]Utils/Customer,object>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                       class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_0430:  newobj     instance void Linq101Select01/'orders4@112-1'::.ctor()
+    IL_0430:  ldsfld     class Linq101Select01/'orders4@112-1' Linq101Select01/'orders4@112-1'::@_instance
     IL_0435:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [Utils]Utils/Customer,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                      class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
     IL_043a:  ldloc.s    V_34
     IL_043c:  newobj     instance void Linq101Select01/'orders4@111-2'::.ctor(class [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder)
     IL_0441:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::For<class [Utils]Utils/Customer,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                                                        class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!3>>)
-    IL_0446:  newobj     instance void Linq101Select01/'orders4@114-4'::.ctor()
+    IL_0446:  ldsfld     class Linq101Select01/'orders4@114-4' Linq101Select01/'orders4@114-4'::@_instance
     IL_044b:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Where<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                               class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,bool>)
-    IL_0450:  newobj     instance void Linq101Select01/'orders4@115-5'::.ctor()
+    IL_0450:  ldsfld     class Linq101Select01/'orders4@115-5' Linq101Select01/'orders4@115-5'::@_instance
     IL_0455:  callvirt   instance class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!2,!!1> [FSharp.Core]Microsoft.FSharp.Linq.QueryBuilder::Select<class [mscorlib]System.Tuple`2<class [Utils]Utils/Customer,class [Utils]Utils/Order>,class [mscorlib]System.Collections.IEnumerable,class [mscorlib]System.Tuple`2<string,int32>>(class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<!!0,!!1>,
                                                                                                                                                                                                                                                                                                                                             class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<!!0,!!2>)
     IL_045a:  callvirt   instance class [mscorlib]System.Collections.Generic.IEnumerable`1<!0> class [FSharp.Core]Microsoft.FSharp.Linq.QuerySource`2<class [mscorlib]System.Tuple`2<string,int32>,class [mscorlib]System.Collections.IEnumerable>::get_Source()

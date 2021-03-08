@@ -7,14 +7,12 @@ open System.Collections.Immutable
 open System.Threading.Tasks
 
 open Microsoft.CodeAnalysis
-open Microsoft.CodeAnalysis.Host.Mef
 open Microsoft.CodeAnalysis.Text
-open Microsoft.CodeAnalysis.Structure
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Structure
 
-open FSharp.Compiler
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.SourceCodeServices.Structure
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.EditorServices.Structure
+open FSharp.Compiler.Syntax
 
 module internal BlockStructure =
     let scopeToBlockType = function
@@ -118,7 +116,7 @@ module internal BlockStructure =
         | Scope.While
         | Scope.For -> false
 
-    let createBlockSpans isBlockStructureEnabled (sourceText:SourceText) (parsedInput:Ast.ParsedInput) =
+    let createBlockSpans isBlockStructureEnabled (sourceText:SourceText) (parsedInput:ParsedInput) =
         let linetext = sourceText.Lines |> Seq.map (fun x -> x.ToString()) |> Seq.toArray
         
         Structure.getOutliningRanges linetext parsedInput
@@ -149,9 +147,9 @@ type internal FSharpBlockStructureService [<ImportingConstructor>] (checkerProvi
 
     interface IFSharpBlockStructureService with
  
-        member __.GetBlockStructureAsync(document, cancellationToken) : Task<FSharpBlockStructure> =
+        member _.GetBlockStructureAsync(document, cancellationToken) : Task<FSharpBlockStructure> =
             asyncMaybe {
-                let! parsingOptions, _options = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken)
+                let! parsingOptions, _options = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken, userOpName)
                 let! sourceText = document.GetTextAsync(cancellationToken)
                 let! parsedInput = checkerProvider.Checker.ParseDocument(document, parsingOptions, sourceText, userOpName)
                 return createBlockSpans document.FSharpOptions.Advanced.IsBlockStructureEnabled sourceText parsedInput |> Seq.toImmutableArray

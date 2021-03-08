@@ -12,6 +12,11 @@
         <target state="translated">V případě nastavení na true a za předpokladu, že aktuální počítač je 64bitový, se F# Interactive spustí jako 64bitový proces. (V opačném případě je F# Interactive 32bitový proces.)</target>
         <note />
       </trans-unit>
+      <trans-unit id="FSharpInteractiveMisc">
+        <source>Misc</source>
+        <target state="translated">Různé</target>
+        <note />
+      </trans-unit>
       <trans-unit id="FSharpInteractiveOptions">
         <source>F# Interactive options</source>
         <target state="translated">Možnost F# Interactive</target>
@@ -22,9 +27,19 @@
         <target state="translated">Další argumenty příkazového řádku předané F# Interactive a spustitelné v sadě Visual Studio. (Pokud se povolí ladění skriptů, ignorují se příznaky optimalizace a ladění.)</target>
         <note />
       </trans-unit>
-      <trans-unit id="FSharpInteractiveMisc">
-        <source>Misc</source>
-        <target state="translated">Různé</target>
+      <trans-unit id="FSharpInteractivePreview">
+        <source>FSI Preview</source>
+        <target state="translated">FSI Preview</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FSharpInteractivePreviewMode">
+        <source>Enable preview language features</source>
+        <target state="translated">Povolit funkce jazyka ve verzi Preview</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FSharpInteractivePreviewModeDescr">
+        <source>Enable preview of in-development language features in F# Interactive</source>
+        <target state="translated">Povolit vyvíjené funkce jazyka ve verzi Preview v jazyce F# Interactive</target>
         <note />
       </trans-unit>
       <trans-unit id="FSharpInteractiveShadowCopy">
@@ -50,6 +65,16 @@
       <trans-unit id="FSharpInteractiveDebugging">
         <source>Debugging</source>
         <target state="translated">Ladění</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FSharpInteractiveUseNetCore">
+        <source>Use .NET Core Scripting</source>
+        <target state="translated">Použít skriptování .NET Core</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FSharpInteractiveUseNetCoreDescr">
+        <source>Enable .NET Core script editing and execution for all F# scripts and the F# Interactive window</source>
+        <target state="translated">Povolit úpravy a provádění skriptů .NET Core pro všechny skripty F # a okno F# Interactive</target>
         <note />
       </trans-unit>
     </body>

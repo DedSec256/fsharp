@@ -2,7 +2,6 @@
 
 namespace Microsoft.VisualStudio.FSharp.Editor
 
-open System.Threading
 open System.Collections.Immutable
 open System.Composition
 
@@ -11,8 +10,11 @@ open Microsoft.CodeAnalysis.ExternalAccess.FSharp
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.FindUsages
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Editor.FindUsages
 
-open FSharp.Compiler.Range
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Text
+open Microsoft.CodeAnalysis.Text
 
 [<Export(typeof<IFSharpFindUsagesService>)>]
 type internal FSharpFindUsagesService
@@ -50,87 +52,92 @@ type internal FSharpFindUsagesService
         asyncMaybe {
             let! sourceText = document.GetTextAsync(context.CancellationToken) |> Async.AwaitTask |> liftAsync
             let checker = checkerProvider.Checker
-            let! parsingOptions, _, projectOptions = projectInfoManager.TryGetOptionsForDocumentOrProject(document, context.CancellationToken)
+            let! parsingOptions, _, projectOptions = projectInfoManager.TryGetOptionsForDocumentOrProject(document, context.CancellationToken, userOpName)
             let! _, _, checkFileResults = checker.ParseAndCheckDocument(document, projectOptions, sourceText = sourceText, userOpName = userOpName)
             let textLine = sourceText.Lines.GetLineFromPosition(position).ToString()
             let lineNumber = sourceText.Lines.GetLinePosition(position).Line + 1
             let defines = CompilerEnvironment.GetCompilationDefinesForEditing parsingOptions
             
-            let! symbol = Tokenizer.getSymbolAtPosition(document.Id, sourceText, position, document.FilePath, defines, SymbolLookupKind.Greedy, false)
-            let! symbolUse = checkFileResults.GetSymbolUseAtLocation(lineNumber, symbol.Ident.idRange.EndColumn, textLine, symbol.FullIsland, userOpName=userOpName)
-            let! declaration = checkFileResults.GetDeclarationLocation (lineNumber, symbol.Ident.idRange.EndColumn, textLine, symbol.FullIsland, false, userOpName=userOpName) |> liftAsync
+            let! symbol = Tokenizer.getSymbolAtPosition(document.Id, sourceText, position, document.FilePath, defines, SymbolLookupKind.Greedy, false, false)
+            let! symbolUse = checkFileResults.GetSymbolUseAtLocation(lineNumber, symbol.Ident.idRange.EndColumn, textLine, symbol.FullIsland)
+            let declaration = checkFileResults.GetDeclarationLocation (lineNumber, symbol.Ident.idRange.EndColumn, textLine, symbol.FullIsland, false)
             let tags = FSharpGlyphTags.GetTags(Tokenizer.GetGlyphForSymbol (symbolUse.Symbol, symbol.Kind))
             
             let declarationRange = 
                 match declaration with
-                | FSharpFindDeclResult.DeclFound range -> Some range
+                | FindDeclResult.DeclFound range -> Some range
                 | _ -> None
-            
-            let! definitionItems =
-                async {
-                    let! declarationSpans =
-                        match declarationRange with
-                        | Some range -> rangeToDocumentSpans(document.Project.Solution, range)
-                        | None -> async.Return []
-                    
-                    return 
-                        match declarationSpans with 
-                        | [] -> 
-                            [ FSharpDefinitionItem.CreateNonNavigableItem(
-                                tags,
-                                ImmutableArray.Create(TaggedText(TextTags.Text, symbol.Ident.idText)),
-                                ImmutableArray.Create(TaggedText(TextTags.Assembly, symbolUse.Symbol.Assembly.SimpleName))) ]
-                        | _ ->
-                            declarationSpans
-                            |> List.map (fun span ->
-                                FSharpDefinitionItem.Create(tags, ImmutableArray.Create(TaggedText(TextTags.Text, symbol.Ident.idText)), span))
-                } |> liftAsync
-            
-            for definitionItem in definitionItems do
-                do! context.OnDefinitionFoundAsync(definitionItem) |> Async.AwaitTask |> liftAsync
-            
-            let! symbolUses =
-                match symbolUse.GetDeclarationLocation document with
-                | Some SymbolDeclarationLocation.CurrentDocument ->
-                    checkFileResults.GetUsesOfSymbolInFile(symbolUse.Symbol) |> liftAsync
-                | scope ->
-                    let projectsToCheck =
-                        match scope with
-                        | Some (SymbolDeclarationLocation.Projects (declProjects, false)) ->
-                            [ for declProject in declProjects do
-                                yield declProject
-                                yield! declProject.GetDependentProjects() ]
-                            |> List.distinct
-                        | Some (SymbolDeclarationLocation.Projects (declProjects, true)) -> declProjects
-                        // The symbol is declared in .NET framework, an external assembly or in a C# project within the solution.
-                        // In order to find all its usages we have to check all F# projects.
-                        | _ -> Seq.toList document.Project.Solution.Projects
-                
-                    SymbolHelpers.getSymbolUsesInProjects (symbolUse.Symbol, projectInfoManager, checker, projectsToCheck, userOpName) |> liftAsync
 
-            for symbolUse in symbolUses do
+            let! declarationSpans = async {
                 match declarationRange with
-                | Some declRange when declRange = symbolUse.RangeAlternate -> ()
-                | _ ->
-                    // report a reference if we're interested in all _or_ if we're looking at an implementation
-                    if allReferences || symbolUse.IsFromDispatchSlotImplementation then
-                        let! referenceDocSpans = rangeToDocumentSpans(document.Project.Solution, symbolUse.RangeAlternate) |> liftAsync
-                        match referenceDocSpans with
-                        | [] -> ()
-                        | _ ->
-                            for referenceDocSpan in referenceDocSpans do
-                                for definitionItem in definitionItems do
-                                    let referenceItem = FSharpSourceReferenceItem(definitionItem, referenceDocSpan)
-                                    do! context.OnReferenceFoundAsync(referenceItem) |> Async.AwaitTask |> liftAsync
+                | Some range -> return! rangeToDocumentSpans(document.Project.Solution, range)
+                | None -> return! async.Return [] } |> liftAsync
+
+            let isExternal = declarationSpans |> List.isEmpty
+            let displayParts = ImmutableArray.Create(Microsoft.CodeAnalysis.TaggedText(TextTags.Text, symbol.Ident.idText))
+            let originationParts = ImmutableArray.Create(Microsoft.CodeAnalysis.TaggedText(TextTags.Assembly, symbolUse.Symbol.Assembly.SimpleName))
+            let externalDefinitionItem = FSharpDefinitionItem.CreateNonNavigableItem(tags, displayParts, originationParts)
+            let definitionItems =
+                    declarationSpans
+                    |> List.map (fun span -> FSharpDefinitionItem.Create(tags, displayParts, span), span.Document.Id)
             
-            ()
+            for definitionItem, _ in definitionItems do
+                do! context.OnDefinitionFoundAsync(definitionItem) |> Async.AwaitTask |> liftAsync
+
+            if isExternal then
+                do! context.OnDefinitionFoundAsync(externalDefinitionItem) |> Async.AwaitTask |> liftAsync
+            
+            let onFound =
+                fun (doc: Document) (textSpan: TextSpan) (symbolUse: range) ->
+                    async {
+                        match declarationRange with
+                        | Some declRange when Range.equals declRange symbolUse -> ()
+                        | _ ->
+                            if allReferences then
+                                let definitionItem =
+                                    if isExternal then
+                                        externalDefinitionItem
+                                    else
+                                        definitionItems
+                                        |> List.tryFind (fun (_, docId) -> doc.Id = docId)
+                                        |> Option.map (fun (definitionItem, _) -> definitionItem)
+                                        |> Option.defaultValue externalDefinitionItem
+
+                                let referenceItem = FSharpSourceReferenceItem(definitionItem, FSharpDocumentSpan(doc, textSpan))
+                                // REVIEW: OnReferenceFoundAsync is throwing inside Roslyn, putting a try/with so find-all refs doesn't fail.
+                                try do! context.OnReferenceFoundAsync(referenceItem) |> Async.AwaitTask with | _ -> () }
+            
+            match symbolUse.GetDeclarationLocation document with
+            | Some SymbolDeclarationLocation.CurrentDocument ->
+                let symbolUses = checkFileResults.GetUsesOfSymbolInFile(symbolUse.Symbol)
+                for symbolUse in symbolUses do
+                    match RoslynHelpers.TryFSharpRangeToTextSpan(sourceText, symbolUse.Range) with
+                    | Some textSpan ->
+                        do! onFound document textSpan symbolUse.Range |> liftAsync
+                    | _ ->
+                        ()
+            | scope ->
+                let projectsToCheck =
+                    match scope with
+                    | Some (SymbolDeclarationLocation.Projects (declProjects, false)) ->
+                        [ for declProject in declProjects do
+                            yield declProject
+                            yield! declProject.GetDependentProjects() ]
+                        |> List.distinct
+                    | Some (SymbolDeclarationLocation.Projects (declProjects, true)) -> declProjects
+                    // The symbol is declared in .NET framework, an external assembly or in a C# project within the solution.
+                    // In order to find all its usages we have to check all F# projects.
+                    | _ -> Seq.toList document.Project.Solution.Projects
+                
+                let! _ = SymbolHelpers.getSymbolUsesInProjects (symbolUse.Symbol, projectInfoManager, checker, projectsToCheck, onFound, userOpName) |> liftAsync
+                ()
         } |> Async.Ignore
 
     interface IFSharpFindUsagesService with
-        member __.FindReferencesAsync(document, position, context) =
+        member _.FindReferencesAsync(document, position, context) =
             findReferencedSymbolsAsync(document, position, context, true, userOpName)
             |> RoslynHelpers.StartAsyncUnitAsTask(context.CancellationToken)
-        member __.FindImplementationsAsync(document, position, context) =
+        member _.FindImplementationsAsync(document, position, context) =
             findReferencedSymbolsAsync(document, position, context, false, userOpName)
             |> RoslynHelpers.StartAsyncUnitAsTask(context.CancellationToken)
  

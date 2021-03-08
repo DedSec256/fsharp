@@ -3,11 +3,15 @@
 namespace FSharp.Compiler.UnitTests
 
 open NUnit.Framework
+open FSharp.Test.Utilities
 
 [<TestFixture>]
 module LargeExprTests =
 
     [<Test>]
+#if NETCOREAPP
+    [<Ignore("SKIPPED: ")>]
+#endif
     let LargeRecordDoesNotStackOverflow() =
         CompilerAssert.CompileExe
             """

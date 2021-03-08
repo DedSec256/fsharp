@@ -5,12 +5,13 @@ namespace Microsoft.VisualStudio.FSharp.Editor
 open System
 open System.ComponentModel.Composition
 open System.Diagnostics
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.CodeAnalysis
+open FSharp.NativeInterop
 open Microsoft.CodeAnalysis
-open FSharp.Compiler.SourceCodeServices
 open Microsoft.VisualStudio
 open Microsoft.VisualStudio.FSharp.Editor
 open Microsoft.VisualStudio.LanguageServices
-open FSharp.NativeInterop
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Diagnostics
 
 #nowarn "9" // NativePtr.toNativeInt
@@ -24,6 +25,8 @@ type internal FSharpCheckerProvider
         [<Import(typeof<VisualStudioWorkspace>)>] workspace: VisualStudioWorkspace,
         settings: EditorOptions
     ) =
+
+    let metadataAsSource = FSharpMetadataAsSourceService()
 
     let tryGetMetadataSnapshot (path, timeStamp) = 
         try
@@ -40,14 +43,13 @@ type internal FSharpCheckerProvider
             let objToHold = box md
 
             // We don't expect any ilread WeakByteFile to be created when working in Visual Studio
-            Debug.Assert((FSharp.Compiler.AbstractIL.ILBinaryReader.GetStatistics().weakByteFileCount = 0), "Expected weakByteFileCount to be zero when using F# in Visual Studio. Was there a problem reading a .NET binary?")
+            // Debug.Assert((FSharp.Compiler.AbstractIL.ILBinaryReader.GetStatistics().weakByteFileCount = 0), "Expected weakByteFileCount to be zero when using F# in Visual Studio. Was there a problem reading a .NET binary?")
 
             Some (objToHold, NativePtr.toNativeInt mmr.MetadataPointer, mmr.MetadataLength)
         with ex -> 
             // We catch all and let the backup routines in the F# compiler find the error
             Assert.Exception(ex)
             None 
-
 
     let checker = 
         lazy
@@ -58,7 +60,10 @@ type internal FSharpCheckerProvider
                     // Enabling this would mean that if devenv.exe goes above 2.3GB we do a one-off downsize of the F# Compiler Service caches
                     (* , MaxMemory = 2300 *)
                     legacyReferenceResolver=LegacyMSBuildReferenceResolver.getResolver(),
-                    tryGetMetadataSnapshot = tryGetMetadataSnapshot)
+                    tryGetMetadataSnapshot = tryGetMetadataSnapshot,
+                    keepAllBackgroundSymbolUses = false,
+                    enableBackgroundItemKeyStoreAndSemanticClassification = true,
+                    enablePartialTypeChecking = true)
 
             // This is one half of the bridge between the F# background builder and the Roslyn analysis engine.
             // When the F# background builder refreshes the background semantic build context for a file,
@@ -81,4 +86,6 @@ type internal FSharpCheckerProvider
             checker
 
     member this.Checker = checker.Value
+
+    member _.MetadataAsSource = metadataAsSource
 

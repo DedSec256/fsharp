@@ -3,6 +3,7 @@
 namespace FSharp.Compiler.UnitTests
 
 open NUnit.Framework
+open FSharp.Test.Utilities
 
 #if NETCOREAPP
 [<TestFixture>]
@@ -149,17 +150,17 @@ open System.Runtime.CompilerServices
 [<Struct;IsByRefLike>]
 type Span<'T>(arr: 'T []) =
 
-    member __.Item
+    member _.Item
         with get (i: int) = &arr.[i]
 
-    member __.Length
+    member _.Length
         with get () = 0
 
     static member Empty = Span<'T>([||])
 
     interface IEnumerable with
 
-        member __.GetEnumerator() = null
+        member _.GetEnumerator() = null
 
 module Test =
 

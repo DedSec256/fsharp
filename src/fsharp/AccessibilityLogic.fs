@@ -7,9 +7,10 @@ open FSharp.Compiler.AbstractIL.IL
 open FSharp.Compiler 
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Infos
-open FSharp.Compiler.Tast
-open FSharp.Compiler.Tastops
 open FSharp.Compiler.TcGlobals
+open FSharp.Compiler.TypedTree
+open FSharp.Compiler.TypedTreeBasics
+open FSharp.Compiler.TypedTreeOps
 
 #if !NO_EXTENSIONTYPING
 open FSharp.Compiler.ExtensionTyping
@@ -18,11 +19,9 @@ open FSharp.Compiler.ExtensionTyping
 /// Represents the 'keys' a particular piece of code can use to access other constructs?.
 [<NoEquality; NoComparison>]
 type AccessorDomain = 
-    /// AccessibleFrom(cpaths, tyconRefOpt)
-    ///
     /// cpaths: indicates we have the keys to access any members private to the given paths 
     /// tyconRefOpt:  indicates we have the keys to access any protected members of the super types of 'TyconRef' 
-    | AccessibleFrom of CompilationPath list * TyconRef option        
+    | AccessibleFrom of cpaths: CompilationPath list * tyconRefOpt: TyconRef option        
 
     /// An AccessorDomain which returns public items
     | AccessibleFromEverywhere
@@ -45,6 +44,7 @@ type AccessorDomain =
         | AccessibleFromEverywhere -> 2
         | AccessibleFromSomeFSharpCode  -> 3
         | AccessibleFromSomewhere  -> 4
+
     static member CustomEquals(g:TcGlobals, ad1:AccessorDomain, ad2:AccessorDomain) = 
         match ad1, ad2 with 
         | AccessibleFrom(cs1, tc1), AccessibleFrom(cs2, tc2) -> (cs1 = cs2) && (match tc1, tc2 with None, None -> true | Some tc1, Some tc2 -> tyconRefEq g tc1 tc2 | _ -> false)
@@ -207,12 +207,13 @@ and IsTypeInstAccessible g amap m ad tinst =
 /// Indicate if a provided member is accessible
 let IsProvidedMemberAccessible (amap:Import.ImportMap) m ad ty access = 
     let g = amap.g
-    let isTyAccessible = IsTypeAccessible g amap m ad ty
-    if not isTyAccessible then false
+    if IsTypeAccessible g amap m ad ty then 
+        match tryTcrefOfAppTy g ty with
+        | ValueNone -> true
+        | ValueSome tcrefOfViewedItem ->
+            IsILMemberAccessible g amap m tcrefOfViewedItem ad access
     else
-        not (isAppTy g ty) ||
-        let tcrefOfViewedItem = tcrefOfAppTy g ty
-        IsILMemberAccessible g amap m tcrefOfViewedItem ad access
+        false
 
 /// Compute the accessibility of a provided member
 let ComputeILAccess isPublic isFamily isFamilyOrAssembly isFamilyAndAssembly =
@@ -222,7 +223,6 @@ let ComputeILAccess isPublic isFamily isFamilyOrAssembly isFamilyAndAssembly =
     elif isFamilyAndAssembly then ILMemberAccess.FamilyAndAssembly
     else ILMemberAccess.Private
 
-/// IndiCompute the accessibility of a provided member
 let IsILFieldInfoAccessible g amap m ad x = 
     match x with 
     | ILFieldInfo (tinfo, fd) -> IsILTypeAndMemberAccessible g amap m ad ad tinfo fd.Access
@@ -247,12 +247,53 @@ let private IsILMethInfoAccessible g amap m adType ad ilminfo =
 let GetILAccessOfILPropInfo (ILPropInfo(tinfo, pdef)) =
     let tdef = tinfo.RawMetadata
     let ilAccess =
-        match pdef.GetMethod with 
-        | Some mref -> (resolveILMethodRef tdef mref).Access 
-        | None -> 
-            match pdef.SetMethod with 
-            | None -> ILMemberAccess.Public
-            | Some mref -> (resolveILMethodRef tdef mref).Access
+        match pdef.GetMethod, pdef.SetMethod with 
+        | Some mref, None 
+        | None, Some mref -> (resolveILMethodRef tdef mref).Access
+
+        | Some mrefGet, Some mrefSet ->
+            //
+            // Dotnet properties have a getter and a setter method, each of which can have a separate visibility public, protected, private etc ...
+            // This code computes the visibility for the property by choosing the most visible method. This approximation is usefull for cases
+            // where the compiler needs to know the visibility of the property.
+            // The specific ordering for choosing the most visible is:
+            //  ILMemberAccess.Public,
+            //  ILMemberAccess.FamilyOrAssembly
+            //  ILMemberAccess.Assembly
+            //  ILMemberAccess.Family
+            //  ILMemberAccess.FamilyAndAssembly
+            //  ILMemberAccess.Private
+            //  ILMemberAccess.CompilerControlled
+            //          
+            let getA = (resolveILMethodRef tdef mrefGet).Access
+            let setA = (resolveILMethodRef tdef mrefSet).Access
+
+            // Use the accessors to determine the visibility of the property.
+            // N.B. It is critical to keep the ordering in decreasing visibility order in the following match expression
+            match getA, setA with
+            | ILMemberAccess.Public, _
+            | _, ILMemberAccess.Public -> ILMemberAccess.Public
+
+            | ILMemberAccess.FamilyOrAssembly, _
+            | _, ILMemberAccess.FamilyOrAssembly -> ILMemberAccess.FamilyOrAssembly
+
+            | ILMemberAccess.Assembly, _
+            | _, ILMemberAccess.Assembly -> ILMemberAccess.Assembly
+
+            | ILMemberAccess.Family, _
+            | _, ILMemberAccess.Family -> ILMemberAccess.Family
+
+            | ILMemberAccess.FamilyAndAssembly, _
+            | _, ILMemberAccess.FamilyAndAssembly -> ILMemberAccess.FamilyAndAssembly
+
+            | ILMemberAccess.Private, _
+            | _, ILMemberAccess.Private -> ILMemberAccess.Private
+
+            | ILMemberAccess.CompilerControlled, _
+            | _, ILMemberAccess.CompilerControlled -> ILMemberAccess.CompilerControlled
+
+        | None, None -> ILMemberAccess.Public
+
     ilAccess
 
 let IsILPropInfoAccessible g amap m ad pinfo =
@@ -321,8 +362,11 @@ let IsMethInfoAccessible amap m ad minfo = IsTypeAndMethInfoAccessible amap m ad
 
 let IsPropInfoAccessible g amap m ad = function 
     | ILProp ilpinfo -> IsILPropInfoAccessible g amap m ad ilpinfo
-    | FSProp (_, _, Some vref, _) 
-    | FSProp (_, _, _, Some vref) -> IsValAccessible ad vref
+    | FSProp (_, _, Some vref, None) 
+    | FSProp (_, _, None, Some vref) -> IsValAccessible ad vref
+    | FSProp (_, _, Some vrefGet, Some vrefSet) -> 
+        // pick most accessible
+        IsValAccessible ad vrefGet || IsValAccessible ad vrefSet
 #if !NO_EXTENSIONTYPING
     | ProvidedProp (amap, tppi, m) as pp-> 
         let access = 
@@ -341,4 +385,3 @@ let IsPropInfoAccessible g amap m ad = function
 
 let IsFieldInfoAccessible ad (rfref:RecdFieldInfo) =
     IsAccessible ad rfref.RecdField.Accessibility
-

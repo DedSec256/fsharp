@@ -4,7 +4,27 @@
     <body>
       <trans-unit id="Parser.TOKEN.DOT.DOT.HAT">
         <source>symbol '..^'</source>
-        <target state="new">symbol '..^'</target>
+        <target state="translated">'..^' sembolü</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.BEGIN.END">
+        <source>interpolated string</source>
+        <target state="translated">düz metin arasına kod eklenmiş dize</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.BEGIN.PART">
+        <source>interpolated string (first part)</source>
+        <target state="translated">düz metin arasına kod eklenmiş dize (ilk parça)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.END">
+        <source>interpolated string (final part)</source>
+        <target state="translated">düz metin arasına kod eklenmiş dize (son parça)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.PART">
+        <source>interpolated string (part)</source>
+        <target state="translated">düz metin arasına kod eklenmiş dize (parça)</target>
         <note />
       </trans-unit>
       <trans-unit id="SeeAlso">
@@ -68,18 +88,13 @@
         <note />
       </trans-unit>
       <trans-unit id="UpperCaseIdentifierInPattern">
-        <source>Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name.</source>
-        <target state="translated">Büyük harfli değişken tanımlayıcıları desenlerde genel olarak kullanılmamalıdır, yanlış yazılmış bir desen adının göstergesi olabilirler.</target>
+        <source>Uppercase variable identifiers should not generally be used in patterns, and may indicate a missing open declaration or a misspelt pattern name.</source>
+        <target state="translated">Büyük harfli değişken tanımlayıcıları desenlerde genel olarak kullanılmamalıdır. Bunlar, eksik bir açık bildirimin veya yanlış yazılmış bir desen adının göstergesi olabilirler.</target>
         <note />
       </trans-unit>
       <trans-unit id="NotUpperCaseConstructor">
         <source>Discriminated union cases and exception labels must be uppercase identifiers</source>
         <target state="translated">Ayırt edici birleşim durumları ve özel durum etiketleri büyük harfli tanımlayıcılar olmalıdır</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="PossibleOverload">
-        <source>Possible overload: '{0}'. {1}.</source>
-        <target state="translated">Olası aşırı yükleme: '{0}'. {1}.</target>
         <note />
       </trans-unit>
       <trans-unit id="FunctionExpected">
@@ -139,7 +154,7 @@
       </trans-unit>
       <trans-unit id="UndefinedName2">
         <source> A construct with this name was found in FSharp.PowerPack.dll, which contains some modules and types that were implicitly referenced in some previous versions of F#. You may need to add an explicit reference to this DLL in order to compile this code.</source>
-        <target state="translated">Bu adlı bir yapı, F# dilinin önceki bazı sürümlerinde örtük olarak başvurulan bazı modül ve türleri içeren FSharp.PowerPack.dll dosyasında bulundu. Bu kodu derleyebilmek için bu DLL'ye açık başvuru eklemeniz gerekebilir.</target>
+        <target state="translated"> Bu adlı bir yapı, F# dilinin önceki bazı sürümlerinde örtük olarak başvurulan bazı modül ve türleri içeren FSharp.PowerPack.dll dosyasında bulundu. Bu kodu derleyebilmek için bu DLL'ye açık başvuru eklemeniz gerekebilir.</target>
         <note />
       </trans-unit>
       <trans-unit id="FieldNotMutable">
@@ -364,7 +379,7 @@
       </trans-unit>
       <trans-unit id="Parser.TOKEN.HIGH.PRECEDENCE.TYAPP">
         <source>type application </source>
-        <target state="translated">tür uygulaması</target>
+        <target state="translated">tür uygulaması </target>
         <note />
       </trans-unit>
       <trans-unit id="Parser.TOKEN.COLON">
@@ -1174,12 +1189,12 @@
       </trans-unit>
       <trans-unit id="FixKeyword">
         <source>keyword </source>
-        <target state="translated">anahtar sözcük</target>
+        <target state="translated">anahtar sözcük </target>
         <note />
       </trans-unit>
       <trans-unit id="FixSymbol">
         <source>symbol </source>
-        <target state="translated">simge</target>
+        <target state="translated">simge </target>
         <note />
       </trans-unit>
       <trans-unit id="FixReplace">
@@ -1625,6 +1640,11 @@
       <trans-unit id="Parser.TOKEN.BAR.RBRACE">
         <source>symbol '|}'</source>
         <target state="translated">sembol '|}'</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.AND.BANG">
+        <source>keyword 'and!'</source>
+        <target state="translated">'and!' anahtar sözcüğü</target>
         <note />
       </trans-unit>
     </body>

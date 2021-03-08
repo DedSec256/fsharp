@@ -4,26 +4,22 @@
 module internal FSharp.Compiler.QuotationPickler
 #nowarn "1178" // The struct, record or union type 'internal_instr_extension' is not structurally comparable because the type
 
-open Internal.Utilities
-open FSharp.Compiler.AbstractIL 
-open FSharp.Compiler.AbstractIL.Internal 
-open FSharp.Compiler.AbstractIL.Internal.Bytes
-open FSharp.Compiler 
-open FSharp.Compiler.Lib
-
 type TypeData 
-type TypeVarData =  { tvName: string }
+
+type TypeVarData = { tvName: string }
 
 type NamedTypeData = 
     /// Indicates an F# 4.0+ reference into the supplied table of type definition references, ultimately resolved by TypeRef/TypeDef data 
     | Idx of int
     /// Indicates an F# 3.0+ reference to a named type in an assembly loaded by name
-    | Named of (* tcName: *) string *  (* tcAssembly:  *) string 
-
+    | Named of tcName: string *  tcAssembly:  string 
 
 val mkVarTy : int -> TypeData 
+
 val mkFunTy : (TypeData * TypeData) -> TypeData
+
 val mkArrayTy : (int * TypeData ) -> TypeData 
+
 val mkILNamedTy : (NamedTypeData * TypeData list) -> TypeData 
 
 type ExprData
@@ -31,28 +27,26 @@ type ExprData
 type VarData 
 
 type CtorData = 
-    { ctorParent: NamedTypeData; 
-      ctorArgTypes: TypeData list; }
+    { ctorParent: NamedTypeData 
+      ctorArgTypes: TypeData list }
 
 type MethodData = 
-    { methParent: NamedTypeData;
-      methName: string;
-      methArgTypes: TypeData list;
-      methRetType: TypeData; 
+    { methParent: NamedTypeData
+      methName: string
+      methArgTypes: TypeData list
+      methRetType: TypeData 
       numGenericArgs: int }
 
 type ModuleDefnData = 
-    { Module: NamedTypeData;
-      Name: string;
+    { Module: NamedTypeData
+      Name: string
       IsProperty: bool }
 
 type MethodBaseData = 
-    | ModuleDefn of ModuleDefnData
+    | ModuleDefn of ModuleDefnData * (string * int) option
     | Method     of MethodData
     | Ctor       of CtorData
 
-type FieldData     = NamedTypeData * string
-type RecdFieldData = NamedTypeData * string
 type PropInfoData  = NamedTypeData * string * TypeData * TypeData list
 
 val mkVar    : int -> ExprData 
@@ -63,15 +57,16 @@ val mkLambda : VarData * ExprData -> ExprData
 val mkQuote  : ExprData -> ExprData 
 val mkQuoteRaw40  : ExprData -> ExprData  // only available for FSharp.Core 4.4.0.0+
 val mkCond   : ExprData * ExprData * ExprData -> ExprData 
-val mkModuleValueApp : NamedTypeData * string * bool * TypeData list * ExprData list list -> ExprData 
+val mkModuleValueApp : NamedTypeData * string * bool * TypeData list * ExprData list -> ExprData 
+val mkModuleValueWApp : NamedTypeData * string * bool * string * int * TypeData list * ExprData list -> ExprData 
 val mkLetRec : (VarData * ExprData) list * ExprData -> ExprData 
 val mkLet : (VarData * ExprData) * ExprData -> ExprData
 val mkRecdMk : NamedTypeData  * TypeData list * ExprData list -> ExprData
-val mkRecdGet : RecdFieldData   * TypeData list * ExprData list -> ExprData 
-val mkRecdSet :  RecdFieldData * TypeData list * ExprData list -> ExprData 
-val mkUnion : (NamedTypeData * string) * TypeData list * ExprData list -> ExprData 
-val mkUnionFieldGet : (NamedTypeData * string * int) * TypeData list * ExprData -> ExprData  
-val mkUnionCaseTagTest : (NamedTypeData * string)   * TypeData list * ExprData -> ExprData  
+val mkRecdGet : NamedTypeData * string * TypeData list * ExprData list -> ExprData 
+val mkRecdSet :  NamedTypeData * string * TypeData list * ExprData list -> ExprData 
+val mkUnion : NamedTypeData * string * TypeData list * ExprData list -> ExprData 
+val mkUnionFieldGet : NamedTypeData * string * int * TypeData list * ExprData -> ExprData  
+val mkUnionCaseTagTest : NamedTypeData * string * TypeData list * ExprData -> ExprData  
 val mkTuple : TypeData * ExprData list -> ExprData 
 val mkTupleGet : TypeData * int * ExprData -> ExprData
 val mkCoerce : TypeData * ExprData -> ExprData 
@@ -104,10 +99,12 @@ val mkTryWith : ExprData * VarData * ExprData * VarData * ExprData -> ExprData
 val mkDelegate : TypeData * ExprData -> ExprData 
 val mkPropGet : PropInfoData   * TypeData list * ExprData list -> ExprData   
 val mkPropSet : PropInfoData   * TypeData list * ExprData list -> ExprData   
-val mkFieldGet : FieldData   * TypeData list * ExprData list -> ExprData  
-val mkFieldSet : FieldData   * TypeData list * ExprData list -> ExprData  
+val mkFieldGet : NamedTypeData * string * TypeData list * ExprData list -> ExprData  
+val mkFieldSet : NamedTypeData * string * TypeData list * ExprData list -> ExprData  
 val mkCtorCall : CtorData * TypeData list * ExprData list -> ExprData 
 val mkMethodCall : MethodData * TypeData list * ExprData list -> ExprData 
+val mkMethodCallW : MethodData * MethodData * int * TypeData list * ExprData list -> ExprData 
+
 val mkAttributedExpression : ExprData * ExprData -> ExprData 
 val pickle : (ExprData -> byte[]) 
 val isAttributedExpression : ExprData -> bool

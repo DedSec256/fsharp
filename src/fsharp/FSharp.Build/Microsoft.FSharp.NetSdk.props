@@ -59,11 +59,11 @@ WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and
   <PropertyGroup Condition="'$(DisableAutoSetFscCompilerPath)' != 'true' and '$(DOTNET_HOST_PATH)' != ''">
     <FscToolPath Condition="'$(FscToolPath)' == ''">$([System.IO.Path]::GetDirectoryName($(DOTNET_HOST_PATH)))</FscToolPath>
     <FscToolExe Condition="'$(FscToolExe)' == ''">$([System.IO.Path]::GetFileName($(DOTNET_HOST_PATH)))</FscToolExe>
-    <DotnetFscCompilerPath Condition="'$(DotnetFscCompilerPath)' == ''">"$(MSBuildThisFileDirectory)fsc.exe"</DotnetFscCompilerPath>
+    <DotnetFscCompilerPath Condition="'$(DotnetFscCompilerPath)' == ''">"$(MSBuildThisFileDirectory)fsc.dll"</DotnetFscCompilerPath>
 
     <FsiToolPath Condition="'$(FsiToolPath)' == ''">$([System.IO.Path]::GetDirectoryName($(DOTNET_HOST_PATH)))</FsiToolPath>
     <FsiToolExe Condition="'$(FsiToolExe)' == ''">$([System.IO.Path]::GetFileName($(DOTNET_HOST_PATH)))</FsiToolExe>
-    <DotnetFsiCompilerPath Condition="'$(DotnetFscCompilerPath)' == ''">"$(MSBuildThisFileDirectory)fsi.exe"</DotnetFsiCompilerPath>
+    <DotnetFsiCompilerPath Condition="'$(DotnetFscCompilerPath)' == ''">"$(MSBuildThisFileDirectory)fsi.dll"</DotnetFsiCompilerPath>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(DisableImplicitSystemValueTupleReference)' != 'true'
@@ -74,11 +74,39 @@ WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and
 
   <PropertyGroup>
     <DefaultValueTuplePackageVersion>4.4.0</DefaultValueTuplePackageVersion>
-    <DefaultFSharpCorePackageVersion>{{FSharpCoreShippedPackageVersion}}</DefaultFSharpCorePackageVersion>
-    <DefaultFSharpCorePreviewPackageVersion>{{FSharpCorePreviewPackageVersion}}</DefaultFSharpCorePreviewPackageVersion>
     <ValueTupleImplicitPackageVersion>$(DefaultValueTuplePackageVersion)</ValueTupleImplicitPackageVersion>
-    <FSharpCoreImplicitPackageVersion>$(DefaultFSharpCorePackageVersion)</FSharpCoreImplicitPackageVersion>
+    <FSharpCoreShippedPackageVersion>{{FSharpCoreShippedPackageVersion}}</FSharpCoreShippedPackageVersion>
+    <FSharpCorePreviewPackageVersion>{{FSharpCorePreviewPackageVersion}}</FSharpCorePreviewPackageVersion>
+    <FSCorePackageVersion>{{FSCorePackageVersion}}</FSCorePackageVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+
+    <PackageReference
+        Include="FSharp.Core" Version="$(FSharpCoreImplicitPackageVersion)"
+        Condition="'$(DisableImplicitFSharpCoreReference)' != 'true' and '$(FSharpCoreImplicitPackageVersion)' != ''">
+      <ExcludeAssets Condition="'$(FSharpCoreIncludeDocFileInOutput)' != 'true'">contentFiles</ExcludeAssets>
+    </PackageReference>
+
+    <PackageReference
+        Include="FSharp.Core" Version="$(FSharpCoreShippedPackageVersion)"
+        Condition="'$(DisableImplicitFSharpCoreReference)' != 'true' and '$(FSharpCoreImplicitPackageVersion)' == '' and '$(_NETCoreSdkIsPreview)' == 'true' and '$(DisableFSharpCorePreviewCheck)' == 'true'">
+      <ExcludeAssets Condition="'$(FSharpCoreIncludeDocFileInOutput)' != 'true'">contentFiles</ExcludeAssets>
+    </PackageReference>
+
+    <PackageReference
+        Include="FSharp.Core" Version="$(FSharpCorePreviewPackageVersion)"
+        Condition="'$(DisableImplicitFSharpCoreReference)' != 'true' and '$(FSharpCoreImplicitPackageVersion)' == '' and '$(_NETCoreSdkIsPreview)' == 'true' and '$(DisableFSharpCorePreviewCheck)' != 'true'">
+      <ExcludeAssets Condition="'$(FSharpCoreIncludeDocFileInOutput)' != 'true'">contentFiles</ExcludeAssets>
+    </PackageReference>
+
+    <PackageReference
+        Include="FSharp.Core" Version="$(FSCorePackageVersion)"
+        Condition="'$(DisableImplicitFSharpCoreReference)' != 'true' and '$(FSharpCoreImplicitPackageVersion)' == '' and '$(_NETCoreSdkIsPreview)' != 'true'">
+      <ExcludeAssets Condition="'$(FSharpCoreIncludeDocFileInOutput)' != 'true'">contentFiles</ExcludeAssets>
+    </PackageReference>
+
+  </ItemGroup>
 
   <ItemGroup Condition="'$(DisableImplicitSystemValueTupleReference)' != 'true'
                         and ('$(TargetFrameworkIdentifier)' == '.NETFramework'
@@ -92,10 +120,6 @@ WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and
                                      '$(_TargetFrameworkVersionWithoutV)' == '4.6.2' or
                                      '$(_TargetFrameworkVersionWithoutV)' == '4.7')) ">
     <PackageReference Include="System.ValueTuple" Version="$(ValueTupleImplicitPackageVersion)" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(DisableImplicitFSharpCoreReference)' != 'true'">
-    <PackageReference Include="FSharp.Core" Version="$(FSharpCoreImplicitPackageVersion)" />
   </ItemGroup>
 
   <ItemDefinitionGroup>

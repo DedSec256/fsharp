@@ -166,13 +166,13 @@ module Scripting =
     type OutPipe (writer: TextWriter) =
         member x.Post (msg:string) = lock writer (fun () -> writer.WriteLine(msg))
         interface System.IDisposable with 
-           member __.Dispose() = writer.Flush()
+           member _.Dispose() = writer.Flush()
 
     let redirectTo (writer: TextWriter) = new OutPipe (writer)
 
     let redirectToLog () = redirectTo System.Console.Out
 
-#if !FSHARP_SUITE_DRIVES_CORECLR_TESTS
+#if !NETCOREAPP
     let defaultPlatform = 
         match Environment.OSVersion.Platform, Environment.Is64BitOperatingSystem with 
         | PlatformID.MacOSX, true -> "osx.10.11-x64"

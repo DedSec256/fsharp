@@ -23,7 +23,8 @@
     <EmbeddedText Include="VFSIstrings.txt" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="FSharp.VS.FSI.Attributes.fs" />
-    <Compile Include="$(FSharpSourcesRoot)\utils\CompilerLocationUtils.fs">
+    <EmbeddedText Include="$(FSharpSourcesRoot)\fsharp\utils\UtilsStrings.txt" />
+    <Compile Include="$(FSharpSourcesRoot)\fsharp\utils\CompilerLocationUtils.fs">
       <Link>CompilerLocationUtils.fs</Link>
     </Compile>
     <Compile Include="sessions.fs" />
@@ -44,8 +45,8 @@
 
   <ItemGroup>
     <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Core\FSharp.Core.fsproj" />
-    <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Compiler.Private\FSharp.Compiler.Private.fsproj" />
-    <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Compiler.Server.Shared\FSharp.Compiler.Server.Shared.fsproj" />
+      <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Compiler.Service\FSharp.Compiler.Service.fsproj" />
+      <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Compiler.Server.Shared\FSharp.Compiler.Server.Shared.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -74,6 +75,7 @@
     <PackageReference Include="VSSDK.DebuggerVisualizers" Version="$(VSSDKDebuggerVisualizersVersion)" PrivateAssets="all" ExcludeAssets="runtime;contentFiles;build;analyzers;native" />
     <PackageReference Include="VSSDK.VSHelp" Version="$(VSSDKVSHelpVersion)" PrivateAssets="all" ExcludeAssets="runtime;contentFiles;build;analyzers;native" />
     <PackageReference Include="VSSDK.VSLangProj.8" Version="$(VSSDKVSLangProj8Version)" PrivateAssets="all" ExcludeAssets="runtime;contentFiles;build;analyzers;native" />
+	  <PackageReference Include="Microsoft.VisualStudio.RpcContracts" Version="$(MicrosoftVisualStudioRpcContractsVersion)" />
   </ItemGroup>
 
   <ItemGroup>

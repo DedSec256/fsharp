@@ -4,7 +4,27 @@
     <body>
       <trans-unit id="Parser.TOKEN.DOT.DOT.HAT">
         <source>symbol '..^'</source>
-        <target state="new">symbol '..^'</target>
+        <target state="translated">symbol ..^</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.BEGIN.END">
+        <source>interpolated string</source>
+        <target state="translated">interpolovaný řetězec</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.BEGIN.PART">
+        <source>interpolated string (first part)</source>
+        <target state="translated">interpolovaný řetězec (první část)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.END">
+        <source>interpolated string (final part)</source>
+        <target state="translated">interpolovaný řetězec (poslední část)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.INTERP.STRING.PART">
+        <source>interpolated string (part)</source>
+        <target state="translated">interpolovaný řetězec (část)</target>
         <note />
       </trans-unit>
       <trans-unit id="SeeAlso">
@@ -68,18 +88,13 @@
         <note />
       </trans-unit>
       <trans-unit id="UpperCaseIdentifierInPattern">
-        <source>Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name.</source>
-        <target state="translated">Identifikátory proměnných psané velkými písmeny se ve vzorech obecně nedoporučují. Můžou označovat špatně napsaný název vzoru.</target>
+        <source>Uppercase variable identifiers should not generally be used in patterns, and may indicate a missing open declaration or a misspelt pattern name.</source>
+        <target state="translated">Identifikátory proměnných psané velkými písmeny se ve vzorech obecně nedoporučují. Můžou označovat chybějící otevřenou deklaraci nebo špatně napsaný název vzoru.</target>
         <note />
       </trans-unit>
       <trans-unit id="NotUpperCaseConstructor">
         <source>Discriminated union cases and exception labels must be uppercase identifiers</source>
         <target state="translated">Rozlišené případy typu union a popisky výjimek musí být identifikátory, které jsou psané velkými písmeny.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="PossibleOverload">
-        <source>Possible overload: '{0}'. {1}.</source>
-        <target state="translated">Možné přetížení: {0}. {1}.</target>
         <note />
       </trans-unit>
       <trans-unit id="FunctionExpected">
@@ -139,7 +154,7 @@
       </trans-unit>
       <trans-unit id="UndefinedName2">
         <source> A construct with this name was found in FSharp.PowerPack.dll, which contains some modules and types that were implicitly referenced in some previous versions of F#. You may need to add an explicit reference to this DLL in order to compile this code.</source>
-        <target state="translated">Konstruktor s tímto názvem se našel v knihovně FSharp.PowerPack.dll, která obsahuje určité moduly a typy implicitně odkazované v některých dřívějších verzích F#. Abyste tento kód mohli zkompilovat, bude možná potřeba přidat explicitní odkaz na tuto knihovnu DLL.</target>
+        <target state="translated"> Konstruktor s tímto názvem se našel v knihovně FSharp.PowerPack.dll, která obsahuje určité moduly a typy implicitně odkazované v některých dřívějších verzích F#. Abyste tento kód mohli zkompilovat, bude možná potřeba přidat explicitní odkaz na tuto knihovnu DLL.</target>
         <note />
       </trans-unit>
       <trans-unit id="FieldNotMutable">
@@ -1625,6 +1640,11 @@
       <trans-unit id="Parser.TOKEN.BAR.RBRACE">
         <source>symbol '|}'</source>
         <target state="translated">symbol |}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Parser.TOKEN.AND.BANG">
+        <source>keyword 'and!'</source>
+        <target state="translated">klíčové slovo and!</target>
         <note />
       </trans-unit>
     </body>

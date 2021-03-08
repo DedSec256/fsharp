@@ -2,13 +2,13 @@
 
 // Various tests for Microsoft.FSharp.Reflection
 
-namespace FSharp.Core.UnitTests.FSharp_Core.Microsoft_FSharp_Reflection
+namespace FSharp.Core.UnitTests.Reflection
 
 open System
 open System.Reflection
 
 open FSharp.Core.UnitTests.LibraryTestFx
-open NUnit.Framework
+open Xunit
 
 open Microsoft.FSharp.Reflection
 
@@ -28,7 +28,7 @@ Make sure each method works on:
 
 module IsModule = 
     type IsModuleType () = 
-        member __.M = 1
+        member _.M = 1
 
 type FSharpDelegate = delegate of int -> string
 
@@ -65,7 +65,7 @@ module FSharpModule =
         class
         end
 
-[<TestFixture>]
+
 type FSharpValueTests() =
     
     // global variables
@@ -103,6 +103,14 @@ type FSharpValueTests() =
     let discStructUnionCaseB = DiscStructUnionType.B(1)
     let discStructUnionCaseC = DiscStructUnionType.C(1.0, "stringparam")
     
+    let optionSome = Some(3)
+    let optionNone: int option = None
+
+    let voptionSome = ValueSome("stringparam")
+    let voptionNone: string voption = ValueNone
+
+    let list1 = [ 1; 2 ]
+    let list2: int list = []
     
     let fsharpDelegate1 = new FSharpDelegate(fun (x:int) -> "delegate1")
     let fsharpDelegate2 = new FSharpDelegate(fun (x:int) -> "delegate2")
@@ -121,87 +129,87 @@ type FSharpValueTests() =
     let exInt = ExceptionInt(1)
     let exDataless = DatalessException
  
-    [<Test>]
-    member __.Equals1() =
+    [<Fact>]
+    member _.Equals1() =
         // Record value                
-        Assert.IsTrue(FSharpValue.Equals(record1, record1))
-        Assert.IsFalse(FSharpValue.Equals(record1, record2))
+        Assert.True(FSharpValue.Equals(record1, record1))
+        Assert.False(FSharpValue.Equals(record1, record2))
 
-    [<Test>]
-    member __.Equals2() =
-        Assert.IsTrue(FSharpValue.Equals(structRecord1, structRecord1))
-        Assert.IsFalse(FSharpValue.Equals(structRecord1, structRecord2))
-        Assert.IsFalse(FSharpValue.Equals(structRecord1, record2))
-        Assert.IsFalse(FSharpValue.Equals(record1, structRecord1))
-        Assert.IsFalse(FSharpValue.Equals(record2, structRecord2))
+    [<Fact>]
+    member _.Equals2() =
+        Assert.True(FSharpValue.Equals(structRecord1, structRecord1))
+        Assert.False(FSharpValue.Equals(structRecord1, structRecord2))
+        Assert.False(FSharpValue.Equals(structRecord1, record2))
+        Assert.False(FSharpValue.Equals(record1, structRecord1))
+        Assert.False(FSharpValue.Equals(record2, structRecord2))
 
-    [<Test>]
-    member __.Equals3() =
+    [<Fact>]
+    member _.Equals3() =
         // Generic Record value
-        Assert.IsTrue(FSharpValue.Equals(genericRecordType1, genericRecordType1))
-        Assert.IsFalse(FSharpValue.Equals(genericRecordType1, genericRecordType2))
+        Assert.True(FSharpValue.Equals(genericRecordType1, genericRecordType1))
+        Assert.False(FSharpValue.Equals(genericRecordType1, genericRecordType2))
         
-    [<Test>]
-    member __.Equals4() =
+    [<Fact>]
+    member _.Equals4() =
         // null value
-        Assert.IsTrue(FSharpValue.Equals(nullValue, nullValue))
-        Assert.IsFalse(FSharpValue.Equals(nullValue, 1))
+        Assert.True(FSharpValue.Equals(nullValue, nullValue))
+        Assert.False(FSharpValue.Equals(nullValue, 1))
         
-    [<Test>]
-    member __.Equals5() =
+    [<Fact>]
+    member _.Equals5() =
         // Single Case Union
-        Assert.IsTrue(FSharpValue.Equals(singleCaseUnion1, singleCaseUnion1))
-        Assert.IsFalse(FSharpValue.Equals(singleCaseUnion1, singleCaseUnion2))
+        Assert.True(FSharpValue.Equals(singleCaseUnion1, singleCaseUnion1))
+        Assert.False(FSharpValue.Equals(singleCaseUnion1, singleCaseUnion2))
         
-    [<Test>]
-    member __.Equals6() =
+    [<Fact>]
+    member _.Equals6() =
         // Single Case Union
-        Assert.IsTrue(FSharpValue.Equals(singleCaseStructUnion1, singleCaseStructUnion1))
-        Assert.IsFalse(FSharpValue.Equals(singleCaseStructUnion1, singleCaseStructUnion2))
+        Assert.True(FSharpValue.Equals(singleCaseStructUnion1, singleCaseStructUnion1))
+        Assert.False(FSharpValue.Equals(singleCaseStructUnion1, singleCaseStructUnion2))
         
-    [<Test>]
-    member __.Equals7() =
+    [<Fact>]
+    member _.Equals7() =
         // Discriminated Union
-        Assert.IsTrue(FSharpValue.Equals(discUnionCaseA, discUnionCaseA))
-        Assert.IsFalse(FSharpValue.Equals(discUnionCaseB, discUnionCaseC))
+        Assert.True(FSharpValue.Equals(discUnionCaseA, discUnionCaseA))
+        Assert.False(FSharpValue.Equals(discUnionCaseB, discUnionCaseC))
       
-    [<Test>]
-    member __.Equals8() =
+    [<Fact>]
+    member _.Equals8() =
         // Discriminated Union
-        Assert.IsTrue(FSharpValue.Equals(discStructUnionCaseA, discStructUnionCaseA))
-        Assert.IsFalse(FSharpValue.Equals(discStructUnionCaseB, discStructUnionCaseC))
+        Assert.True(FSharpValue.Equals(discStructUnionCaseA, discStructUnionCaseA))
+        Assert.False(FSharpValue.Equals(discStructUnionCaseB, discStructUnionCaseC))
       
-    [<Test>]
-    member __.Equals9() =
+    [<Fact>]
+    member _.Equals9() =
         // FSharpDelegate
-        Assert.IsTrue(FSharpValue.Equals(fsharpDelegate1, fsharpDelegate1))
-        Assert.IsFalse(FSharpValue.Equals(fsharpDelegate1, fsharpDelegate2))
+        Assert.True(FSharpValue.Equals(fsharpDelegate1, fsharpDelegate1))
+        Assert.False(FSharpValue.Equals(fsharpDelegate1, fsharpDelegate2))
         
-    [<Test>]
-    member __.Equals10() =
+    [<Fact>]
+    member _.Equals10() =
         // Tuple
-        Assert.IsTrue(FSharpValue.Equals(tuple1, tuple1))
-        Assert.IsFalse(FSharpValue.Equals( (1, 2, 3), (4, 5, 6) ))
+        Assert.True(FSharpValue.Equals(tuple1, tuple1))
+        Assert.False(FSharpValue.Equals( (1, 2, 3), (4, 5, 6) ))
         
-    [<Test>]
-    member __.Equals10b() =
+    [<Fact>]
+    member _.Equals10b() =
         // Tuple
-        Assert.IsTrue(FSharpValue.Equals(structTuple1, structTuple1))
-        Assert.IsFalse(FSharpValue.Equals( struct (1, 2, 3), struct (4, 5, 6) ))
+        Assert.True(FSharpValue.Equals(structTuple1, structTuple1))
+        Assert.False(FSharpValue.Equals( struct (1, 2, 3), struct (4, 5, 6) ))
 
-    [<Test>]
-    member __.Equals11() =
+    [<Fact>]
+    member _.Equals11() =
         // Tuples of differing types
-        Assert.IsFalse(FSharpValue.Equals(tuple1, tuple2))
+        Assert.False(FSharpValue.Equals(tuple1, tuple2))
      
-    [<Test>]
-    member __.Equals12() =
+    [<Fact>]
+    member _.Equals12() =
         // Exception
-        Assert.IsTrue(FSharpValue.Equals(exInt, exInt))
-        Assert.IsFalse(FSharpValue.Equals(exInt, exDataless))      
+        Assert.True(FSharpValue.Equals(exInt, exInt))
+        Assert.False(FSharpValue.Equals(exInt, exDataless))      
 
-    [<Test>]
-    member __.GetExceptionFields() =
+    [<Fact>]
+    member _.GetExceptionFields() =
         
         // int 
         Assert.AreEqual(FSharpValue.GetExceptionFields(exInt), ([|1|] : obj []))
@@ -219,8 +227,8 @@ type FSharpValueTests() =
         // null
         CheckThrowsArgumentException(fun () -> FSharpValue.GetExceptionFields(null) |> ignore)
         
-    [<Test>]
-    member __.GetRecordField() =
+    [<Fact>]
+    member _.GetRecordField() =
          
         // Record
         let propertyinfo1 = (typeof<RecordType>).GetProperty("field1")
@@ -241,8 +249,8 @@ type FSharpValueTests() =
         let propertyinfoint = (typeof<RecordType>).GetProperty("fieldstring")
         CheckThrowsArgumentException(fun () -> FSharpValue.GetRecordField("invalid", propertyinfoint) |> ignore)
         
-    [<Test>]
-    member __.GetStructRecordField() =
+    [<Fact>]
+    member _.GetStructRecordField() =
          
         // Record
         let propertyinfo1 = (typeof<StructRecordType>).GetProperty("field1")
@@ -259,8 +267,8 @@ type FSharpValueTests() =
         let propertyinfoint = (typeof<StructRecordType>).GetProperty("fieldstring")
         CheckThrowsArgumentException(fun () -> FSharpValue.GetRecordField("invalid", propertyinfoint) |> ignore)
         
-    [<Test>]
-    member __.GetRecordFields() =
+    [<Fact>]
+    member _.GetRecordFields() =
         // Record
         let propertyinfo1 = (typeof<RecordType>).GetProperty("field1")
         Assert.AreEqual((FSharpValue.GetRecordFields(record1)).[0], "field1")
@@ -276,13 +284,13 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.GetRecordFields("invalid") |> ignore)
     
-    [<Test>]
-    member __.GetStructRecordFields() =
+    [<Fact>]
+    member _.GetStructRecordFields() =
         let propertyinfo1 = (typeof<StructRecordType>).GetProperty("field1")
         Assert.AreEqual((FSharpValue.GetRecordFields(structRecord1)).[0], "field1")
         
-    [<Test>]
-    member __.GetTupleField() =
+    [<Fact>]
+    member _.GetTupleField() =
         // Tuple
         Assert.AreEqual((FSharpValue.GetTupleField(tuple1, 0)), 1)
         
@@ -299,8 +307,8 @@ type FSharpValueTests() =
         // index out of range
         CheckThrowsArgumentException(fun () -> FSharpValue.GetTupleField(tuple2, 8)|> ignore)
       
-    [<Test>]
-    member __.GetStructTupleField() =
+    [<Fact>]
+    member _.GetStructTupleField() =
         // Tuple
         Assert.AreEqual((FSharpValue.GetTupleField(structTuple1, 0)), 1)
         
@@ -310,8 +318,8 @@ type FSharpValueTests() =
         // index out of range
         CheckThrowsArgumentException(fun () -> FSharpValue.GetTupleField(structTuple2, 8)|> ignore)
       
-    [<Test>]
-    member __.GetTupleFields() =
+    [<Fact>]
+    member _.GetTupleFields() =
         // Tuple
         Assert.AreEqual(FSharpValue.GetTupleFields(tuple1).[0], 1)
         
@@ -325,16 +333,16 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.GetTupleFields("Invalid")|> ignore)
       
-    [<Test>]
-    member __.GetStructTupleFields() =
+    [<Fact>]
+    member _.GetStructTupleFields() =
         // Tuple
         Assert.AreEqual(FSharpValue.GetTupleFields(structTuple1).[0], 1)
         
         // Tuple with function element
         Assert.AreEqual( (FSharpValue.GetTupleFields(structTuple2)).[1], "tuple2")
         
-    [<Test>]
-    member __.GetUnionFields() =
+    [<Fact>]
+    member _.GetUnionFields() =
         // single case union  
         let (singlecaseinfo, singlevaluearray) = FSharpValue.GetUnionFields(singleCaseUnion1, typeof<SingleCaseDiscUnion>)
         Assert.AreEqual(singlevaluearray, ([|1.0;2.0;3.0|] : obj []))
@@ -347,8 +355,8 @@ type FSharpValueTests() =
         CheckThrowsArgumentException(fun () ->  FSharpValue.GetUnionFields(null, null)|> ignore)
         CheckThrowsArgumentException(fun () ->  FSharpValue.GetUnionFields( () , null)|> ignore)
         
-    [<Test>]
-    member __.GetStructUnionFields() =
+    [<Fact>]
+    member _.GetStructUnionFields() =
         // single case union  
         let (_singlecaseinfo, singlevaluearray) = FSharpValue.GetUnionFields(singleCaseStructUnion1, typeof<SingleCaseDiscStructUnion>)
         Assert.AreEqual(singlevaluearray, ([|1.0;2.0;3.0|] : obj []))
@@ -357,8 +365,8 @@ type FSharpValueTests() =
         let (_duCaseinfo, duValueArray) = FSharpValue.GetUnionFields(discStructUnionCaseB, typeof<DiscStructUnionType<int>>)
         Assert.AreEqual(duValueArray.[0], 1)
                 
-    [<Test>]
-    member __.MakeFunction() =
+    [<Fact>]
+    member _.MakeFunction() =
     
         // Int function
         let implementationInt (x:obj) = box( unbox<int>(x) + 1)
@@ -372,8 +380,8 @@ type FSharpValueTests() =
         let resultFuncString = resultFuncStringObj :?> (string -> string)
         Assert.AreEqual(resultFuncString("parameter"), "parameter function")
         
-    [<Test>]
-    member __.MakeRecord() =
+    [<Fact>]
+    member _.MakeRecord() =
         // Record
         let makeRecord = FSharpValue.MakeRecord(typeof<RecordType>, [| box"field1"; box(Some(record1)); box( fun () -> (record1, "")) |])
         Assert.AreEqual(FSharpValue.GetRecordFields(makeRecord).[0], "field1")
@@ -388,14 +396,14 @@ type FSharpValueTests() =
         // invalid value        
         CheckThrowsArgumentException(fun () ->  FSharpValue.MakeRecord(typeof<GenericRecordType<string, int>>, [| box 1; box("invalid param"); box("invalid param") |])|> ignore)
         
-    [<Test>]
-    member __.MakeStructRecord() =
+    [<Fact>]
+    member _.MakeStructRecord() =
         // Record
         let makeRecord = FSharpValue.MakeRecord(typeof<StructRecordType>, [| box"field1"; box(Some(structRecord1)); box( fun () -> (structRecord1, "")) |])
         Assert.AreEqual(FSharpValue.GetRecordFields(makeRecord).[0], "field1")
         
-    [<Test>]
-    member __.MakeTuple() =
+    [<Fact>]
+    member _.MakeTuple() =
         // Tuple
         let makeTuple = FSharpValue.MakeTuple([| box 1; box("tuple") |], typeof<Tuple<int, string>>)
         Assert.AreEqual(FSharpValue.GetTupleFields(makeTuple).[0], 1)
@@ -410,8 +418,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.MakeTuple([| box"invalid param"; box"invalid param"|], typeof<Tuple<int, string>>)  |> ignore)
         
-    [<Test>]
-    member __.MakeStructTuple() =
+    [<Fact>]
+    member _.MakeStructTuple() =
         // Tuple
         let makeTuple = FSharpValue.MakeTuple([| box 1; box("tuple") |], typeof<struct (int * string)>)
         Assert.AreEqual(FSharpValue.GetTupleFields(makeTuple).[0], 1)
@@ -425,8 +433,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.MakeTuple([| box"invalid param"; box"invalid param"|], typeof<struct (int * string)>)  |> ignore)
         
-    [<Test>]
-    member __.MakeUnion() =
+    [<Fact>]
+    member _.MakeUnion() =
         // single case union  
         let (singlecaseinfo, _singlevaluearray) = FSharpValue.GetUnionFields(singleCaseUnion1, typeof<SingleCaseDiscUnion>)
         let resultSingleCaseUnion=FSharpValue.MakeUnion(singlecaseinfo, [| box 1.0; box 2.0; box 3.0|])
@@ -437,8 +445,8 @@ type FSharpValueTests() =
         let resultDiscUnion=FSharpValue.MakeUnion(duCaseinfo, [| box 1; box (Some discUnionCaseB) |])
         Assert.AreEqual(resultDiscUnion, discUnionRecCaseB)
         
-    [<Test>]
-    member __.MakeStructUnion() =
+    [<Fact>]
+    member _.MakeStructUnion() =
         // single case union  
         let (singlecaseinfo, _singlevaluearray) = FSharpValue.GetUnionFields(singleCaseStructUnion1, typeof<SingleCaseDiscStructUnion>)
         let resultSingleCaseUnion=FSharpValue.MakeUnion(singlecaseinfo, [| box 1.0; box 2.0; box 3.0|])
@@ -448,8 +456,8 @@ type FSharpValueTests() =
         let (duCaseinfo, duValueArray) = FSharpValue.GetUnionFields(discStructUnionCaseB, typeof<DiscStructUnionType<int>>)
         FSharpValue.MakeUnion(duCaseinfo, [| box 1|]) |> ignore
         
-    [<Test>]
-    member __.PreComputeRecordConstructor() =
+    [<Fact>]
+    member _.PreComputeRecordConstructor() =
         // Record
         let recCtor = FSharpValue.PreComputeRecordConstructor(typeof<RecordType>)
         let resultRecordType   = recCtor([| box("field1"); box(Some(record1)); box(fun () -> (record1, "")) |])
@@ -466,16 +474,16 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeRecordConstructor(typeof<DiscUnionType<string>>) |> ignore)        
         
-    [<Test>]
-    member __.PreComputeStructRecordConstructor() =
+    [<Fact>]
+    member _.PreComputeStructRecordConstructor() =
         // Record
         let recCtor = FSharpValue.PreComputeRecordConstructor(typeof<StructRecordType>)
         let resultRecordType   = recCtor([| box("field1"); box(Some(structRecord1)); box(fun () -> (structRecord1, "")) |])
         Assert.AreEqual( (unbox<StructRecordType>(resultRecordType)).field1 , structRecord1.field1)
         
        
-    [<Test>]
-    member __.PreComputeRecordConstructorInfo() =
+    [<Fact>]
+    member _.PreComputeRecordConstructorInfo() =
         // Record
         let recordCtorInfo = FSharpValue.PreComputeRecordConstructorInfo(typeof<RecordType>)
         Assert.AreEqual(recordCtorInfo.ReflectedType, typeof<RecordType> )
@@ -490,14 +498,14 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeRecordConstructorInfo(typeof<DiscUnionType<string>>) |> ignore)        
         
-    [<Test>]
-    member __.PreComputeStructRecordConstructorInfo() =
+    [<Fact>]
+    member _.PreComputeStructRecordConstructorInfo() =
         // Record
         let recordCtorInfo = FSharpValue.PreComputeRecordConstructorInfo(typeof<StructRecordType>)
         Assert.AreEqual(recordCtorInfo.ReflectedType, typeof<StructRecordType> )
         
-    [<Test>]
-    member __.PreComputeRecordFieldReader() =
+    [<Fact>]
+    member _.PreComputeRecordFieldReader() =
         // Record
         let recordFieldReader = FSharpValue.PreComputeRecordFieldReader((typeof<RecordType>).GetProperty("field1"))
         Assert.AreEqual(recordFieldReader(record1), box("field1"))
@@ -509,14 +517,14 @@ type FSharpValueTests() =
         // null value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeRecordFieldReader(null)|> ignore)    
         
-    [<Test>]
-    member __.PreComputeStructRecordFieldReader() =
+    [<Fact>]
+    member _.PreComputeStructRecordFieldReader() =
         // Record
         let recordFieldReader = FSharpValue.PreComputeRecordFieldReader((typeof<StructRecordType>).GetProperty("field1"))
         Assert.AreEqual(recordFieldReader(structRecord1), box("field1"))
         
-    [<Test>]
-    member __.PreComputeRecordReader() =
+    [<Fact>]
+    member _.PreComputeRecordReader() =
         // Record
         let recordReader = FSharpValue.PreComputeRecordReader(typeof<RecordType>)
         Assert.AreEqual( (recordReader(record1)).[0], "field1")
@@ -531,14 +539,14 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeRecordReader(typeof<DiscUnionType<string>>) |> ignore)        
     
-    [<Test>]
-    member __.PreComputeStructRecordReader() =
+    [<Fact>]
+    member _.PreComputeStructRecordReader() =
         // Record
         let recordReader = FSharpValue.PreComputeRecordReader(typeof<StructRecordType>)
         Assert.AreEqual( (recordReader(structRecord1)).[0], "field1")
     
-    [<Test>]
-    member __.PreComputeTupleConstructor() =
+    [<Fact>]
+    member _.PreComputeTupleConstructor() =
         // Tuple
         let tupleCtor = FSharpValue.PreComputeTupleConstructor(tuple1.GetType())    
         Assert.AreEqual( tupleCtor([| box 1; box "tuple1" |]) , box(tuple1))
@@ -559,8 +567,8 @@ type FSharpValueTests() =
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeTupleConstructor(typeof<DiscUnionType<string>>) |> ignore)        
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeTupleConstructor(typeof<unit>) |> ignore)        
     
-    [<Test>]
-    member __.PreComputeStructTupleConstructor() =
+    [<Fact>]
+    member _.PreComputeStructTupleConstructor() =
         // Tuple
         let tupleCtor = FSharpValue.PreComputeTupleConstructor(structTuple1.GetType())    
         Assert.AreEqual( tupleCtor([| box 1; box "tuple1" |]) , box(structTuple1))
@@ -577,8 +585,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeTupleConstructor(typeof<DiscStructUnionType<string>>) |> ignore)        
 
-    [<Test>]
-    member __.PreComputeTupleConstructorInfo() =
+    [<Fact>]
+    member _.PreComputeTupleConstructorInfo() =
         // Tuple
         let (tupleCtorInfo, _tupleType) = FSharpValue.PreComputeTupleConstructorInfo(typeof<Tuple<int, string>>)    
         Assert.AreEqual(tupleCtorInfo.ReflectedType, typeof<Tuple<int, string>> )
@@ -596,8 +604,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeTupleConstructorInfo(typeof<StructRecordType>) |> ignore)        
         
-    [<Test>]
-    member __.PreComputeStructTupleConstructorInfo() =
+    [<Fact>]
+    member _.PreComputeStructTupleConstructorInfo() =
         // Tuple
         let (tupleCtorInfo, _tupleType) = FSharpValue.PreComputeTupleConstructorInfo(typeof<struct (int * string)>)    
         Assert.AreEqual(tupleCtorInfo.ReflectedType, typeof<struct (int * string)> )
@@ -606,8 +614,8 @@ type FSharpValueTests() =
         let (nestedTupleCtorInfo, _nestedTupleType) = FSharpValue.PreComputeTupleConstructorInfo(typeof<struct (int * struct (int * string))>)    
         Assert.AreEqual(nestedTupleCtorInfo.ReflectedType, typeof<struct (int * struct (int * string))>)
         
-    [<Test>]
-    member __.PreComputeTuplePropertyInfo() =
+    [<Fact>]
+    member _.PreComputeTuplePropertyInfo() =
     
         // Tuple
         let (tuplePropInfo, _typeindex) = FSharpValue.PreComputeTuplePropertyInfo(typeof<Tuple<int, string>>, 0)    
@@ -628,8 +636,8 @@ type FSharpValueTests() =
 
     // This fails as no PropertyInfo's actually exist for struct tuple types. 
     //
-    //[<Test>]
-    //member __.PreComputeStructTuplePropertyInfo() =
+    //[<Fact>]
+    //member _.PreComputeStructTuplePropertyInfo() =
     //
     //    // Tuple
     //    let (tuplePropInfo, _typeindex) = FSharpValue.PreComputeTuplePropertyInfo(typeof<struct (int * string)>, 0)    
@@ -639,8 +647,8 @@ type FSharpValueTests() =
     //    let (tupleNestedPropInfo, _typeindex) = FSharpValue.PreComputeTuplePropertyInfo(typeof<struct (int * struct (int * string))>, 1)    
     //    Assert.AreEqual(tupleNestedPropInfo.PropertyType, typeof<struct (int * string)>)
         
-    [<Test>]
-    member __.PreComputeTupleReader() =
+    [<Fact>]
+    member _.PreComputeTupleReader() =
     
         // Tuple
         let tuplereader = FSharpValue.PreComputeTupleReader(typeof<Tuple<int, string>>)    
@@ -656,8 +664,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeTupleReader(typeof<RecordType>) |> ignore)        
 
-    [<Test>]
-    member __.PreComputeStructTupleReader() =
+    [<Fact>]
+    member _.PreComputeStructTupleReader() =
     
         // Tuple
         let tuplereader = FSharpValue.PreComputeTupleReader(typeof<struct (int  * string)>)    
@@ -670,8 +678,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeTupleReader(typeof<StructRecordType>) |> ignore)        
         
-    [<Test>]
-    member __.PreComputeUnionConstructor() =
+    [<Fact>]
+    member _.PreComputeUnionConstructor() =
     
         // SingleCaseUnion
         let (singlecaseinfo, _singlevaluearray) = FSharpValue.GetUnionFields(singleCaseUnion1, typeof<SingleCaseDiscUnion>)
@@ -685,8 +693,8 @@ type FSharpValueTests() =
         let resuleDiscUnionB = discUnionCtor([| box 1; box(Some(discUnionCaseB)) |])
         Assert.AreEqual(resuleDiscUnionB, discUnionRecCaseB)
 
-    [<Test>]
-    member __.PreComputeStructUnionConstructor() =
+    [<Fact>]
+    member _.PreComputeStructUnionConstructor() =
     
         // SingleCaseUnion
         let (singlecaseinfo, _singlevaluearray) = FSharpValue.GetUnionFields(singleCaseStructUnion1, typeof<SingleCaseDiscStructUnion>)
@@ -700,8 +708,8 @@ type FSharpValueTests() =
         let resuleDiscUnionB = discUnionCtor([| box 1|])
         Assert.AreEqual(resuleDiscUnionB, discStructUnionCaseB)
     
-    [<Test>]
-    member __.PreComputeUnionConstructorInfo() =
+    [<Fact>]
+    member _.PreComputeUnionConstructorInfo() =
     
         // SingleCaseUnion
         let (singlecaseinfo, _singlevaluearray) = FSharpValue.GetUnionFields(singleCaseUnion1, typeof<SingleCaseDiscUnion>)
@@ -713,8 +721,8 @@ type FSharpValueTests() =
         let discUnionMethodInfo = FSharpValue.PreComputeUnionConstructorInfo(discUnionInfo)    
         Assert.AreEqual(discUnionMethodInfo.ReflectedType, typeof<DiscUnionType<int>>)
     
-    [<Test>]
-    member __.PreComputeStructUnionConstructorInfo() =
+    [<Fact>]
+    member _.PreComputeStructUnionConstructorInfo() =
     
         // SingleCaseUnion
         let (singlecaseinfo, _singlevaluearray) = FSharpValue.GetUnionFields(singleCaseStructUnion1, typeof<SingleCaseDiscStructUnion>)
@@ -726,8 +734,8 @@ type FSharpValueTests() =
         let discUnionMethodInfo = FSharpValue.PreComputeUnionConstructorInfo(discUnionInfo)    
         Assert.AreEqual(discUnionMethodInfo.ReflectedType, typeof<DiscStructUnionType<int>>)
 
-    [<Test>]
-    member __.PreComputeUnionReader() =
+    [<Fact>]
+    member _.PreComputeUnionReader() =
     
         // SingleCaseUnion
         let (singlecaseinfo, singlevaluearray) = FSharpValue.GetUnionFields(singleCaseUnion1, typeof<SingleCaseDiscUnion>)
@@ -738,9 +746,27 @@ type FSharpValueTests() =
         let (discUnionInfo, discvaluearray) = FSharpValue.GetUnionFields(discUnionRecCaseB, typeof<DiscUnionType<int>>)
         let discUnionReader = FSharpValue.PreComputeUnionReader(discUnionInfo)    
         Assert.AreEqual(discUnionReader(box(discUnionRecCaseB)) , [| box 1; box(Some(discUnionCaseB)) |])
+
+        // Option
+        let (optionCaseInfo, _) = FSharpValue.GetUnionFields(optionSome, typeof<int option>)
+        let optionReader = FSharpValue.PreComputeUnionReader(optionCaseInfo)
+        Assert.AreEqual(optionReader(box(optionSome)), [| box 3 |])
+
+        let (optionCaseInfo, _) = FSharpValue.GetUnionFields(optionNone, typeof<int option>)
+        let optionReader = FSharpValue.PreComputeUnionReader(optionCaseInfo)
+        Assert.AreEqual(optionReader(box(optionNone)), [| |])
+
+        // List
+        let (listCaseInfo, _) = FSharpValue.GetUnionFields(list1, typeof<int list>)
+        let listReader = FSharpValue.PreComputeUnionReader(listCaseInfo)
+        Assert.AreEqual(listReader(box(list1)), [| box 1; box [ 2 ] |])
+
+        let (listCaseInfo, _) = FSharpValue.GetUnionFields(list2, typeof<int list>)
+        let listReader = FSharpValue.PreComputeUnionReader(listCaseInfo)
+        Assert.AreEqual(listReader(box(list2)), [| |])
         
-    [<Test>]
-    member __.PreComputeStructUnionReader() =
+    [<Fact>]
+    member _.PreComputeStructUnionReader() =
     
         // SingleCaseUnion
         let (singlecaseinfo, singlevaluearray) = FSharpValue.GetUnionFields(singleCaseStructUnion1, typeof<SingleCaseDiscStructUnion>)
@@ -751,9 +777,18 @@ type FSharpValueTests() =
         let (discUnionInfo, discvaluearray) = FSharpValue.GetUnionFields(discStructUnionCaseB, typeof<DiscStructUnionType<int>>)
         let discUnionReader = FSharpValue.PreComputeUnionReader(discUnionInfo)    
         Assert.AreEqual(discUnionReader(box(discStructUnionCaseB)) , [| box 1|])
+
+        // Value Option
+        let (voptionCaseInfo, _) = FSharpValue.GetUnionFields(voptionSome, typeof<string voption>)
+        let voptionReader = FSharpValue.PreComputeUnionReader(voptionCaseInfo)
+        Assert.AreEqual(voptionReader(box(voptionSome)), [| box "stringparam" |])
+
+        let (voptionCaseInfo, _) = FSharpValue.GetUnionFields(voptionNone, typeof<string voption>)
+        let voptionReader = FSharpValue.PreComputeUnionReader(voptionCaseInfo)
+        Assert.AreEqual(voptionReader(box(voptionNone)), [| |])
         
-    [<Test>]
-    member __.PreComputeUnionTagMemberInfo() =
+    [<Fact>]
+    member _.PreComputeUnionTagMemberInfo() =
     
         // SingleCaseUnion
         let singlecaseUnionMemberInfo = FSharpValue.PreComputeUnionTagMemberInfo(typeof<SingleCaseDiscUnion>) 
@@ -769,8 +804,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeUnionTagMemberInfo(typeof<RecordType>) |> ignore)        
 
-    [<Test>]
-    member __.PreComputeStructUnionTagMemberInfo() =
+    [<Fact>]
+    member _.PreComputeStructUnionTagMemberInfo() =
     
         // SingleCaseUnion
         let singlecaseUnionMemberInfo = FSharpValue.PreComputeUnionTagMemberInfo(typeof<SingleCaseDiscStructUnion>) 
@@ -780,8 +815,8 @@ type FSharpValueTests() =
         let discUnionMemberInfo = FSharpValue.PreComputeUnionTagMemberInfo(typeof<DiscStructUnionType<int>>) 
         Assert.AreEqual(discUnionMemberInfo.ReflectedType, typeof<DiscStructUnionType<int>>)
         
-    [<Test>]
-    member __.PreComputeUnionTagReader() =
+    [<Fact>]
+    member _.PreComputeUnionTagReader() =
     
         // SingleCaseUnion
         let singlecaseUnionTagReader = FSharpValue.PreComputeUnionTagReader(typeof<SingleCaseDiscUnion>) 
@@ -790,6 +825,16 @@ type FSharpValueTests() =
         // DiscUnion
         let discUnionTagReader = FSharpValue.PreComputeUnionTagReader(typeof<DiscUnionType<int>>) 
         Assert.AreEqual(discUnionTagReader(box(discUnionCaseB)), 1)
+
+        // Option
+        let optionTagReader = FSharpValue.PreComputeUnionTagReader(typeof<int option>)
+        Assert.AreEqual(optionTagReader(box(optionSome)), 1)
+        Assert.AreEqual(optionTagReader(box(optionNone)), 0)
+
+        // Value Option
+        let voptionTagReader = FSharpValue.PreComputeUnionTagReader(typeof<string voption>)
+        Assert.AreEqual(voptionTagReader(box(voptionSome)), 1)
+        Assert.AreEqual(voptionTagReader(box(voptionNone)), 0)
         
          // null value
         CheckThrowsArgumentException(fun () ->FSharpValue.PreComputeUnionTagReader(null)|> ignore)
@@ -797,8 +842,8 @@ type FSharpValueTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpValue.PreComputeUnionTagReader(typeof<RecordType>) |> ignore)        
         
-    [<Test>]
-    member __.PreComputeStructUnionTagReader() =
+    [<Fact>]
+    member _.PreComputeStructUnionTagReader() =
     
         // SingleCaseUnion
         let singlecaseUnionTagReader = FSharpValue.PreComputeUnionTagReader(typeof<SingleCaseDiscStructUnion>) 
@@ -807,12 +852,11 @@ type FSharpValueTests() =
         // DiscUnion
         let discUnionTagReader = FSharpValue.PreComputeUnionTagReader(typeof<DiscStructUnionType<int>>) 
         Assert.AreEqual(discUnionTagReader(box(discStructUnionCaseB)), 1)
-        
-        
-[<TestFixture>]
+
+
 type FSharpTypeTests() =    
     
-    // instance for member __.ObjectEquals
+    // instance for member _.ObjectEquals
     let rec recordtype1 : RecordType = { field1 = "field1"; field2 = Some(recordtype1); field3 = ( fun () -> (recordtype1, "")  )}
     let recordtype2 : RecordType = { field1 = "field2"; field2 = Some(recordtype1); field3 = ( fun () -> (recordtype1, "")  )}
     let rec genericRecordType1 : GenericRecordType<string, int> = { field1 = "field1"; field2 = 1; field3 = ( fun () -> genericRecordType1 )}
@@ -841,57 +885,57 @@ type FSharpTypeTests() =
     let exDataless = DatalessException
     
     // Base class methods
-    [<Test>]
-    member __.ObjectEquals() =       
+    [<Fact>]
+    member _.ObjectEquals() =       
         
         // Record value                
-        Assert.IsTrue(FSharpValue.Equals(recordtype1, recordtype1))
-        Assert.IsFalse(FSharpValue.Equals(recordtype1, recordtype2))
+        Assert.True(FSharpValue.Equals(recordtype1, recordtype1))
+        Assert.False(FSharpValue.Equals(recordtype1, recordtype2))
 
         // Generic Record value
-        Assert.IsTrue(FSharpValue.Equals(genericRecordType1, genericRecordType1))
-        Assert.IsFalse(FSharpValue.Equals(genericRecordType1, genericRecordType2))
+        Assert.True(FSharpValue.Equals(genericRecordType1, genericRecordType1))
+        Assert.False(FSharpValue.Equals(genericRecordType1, genericRecordType2))
         
         // null value
-        Assert.IsTrue(FSharpValue.Equals(nullValue, nullValue))
-        Assert.IsFalse(FSharpValue.Equals(nullValue, 1))
+        Assert.True(FSharpValue.Equals(nullValue, nullValue))
+        Assert.False(FSharpValue.Equals(nullValue, 1))
         
         // Single Case Union
-        Assert.IsTrue(FSharpValue.Equals(singlecaseunion1, singlecaseunion1))
-        Assert.IsFalse(FSharpValue.Equals(singlecaseunion1, singlecaseunion2))
+        Assert.True(FSharpValue.Equals(singlecaseunion1, singlecaseunion1))
+        Assert.False(FSharpValue.Equals(singlecaseunion1, singlecaseunion2))
         
         // Discriminated Union
-        Assert.IsTrue(FSharpValue.Equals(discUniontypeA, discUniontypeA))
-        Assert.IsFalse(FSharpValue.Equals(discUniontypeB, discUniontypeC))
+        Assert.True(FSharpValue.Equals(discUniontypeA, discUniontypeA))
+        Assert.False(FSharpValue.Equals(discUniontypeB, discUniontypeC))
       
         // FSharpDelegate
-        Assert.IsTrue(FSharpValue.Equals(fsharpdelegate1, fsharpdelegate1))
-        Assert.IsFalse(FSharpValue.Equals(fsharpdelegate1, fsharpdelegate2))
+        Assert.True(FSharpValue.Equals(fsharpdelegate1, fsharpdelegate1))
+        Assert.False(FSharpValue.Equals(fsharpdelegate1, fsharpdelegate2))
         
         // Tuple
-        Assert.IsTrue(FSharpValue.Equals(tuple1, tuple1))
-        Assert.IsFalse(FSharpValue.Equals(tuple1, tuple2))
+        Assert.True(FSharpValue.Equals(tuple1, tuple1))
+        Assert.False(FSharpValue.Equals(tuple1, tuple2))
      
         // Exception
-        Assert.IsTrue(FSharpValue.Equals(exInt, exInt))
-        Assert.IsFalse(FSharpValue.Equals(exInt, exDataless))   
+        Assert.True(FSharpValue.Equals(exInt, exInt))
+        Assert.False(FSharpValue.Equals(exInt, exDataless))   
        
     
     // Static methods
-    [<Test>]
-    member __.GetExceptionFields() =        
+    [<Fact>]
+    member _.GetExceptionFields() =        
         
         // positive               
         let forallexistedInt = 
             FSharpType.GetExceptionFields(typeof<ExceptionInt>) 
             |> Array.forall (fun property -> (Array.IndexOf<Reflection.PropertyInfo>(typeof<ExceptionInt>.GetProperties(), property) > -1))
 
-        Assert.IsTrue(forallexistedInt)
+        Assert.True(forallexistedInt)
         
         let forallexistedDataless = 
             FSharpType.GetExceptionFields(typeof<DatalessException>) 
             |> Array.forall (fun property -> (Array.IndexOf<Reflection.PropertyInfo>(typeof<DatalessException>.GetProperties(), property) > -1))
-        Assert.IsTrue(forallexistedDataless)
+        Assert.True(forallexistedDataless)
        
         // Argument Exception
         CheckThrowsArgumentException(fun () ->FSharpType.GetExceptionFields(typeof<RecordType>) |> ignore )
@@ -900,8 +944,8 @@ type FSharpTypeTests() =
         CheckThrowsArgumentNullException(fun () ->FSharpType.GetExceptionFields(null) |> ignore )
         
         
-    [<Test>]
-    member __.GetFunctionElements() =    
+    [<Fact>]
+    member _.GetFunctionElements() =    
                
         // positive
         Assert.AreEqual(FSharpType.GetFunctionElements(typeof<int -> string>), (typeof<Int32>, typeof<String>))  
@@ -913,8 +957,8 @@ type FSharpTypeTests() =
         // null
         CheckThrowsArgumentNullException(fun () ->FSharpType.GetFunctionElements(null) |> ignore )
         
-    [<Test>]
-    member __.GetRecordFields() =    
+    [<Fact>]
+    member _.GetRecordFields() =    
                
         // positive
         Assert.AreEqual(FSharpType.GetRecordFields(typeof<RecordType>), (typeof<RecordType>.GetProperties()))        
@@ -927,8 +971,8 @@ type FSharpTypeTests() =
         CheckThrowsArgumentNullException(fun () ->FSharpType.GetRecordFields(null) |> ignore )
         
         
-    [<Test>]
-    member __.GetTupleElements() =    
+    [<Fact>]
+    member _.GetTupleElements() =    
                
         // positive
         Assert.AreEqual(FSharpType.GetTupleElements(typeof<Tuple<string, int>>), [|typeof<System.String>; typeof<System.Int32>|])
@@ -940,8 +984,8 @@ type FSharpTypeTests() =
         // null
         CheckThrowsArgumentNullException(fun () ->FSharpType.GetTupleElements(null) |> ignore )
         
-    [<Test>]
-    member __.GetUnionCases() =    
+    [<Fact>]
+    member _.GetUnionCases() =    
         // SingleCaseUnion
         let singlecaseUnionCaseInfoArray = FSharpType.GetUnionCases(typeof<SingleCaseDiscUnion>)  
         let (expectedSinglecaseinfo, singlevaluearray) = FSharpValue.GetUnionFields(singlecaseunion1, typeof<SingleCaseDiscUnion>)
@@ -958,35 +1002,35 @@ type FSharpTypeTests() =
         // invalid value
         CheckThrowsArgumentException(fun () -> FSharpType.GetUnionCases(typeof<RecordType>) |> ignore)  
         
-    [<Test>]
-    member __.IsExceptionRepresentation() =    
+    [<Fact>]
+    member _.IsExceptionRepresentation() =    
         
         // positive
-        Assert.IsTrue(FSharpType.IsExceptionRepresentation(typeof<ExceptionInt>))
-        Assert.IsTrue(FSharpType.IsExceptionRepresentation(typeof<DatalessException>))
+        Assert.True(FSharpType.IsExceptionRepresentation(typeof<ExceptionInt>))
+        Assert.True(FSharpType.IsExceptionRepresentation(typeof<DatalessException>))
 
         // negative
-        Assert.IsFalse(FSharpType.IsExceptionRepresentation(typeof<int>))
-        Assert.IsFalse(FSharpType.IsExceptionRepresentation(typeof<unit>))
+        Assert.False(FSharpType.IsExceptionRepresentation(typeof<int>))
+        Assert.False(FSharpType.IsExceptionRepresentation(typeof<unit>))
         
         // null
         CheckThrowsArgumentNullException(fun () -> FSharpType.IsExceptionRepresentation(null) |> ignore )
         
-    [<Test>]
-    member __.IsFunction() =    
+    [<Fact>]
+    member _.IsFunction() =    
         
         // positive       
-        Assert.IsTrue(FSharpType.IsFunction(typeof<string -> int>))
-        Assert.IsTrue(FSharpType.IsFunction(typeof<string -> int -> int>))
+        Assert.True(FSharpType.IsFunction(typeof<string -> int>))
+        Assert.True(FSharpType.IsFunction(typeof<string -> int -> int>))
         
         // negative
-        Assert.IsFalse(FSharpType.IsFunction(typeof<string>))
+        Assert.False(FSharpType.IsFunction(typeof<string>))
         
         // null
         CheckThrowsArgumentNullException(fun () -> FSharpType.IsFunction(null) |> ignore )
 
-    [<Test>]
-    member __.IsModule() =   
+    [<Fact>]
+    member _.IsModule() =   
     
         let getasm (t : Type) = t.Assembly
     
@@ -998,80 +1042,80 @@ type FSharpTypeTests() =
             |> Array.filter (fun ty -> ty.Name = "IsModule")
             |> (fun arr -> arr.[0])
         
-        Assert.IsTrue(FSharpType.IsModule(moduleType)) //assemblyTypesPositive.[3] is Microsoft_FSharp_Reflection.FSharpModule which is module type
+        Assert.True(FSharpType.IsModule(moduleType)) //assemblyTypesPositive.[3] is Microsoft_FSharp_Reflection.FSharpModule which is module type
                
         // Negative Test 
         // FSharp Assembly
         let asmCore = getasm (typeof<Microsoft.FSharp.Collections.List<int>>)
-        Assert.IsFalse(FSharpType.IsModule(asmCore.GetTypes().[0]))
+        Assert.False(FSharpType.IsModule(asmCore.GetTypes().[0]))
         
         // .Net Assembly
         let asmSystem = getasm (typeof<System.DateTime>)
-        Assert.IsFalse(FSharpType.IsModule(asmSystem.GetTypes().[0]))
+        Assert.False(FSharpType.IsModule(asmSystem.GetTypes().[0]))
         
         // custom Assembly
         let asmCustom = getasm (typeof<SingleCaseDiscUnion>)
-        Assert.IsFalse(FSharpType.IsModule(asmCustom.GetTypes().[0]))
+        Assert.False(FSharpType.IsModule(asmCustom.GetTypes().[0]))
         
         // null
         CheckThrowsArgumentNullException(fun () -> FSharpType.IsModule(null) |> ignore )
 
-    [<Test>]
-    member __.IsRecord() =    
+    [<Fact>]
+    member _.IsRecord() =    
         
         // positive       
-        Assert.IsTrue(FSharpType.IsRecord(typeof<RecordType>))
-        Assert.IsTrue(FSharpType.IsRecord(typeof<StructRecordType>))
-        Assert.IsTrue(FSharpType.IsRecord(typeof<GenericRecordType<int, string>>))
+        Assert.True(FSharpType.IsRecord(typeof<RecordType>))
+        Assert.True(FSharpType.IsRecord(typeof<StructRecordType>))
+        Assert.True(FSharpType.IsRecord(typeof<GenericRecordType<int, string>>))
         
         // negative
-        Assert.IsFalse(FSharpType.IsRecord(typeof<int>))
+        Assert.False(FSharpType.IsRecord(typeof<int>))
         
         // null
         CheckThrowsArgumentNullException(fun () ->FSharpType.IsRecord(null) |> ignore )
 
     // Regression for 5588, Reflection: unit is still treated as a record type, but only if you pass BindingFlags.NonPublic
-    [<Test>]
-    member __.``IsRecord.Regression5588``() =
+    [<Fact>]
+    member _.``IsRecord.Regression5588``() =
         // negative
-        Assert.IsFalse(FSharpType.IsRecord(typeof<unit>))
-        Assert.IsFalse( FSharpType.IsRecord(typeof<unit>, System.Reflection.BindingFlags.NonPublic) )
+        Assert.False(FSharpType.IsRecord(typeof<unit>))
+        Assert.False( FSharpType.IsRecord(typeof<unit>, System.Reflection.BindingFlags.NonPublic) )
         ()
 
-    [<Test>]
-    member __.IsTuple() =
+    [<Fact>]
+    member _.IsTuple() =
         // positive
-        Assert.IsTrue(FSharpType.IsTuple(typeof<Tuple<int, int>>))
-        Assert.IsTrue(FSharpType.IsTuple(typeof<Tuple<int, int, string>>))
+        Assert.True(FSharpType.IsTuple(typeof<Tuple<int, int>>))
+        Assert.True(FSharpType.IsTuple(typeof<Tuple<int, int, string>>))
 
-        Assert.IsTrue(FSharpType.IsTuple(typeof<struct (int * int)>))
-        Assert.IsTrue(FSharpType.IsTuple(typeof<struct (int* int * string)>))
+        Assert.True(FSharpType.IsTuple(typeof<struct (int * int)>))
+        Assert.True(FSharpType.IsTuple(typeof<struct (int* int * string)>))
         
         // negative
-        Assert.IsFalse(FSharpType.IsTuple(typeof<int>))
-        Assert.IsFalse(FSharpType.IsTuple(typeof<unit>))
+        Assert.False(FSharpType.IsTuple(typeof<int>))
+        Assert.False(FSharpType.IsTuple(typeof<unit>))
         
         // null
         CheckThrowsArgumentNullException(fun () ->FSharpType.IsTuple(null) |> ignore )
         
-    [<Test>]
-    member __.IsUnion() =    
+    [<Fact>]
+    member _.IsUnion() =    
         
         // positive       
-        Assert.IsTrue(FSharpType.IsUnion(typeof<SingleCaseDiscUnion>))
-        Assert.IsTrue(FSharpType.IsUnion(typeof<SingleCaseDiscStructUnion>))
-        Assert.IsTrue(FSharpType.IsUnion(typeof<DiscUnionType<int>>))
-        Assert.IsTrue(FSharpType.IsUnion(typeof<DiscStructUnionType<int>>))
+        Assert.True(FSharpType.IsUnion(typeof<SingleCaseDiscUnion>))
+        Assert.True(FSharpType.IsUnion(typeof<SingleCaseDiscStructUnion>))
+        Assert.True(FSharpType.IsUnion(typeof<DiscUnionType<int>>))
+        Assert.True(FSharpType.IsUnion(typeof<DiscStructUnionType<int>>))
         
         // negative
-        Assert.IsFalse(FSharpType.IsUnion(typeof<int>))
-        Assert.IsFalse(FSharpType.IsUnion(typeof<unit>))
+        Assert.False(FSharpType.IsUnion(typeof<int>))
+        Assert.False(FSharpType.IsUnion(typeof<unit>))
         
         // null
         CheckThrowsArgumentNullException(fun () ->FSharpType.IsUnion(null) |> ignore )
         
-    [<Test>]
-    member __.MakeFunctionType() =    
+    [<Fact>]
+    member _.MakeFunctionType() =    
         
         // positive       
         Assert.AreEqual(FSharpType.MakeFunctionType(typeof<int>, typeof<string>), typeof<int ->string>)       
@@ -1082,8 +1126,8 @@ type FSharpTypeTests() =
         // null
         CheckThrowsArgumentNullException(fun () ->FSharpType.MakeFunctionType(null, null) |> ignore )
         
-    [<Test>]
-    member __.MakeTupleType() =    
+    [<Fact>]
+    member _.MakeTupleType() =    
                
         // positive
         Assert.AreEqual(FSharpType.MakeTupleType([|typeof<System.String>; typeof<System.Int32>|]), typeof<Tuple<string, int>>)
@@ -1094,8 +1138,8 @@ type FSharpTypeTests() =
         // null
         CheckThrowsArgumentException(fun () ->FSharpType.MakeTupleType([|null;null|]) |> ignore )
 
-    [<Test>]
-    member __.MakeStructTupleType() =    
+    [<Fact>]
+    member _.MakeStructTupleType() =    
         let asm = typeof<struct (string * int)>.Assembly
         // positive
         Assert.AreEqual(FSharpType.MakeStructTupleType(asm, [|typeof<System.String>; typeof<System.Int32>|]), typeof<struct (string * int)>)
@@ -1106,8 +1150,6 @@ type FSharpTypeTests() =
         // null
         CheckThrowsArgumentException(fun () ->FSharpType.MakeStructTupleType(asm, [|null;null|]) |> ignore )
 
-            
-[<TestFixture>]
 type UnionCaseInfoTests() =    
     
     let singlenullarycaseunion = SingleNullaryCaseDiscUnion.SingleNullaryCaseTag
@@ -1131,33 +1173,33 @@ type UnionCaseInfoTests() =
     
     let ((recDiscCaseinfo:UnionCaseInfo), recDiscCasevaluearray) = FSharpValue.GetUnionFields(recDiscUniontypeB, typeof<DiscUnionType<int>>)
     
-    [<Test>]
-    member __.Equals() =   
+    [<Fact>]
+    member _.Equals() =   
         //positive
         // single case
-        Assert.IsTrue(singlecaseinfo.Equals(singlecaseinfo))
+        Assert.True(singlecaseinfo.Equals(singlecaseinfo))
         
         // disc union
-        Assert.IsTrue(discUnionInfoA.Equals(discUnionInfoA))
+        Assert.True(discUnionInfoA.Equals(discUnionInfoA))
         
         // rec disc union
-        Assert.IsTrue(recDiscCaseinfo.Equals(recDiscCaseinfo))
+        Assert.True(recDiscCaseinfo.Equals(recDiscCaseinfo))
                 
         // negative
         // single case
-        Assert.IsFalse(singlecaseinfo.Equals(discUnionInfoA))
+        Assert.False(singlecaseinfo.Equals(discUnionInfoA))
         
         // disc union
-        Assert.IsFalse(discUnionInfoA.Equals(discUnionInfoB))
+        Assert.False(discUnionInfoA.Equals(discUnionInfoB))
         
         // rec disc union
-        Assert.IsFalse(recDiscCaseinfo.Equals(discUnionInfoA))
+        Assert.False(recDiscCaseinfo.Equals(discUnionInfoA))
         
         // null
-        Assert.IsFalse(singlecaseinfo.Equals(null))
+        Assert.False(singlecaseinfo.Equals(null))
         
-    [<Test>]
-    member __.GetCustomAttributes() =   
+    [<Fact>]
+    member _.GetCustomAttributes() =   
         
         // single case
         let singlecaseAttribute  = (singlecaseinfo.GetCustomAttributes()).[0] :?> Attribute
@@ -1174,8 +1216,8 @@ type UnionCaseInfoTests() =
         // null
         CheckThrowsArgumentNullException(fun () -> singlecaseinfo.GetCustomAttributes(null) |> ignore )    
         
-    [<Test>]
-    member __.GetFields() =   
+    [<Fact>]
+    member _.GetFields() =   
         
         // single case
         let singlecaseFieldInfo  = (singlecaseinfo.GetFields()).[0]
@@ -1193,8 +1235,8 @@ type UnionCaseInfoTests() =
         let recdiscFieldInfo  = (recDiscCaseinfo.GetFields()).[0] 
         Assert.AreEqual(recdiscFieldInfo.PropertyType , typeof<int>)
         
-    [<Test>]
-    member __.GetHashCode() =   
+    [<Fact>]
+    member _.GetHashCode() =   
         
         // positive
         // single case
@@ -1212,8 +1254,8 @@ type UnionCaseInfoTests() =
         // disc union
         Assert.AreNotEqual(discUnionInfoA.GetHashCode(), discUnionInfoB.GetHashCode())
         
-    [<Test>]
-    member __.GetType() =   
+    [<Fact>]
+    member _.GetType() =   
   
         // single case
         Assert.AreEqual(singlecaseinfo.GetType(), typeof<UnionCaseInfo> )
@@ -1224,8 +1266,8 @@ type UnionCaseInfoTests() =
         // rec disc union
         Assert.AreEqual(recDiscCaseinfo.GetType(), typeof<UnionCaseInfo> )  
     
-    [<Test>]
-    member __.ToString() =   
+    [<Fact>]
+    member _.ToString() =   
         
         // single case
         Assert.AreEqual(singlenullarycaseinfo.ToString(), "SingleNullaryCaseDiscUnion.SingleNullaryCaseTag")
@@ -1234,7 +1276,7 @@ type UnionCaseInfoTests() =
         Assert.AreEqual(singlecaseinfo.ToString(), "SingleCaseDiscUnion.SingleCaseTag")
         
         // disc union
-        Assert.IsTrue((discUnionInfoA.ToString()).Contains("DiscUnionType") )
+        Assert.True((discUnionInfoA.ToString()).Contains("DiscUnionType") )
         
         // rec disc union
-        Assert.IsTrue((recDiscCaseinfo.ToString()).Contains("DiscUnionType"))
+        Assert.True((recDiscCaseinfo.ToString()).Contains("DiscUnionType"))

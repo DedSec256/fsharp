@@ -17,7 +17,7 @@ open UnitTests.TestLib.ProjectSystem
 type public AssemblyResolverTestFixture () =
 
     [<OneTimeSetUp>]
-    member public __.Init () = AssemblyResolver.addResolver ()
+    member public _.Init () = AssemblyResolver.addResolver ()
 
 [<TestFixture>]
 [<Category "LanguageService">] 
@@ -57,6 +57,23 @@ type UsingMSBuild() as this =
         let ok = errors |> List.exists (fun err -> err.Message = text)
         Assert.IsTrue(ok, sprintf "Error list should contain '%s' message" text)
 
+    let assertExpectedErrorMessages expected (actual: list<Error>) =
+        let normalizeCR input = System.Text.RegularExpressions.Regex.Replace(input, @"\r\n|\n\r|\n|\r", "\r\n")
+        let actual = 
+            actual 
+            |> Seq.map (fun e -> e.Message)
+            |> String.concat Environment.NewLine
+            |> normalizeCR
+        let expected = expected |> String.concat Environment.NewLine |> normalizeCR
+        
+        let message = 
+            sprintf """
+=[ expected ]============
+%s
+=[ actual ]==============
+%s
+=========================""" expected actual
+        Assert.AreEqual(expected, actual, message)
 
     //verify the error list Count
     member private this.VerifyErrorListCountAtOpenProject(fileContents : string, num : int) =
@@ -190,18 +207,16 @@ let g (t : T) = t.Count()
         X(1.0)
         """
 
-        let expectedMessages =
-            [ "Possible overload: 'new : bool -> X'."
-              "Possible overload: 'new : int -> X'." ]
+        let expectedMessages = [ """No overloads match for method 'X'.
 
-        CheckErrorList content <|
-            fun errors ->
-                Assert.AreEqual(3, List.length errors)
-                assertContains errors "No overloads match for method 'X'. The available overloads are shown below."
-                for expected in expectedMessages do
-                   errors
-                   |> List.exists (fun e -> e.Message.StartsWith expected)
-                   |> Assert.IsTrue
+Known type of argument: float
+
+Available overloads:
+ - new : bool -> X // Argument at index 1 doesn't match
+ - new : int -> X // Argument at index 1 doesn't match""" ]
+
+        CheckErrorList content (assertExpectedErrorMessages expectedMessages)
+            
 
     [<Test>]
     member public this.``Query.InvalidJoinRelation.GroupJoin``() = 
@@ -277,10 +292,16 @@ let x =
         let content = """
         System.Console.WriteLine(null)
         """
-        CheckErrorList content <|
-            fun errors ->
-                Assert.AreEqual(1, List.length errors)
-                assertContains errors "A unique overload for method 'WriteLine' could not be determined based on type information prior to this program point. A type annotation may be needed. Candidates: System.Console.WriteLine(buffer: char []) : unit, System.Console.WriteLine(format: string, [<System.ParamArray>] arg: obj []) : unit, System.Console.WriteLine(value: obj) : unit, System.Console.WriteLine(value: string) : unit"
+        let expectedMessages = [ """A unique overload for method 'WriteLine' could not be determined based on type information prior to this program point. A type annotation may be needed.
+
+Known type of argument: 'a0 when 'a0 : null
+
+Candidates:
+ - System.Console.WriteLine(buffer: char []) : unit
+ - System.Console.WriteLine(format: string, [<System.ParamArray>] arg: obj []) : unit
+ - System.Console.WriteLine(value: obj) : unit
+ - System.Console.WriteLine(value: string) : unit""" ]
+        CheckErrorList content (assertExpectedErrorMessages expectedMessages)
 
     [<Test>]
     member public this.``InvalidMethodOverload2``() = 
@@ -294,10 +315,14 @@ type B() =
 let b = B()
 b.Do(1, 1)
         """
-        CheckErrorList content <|
-            fun errors ->
-                Assert.AreEqual(1, List.length errors)
-                assertContains errors "A unique overload for method 'Do' could not be determined based on type information prior to this program point. A type annotation may be needed. Candidates: member A.Do : a:int * b:'T -> unit, member A.Do : a:int * b:int -> unit"
+        let expectedMessages = [ """A unique overload for method 'Do' could not be determined based on type information prior to this program point. A type annotation may be needed.
+
+Known types of arguments: int * int
+
+Candidates:
+ - member A.Do : a:int * b:'T -> unit
+ - member A.Do : a:int * b:int -> unit""" ]
+        CheckErrorList content (assertExpectedErrorMessages expectedMessages)
 
     [<Test; Category("Expensive")>]
     member public this.``NoErrorInErrList``() = 
@@ -484,15 +509,15 @@ but here has type
     member public this.``TypeProvider.ProhibitedMethods`` () =
         let cases = 
             [
-                "let x = BadMethods.Arr.GetFirstElement([||])", "Get"
-                "let y = BadMethods.Arr.SetFirstElement([||], 5)", "Set"
-                "let z = BadMethods.Arr.AddressOfFirstElement([||])", "Address"
+                "let x = BadMethods.Arr.GetFirstElement([||])", "GetFirstElement"
+                "let y = BadMethods.Arr.SetFirstElement([||], 5)", "SetFirstElement"
+                "let z = BadMethods.Arr.AddressOfFirstElement([||])", "AddressOfFirstElement"
             ]
         for (code, str) in cases do
             this.VerifyErrorListContainedExpectedString
                 (
                     code,
-                    sprintf "Array method '%s' is supplied by the runtime and cannot be directly used in code." str,
+                    sprintf "The type provider 'DummyProviderForLanguageServiceTesting.TypeProviderThatEmitsBadMethods' reported an error in the context of provided type 'BadMethods.Arr', member '%s'. The error: The operation 'GetMethodImpl' on item 'Int32[]' should not be called on provided type, member or parameter of type 'ProviderImplementation.ProvidedTypes.TypeSymbol'." str,
                     addtlRefAssy = [PathRelativeToTestAssembly(@"DummyProviderForLanguageServiceTesting.dll")]
                 )    
     

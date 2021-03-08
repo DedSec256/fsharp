@@ -9,12 +9,13 @@
 module FSharp.Compiler.Service.Tests.CSharpProjectAnalysis
 #endif
 
-
 open NUnit.Framework
 open FsUnit
 open System.IO
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.Service.Tests.Common
+open FSharp.Compiler.Symbols
 
 let internal getProjectReferences (content, dllFiles, libDirs, otherFlags) = 
     let otherFlags = defaultArg otherFlags []
@@ -44,8 +45,8 @@ let internal getProjectReferences (content, dllFiles, libDirs, otherFlags) =
     let results = checker.ParseAndCheckProject(options) |> Async.RunSynchronously
     if results.HasCriticalErrors then
         let builder = new System.Text.StringBuilder()
-        for err in results.Errors do
-            builder.AppendLine(sprintf "**** %s: %s" (if err.Severity = FSharpErrorSeverity.Error then "error" else "warning") err.Message)
+        for err in results.Diagnostics do
+            builder.AppendLine(sprintf "**** %s: %s" (if err.Severity = FSharpDiagnosticSeverity.Error then "error" else "warning") err.Message)
             |> ignore
         failwith (builder.ToString())
     let assemblies =
@@ -55,9 +56,7 @@ let internal getProjectReferences (content, dllFiles, libDirs, otherFlags) =
     results, assemblies
 
 [<Test>]
-#if NETCOREAPP
 [<Ignore("SKIPPED: need to check if these tests can be enabled for .NET Core testing of FSharp.Compiler.Service")>]
-#endif
 let ``Test that csharp references are recognized as such`` () = 
     let csharpAssembly = PathRelativeToTestAssembly "CSharp_Analysis.dll"
     let _, table = getProjectReferences("""module M""", [csharpAssembly], None, None)
@@ -93,9 +92,7 @@ let ``Test that csharp references are recognized as such`` () =
     members.["InterfaceEvent"].XmlDocSig |> shouldEqual "E:FSharp.Compiler.Service.Tests.CSharpClass.InterfaceEvent"
 
 [<Test>]
-#if NETCOREAPP
 [<Ignore("SKIPPED: need to check if these tests can be enabled for .NET Core testing of FSharp.Compiler.Service")>]
-#endif
 let ``Test that symbols of csharp inner classes/enums are reported`` () = 
     let csharpAssembly = PathRelativeToTestAssembly "CSharp_Analysis.dll"
     let content = """
@@ -108,7 +105,6 @@ let _ = CSharpOuterClass.InnerClass.StaticMember()
 
     let results, _ = getProjectReferences(content, [csharpAssembly], None, None)
     results.GetAllUsesOfAllSymbols()
-    |> Async.RunSynchronously
     |> Array.map (fun su -> su.Symbol.ToString())
     |> shouldEqual 
           [|"FSharp"; "Compiler"; "Service"; "Tests"; "FSharp"; "InnerEnum";
@@ -116,9 +112,7 @@ let _ = CSharpOuterClass.InnerClass.StaticMember()
             "member StaticMember"; "NestedEnumClass"|]
 
 [<Test>]
-#if NETCOREAPP
 [<Ignore("SKIPPED: need to check if these tests can be enabled for .NET Core testing of FSharp.Compiler.Service")>]
-#endif
 let ``Ctor test`` () =
     let csharpAssembly = PathRelativeToTestAssembly "CSharp_Analysis.dll"
     let content = """
@@ -130,7 +124,6 @@ let _ = CSharpClass(0)
     let results, _ = getProjectReferences(content, [csharpAssembly], None, None)
     let ctor =
             results.GetAllUsesOfAllSymbols()
-            |> Async.RunSynchronously
             |> Seq.map (fun su -> su.Symbol)
             |> Seq.find (function :? FSharpMemberOrFunctionOrValue as mfv -> mfv.IsConstructor | _ -> false)
     match (ctor :?> FSharpMemberOrFunctionOrValue).DeclaringEntity with 
@@ -144,7 +137,6 @@ let getEntitiesUses source =
     let csharpAssembly = PathRelativeToTestAssembly "CSharp_Analysis.dll"
     let results, _ = getProjectReferences(source, [csharpAssembly], None, None)
     results.GetAllUsesOfAllSymbols()
-    |> Async.RunSynchronously
     |> Seq.choose (fun su ->
         match su.Symbol with
         | :? FSharpEntity as entity -> Some entity
@@ -152,9 +144,7 @@ let getEntitiesUses source =
     |> List.ofSeq
 
 [<Test>]
-#if NETCOREAPP
 [<Ignore("SKIPPED: need to check if these tests can be enabled for .NET Core testing of FSharp.Compiler.Service")>]
-#endif
 let ``Different types with the same short name equality check`` () =
     let source = """
 module CtorTest
@@ -172,9 +162,7 @@ let (s2: FSharp.Compiler.Service.Tests.String) = null
     | _ -> sprintf "Expecting two symbols, got %A" stringSymbols |> failwith
 
 [<Test>]
-#if NETCOREAPP
 [<Ignore("SKIPPED: need to check if these tests can be enabled for .NET Core testing of FSharp.Compiler.Service")>]
-#endif
 let ``Different namespaces with the same short name equality check`` () =
     let source = """
 module CtorTest

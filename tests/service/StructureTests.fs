@@ -9,10 +9,10 @@ module Tests.Service.StructureTests
 
 open System.IO
 open NUnit.Framework
-open FSharp.Compiler.Range
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.SourceCodeServices.Structure
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.EditorServices.Structure
 open FSharp.Compiler.Service.Tests.Common
+open FSharp.Compiler.Text
 open System.Text
 
 let fileName = Path.Combine (__SOURCE_DIRECTORY__, __SOURCE_FILE__)
@@ -42,18 +42,15 @@ let (=>) (source: string) (expectedRanges: (Range * Range) list) =
 
     let ast = parseSourceCode(fileName, source)
     try
-        match ast with
-        | Some tree ->
-            let actual =
-                Structure.getOutliningRanges lines tree
-                |> Seq.filter (fun sr -> sr.Range.StartLine <> sr.Range.EndLine)
-                |> Seq.map (fun sr -> getRange sr.Range, getRange sr.CollapseRange)
-                |> Seq.sort
-                |> List.ofSeq
-            let expected = List.sort expectedRanges
-            if actual <> expected then
-                failwithf "Expected %s, but was %s" (formatList expected) (formatList actual)
-        | None -> failwithf "Expected there to be a parse tree for source:\n%s" source
+        let actual =
+            Structure.getOutliningRanges lines ast
+            |> Seq.filter (fun sr -> sr.Range.StartLine <> sr.Range.EndLine)
+            |> Seq.map (fun sr -> getRange sr.Range, getRange sr.CollapseRange)
+            |> Seq.sort
+            |> List.ofSeq
+        let expected = List.sort expectedRanges
+        if actual <> expected then
+            failwithf "Expected %s, but was %s" (formatList expected) (formatList actual)
     with _ ->
         printfn "AST:\n%+A" ast
         reraise()
@@ -66,8 +63,13 @@ let ``nested module``() =
     """
 module MyModule =
     ()
+
+[<Foo>]
+module Module =
+    ()
 """
-    => [ (2, 0, 3, 6), (2, 15, 3, 6) ]
+    => [ (2, 0, 3, 6), (2, 15, 3, 6)
+         (5, 0, 7, 6), (6, 13, 7, 6) ]
 
 [<Test>]
 let ``module with multiline function``() =
@@ -113,10 +115,10 @@ type Color =
 let ``record with interface``() =
     """
 type Color =
-    { Red: int
-        Green: int
-        Blue: int 
-    }
+    { Red:
+          int
+      mutable Blue:
+          int }
 
     interface IDisposable with
         member __.Dispose() =
@@ -124,8 +126,9 @@ type Color =
 """
     =>
     [ (2, 5, 10, 55), (2, 11, 10, 55)
-      (3, 4, 4, 14), (3, 4, 4, 14)
+      (3, 4, 6, 15), (3, 4, 6, 15)
       (3, 6, 4, 13), (3, 6, 4, 13)
+      (5, 6, 6, 13), (5, 6, 6, 13)
       (8, 4, 10, 55), (8, 25, 10, 55)
       (9, 8, 10, 55), (9, 27, 10, 55)
       (9, 15, 10, 55), (9, 27, 10, 55) ]
@@ -220,13 +223,13 @@ open H
 open G             
 open H              
 """
-    => [ (2, 5, 3, 6), (2, 5, 3, 6)
+    => [ (2, 0, 3, 6), (2, 0, 3, 6)
          (5, 0, 19, 17), (5, 8, 19, 17)
-         (8, 9, 9, 10), (8, 9, 9, 10)
+         (8, 4, 9, 10), (8, 4, 9, 10)
          (11, 4, 14, 17), (11, 12, 14, 17)
          (16, 4, 19, 17), (16, 12, 19, 17)
-         (17, 13, 18, 14), (17, 13, 18, 14)
-         (21, 5, 26, 6), (21, 5, 26, 6) ]
+         (17, 8, 18, 14), (17, 8, 18, 14)
+         (21, 0, 26, 6), (21, 0, 26, 6) ]
 
 [<Test>]
 let ``hash directives``() =
@@ -607,3 +610,65 @@ module NestedModule =
 """
     => [ (4, 0, 5, 15), (4, 13, 5, 15)
          (9, 0, 10, 15), (9, 19, 10, 15) ]
+
+[<Test>]
+let ``Member val`` () =
+    """
+type T() =
+    member val field1 =
+        ()
+
+    [<CompiledName("Field2")>]
+    member val field2 =
+        ()
+
+    static member val field3 =
+        ()
+
+    [<CompiledName("Field4")>]
+    static member val field4 =
+        ()
+"""
+    => [ (2, 5, 15, 10), (2, 7, 15, 10)
+         (3, 4, 4, 10), (3, 4, 4, 10)
+         (6, 4, 8, 10), (6, 4, 8, 10)
+         (10, 4, 11, 10), (10, 4, 11, 10)
+         (13, 4, 15, 10), (13, 4, 15, 10) ]
+
+[<Test>]
+let ``Secondary constructors`` () =
+    """
+type T() =
+    new () =
+        T ()
+
+    internal new () =
+        T ()
+
+    [<Foo>]
+    new () =
+        T ()
+"""
+    => [ (2, 5, 11, 12), (2, 7, 11, 12)
+         (3, 4, 4, 12), (3, 7, 4, 12)
+         (3, 4, 4, 12), (4, 8, 4, 12)
+         (6, 4, 7, 12), (6, 16, 7, 12)
+         (6, 4, 7, 12), (7, 8, 7, 12)
+         (9, 4, 11, 12), (10, 7, 11, 12)
+         (9, 4, 11, 12), (11, 8, 11, 12) ]
+
+
+[<Test>]
+let ``Abstract members`` () =
+    """
+type T() =
+    abstract Foo:
+        int
+    
+    [<Foo>]
+    abstract Foo:
+        int
+"""
+    => [ (2, 5, 8, 11), (2, 7, 8, 11)
+         (3, 4, 4, 11), (4, 8, 4, 11)
+         (6, 4, 8, 11), (8, 8, 8, 11) ]

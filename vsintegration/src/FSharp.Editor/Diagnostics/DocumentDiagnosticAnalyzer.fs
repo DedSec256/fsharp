@@ -10,14 +10,11 @@ open System.Threading
 open System.Threading.Tasks
 
 open Microsoft.CodeAnalysis
-open Microsoft.CodeAnalysis.Diagnostics
 open Microsoft.CodeAnalysis.Text
-open Microsoft.CodeAnalysis.Host.Mef
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Diagnostics
 
-open FSharp.Compiler
-open FSharp.Compiler.SourceCodeServices
-
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.Diagnostics
 
 [<RequireQualifiedAccess>]
 type internal DiagnosticsType =
@@ -25,34 +22,31 @@ type internal DiagnosticsType =
     | Semantic
 
 [<Export(typeof<IFSharpDocumentDiagnosticAnalyzer>)>]
-type internal FSharpDocumentDiagnosticAnalyzer [<ImportingConstructor>] () =
+type internal FSharpDocumentDiagnosticAnalyzer
+    [<ImportingConstructor>]
+    (
+        checkerProvider: FSharpCheckerProvider, 
+        projectInfoManager: FSharpProjectOptionsManager
+    ) =
 
     static let userOpName = "DocumentDiagnosticAnalyzer"
-    let getChecker(document: Document) =
-        document.Project.Solution.Workspace.Services.GetService<FSharpCheckerWorkspaceService>().Checker
-
-    let getProjectInfoManager(document: Document) =
-        document.Project.Solution.Workspace.Services.GetService<FSharpCheckerWorkspaceService>().FSharpProjectOptionsManager
-
-    let getSettings(document: Document) =
-        document.Project.Solution.Workspace.Services.GetService<EditorOptions>()
 
     static let errorInfoEqualityComparer =
-        { new IEqualityComparer<FSharpErrorInfo> with 
-            member __.Equals (x, y) =
+        { new IEqualityComparer<FSharpDiagnostic> with 
+            member _.Equals (x, y) =
                 x.FileName = y.FileName &&
-                x.StartLineAlternate = y.StartLineAlternate &&
-                x.EndLineAlternate = y.EndLineAlternate &&
+                x.StartLine = y.StartLine &&
+                x.EndLine = y.EndLine &&
                 x.StartColumn = y.StartColumn &&
                 x.EndColumn = y.EndColumn &&
                 x.Severity = y.Severity &&
                 x.Message = y.Message &&
                 x.Subcategory = y.Subcategory &&
                 x.ErrorNumber = y.ErrorNumber
-            member __.GetHashCode x =
+            member _.GetHashCode x =
                 let mutable hash = 17
-                hash <- hash * 23 + x.StartLineAlternate.GetHashCode()
-                hash <- hash * 23 + x.EndLineAlternate.GetHashCode()
+                hash <- hash * 23 + x.StartLine.GetHashCode()
+                hash <- hash * 23 + x.EndLine.GetHashCode()
                 hash <- hash * 23 + x.StartColumn.GetHashCode()
                 hash <- hash * 23 + x.EndColumn.GetHashCode()
                 hash <- hash * 23 + x.Severity.GetHashCode()
@@ -75,22 +69,22 @@ type internal FSharpDocumentDiagnosticAnalyzer [<ImportingConstructor>] () =
                         | FSharpCheckFileAnswer.Aborted -> return [||]
                         | FSharpCheckFileAnswer.Succeeded results ->
                             // In order to eleminate duplicates, we should not return parse errors here because they are returned by `AnalyzeSyntaxAsync` method.
-                            let allErrors = HashSet(results.Errors, errorInfoEqualityComparer)
-                            allErrors.ExceptWith(parseResults.Errors)
+                            let allErrors = HashSet(results.Diagnostics, errorInfoEqualityComparer)
+                            allErrors.ExceptWith(parseResults.Diagnostics)
                             return Seq.toArray allErrors
                     | DiagnosticsType.Syntax ->
-                        return parseResults.Errors
+                        return parseResults.Diagnostics
                 }
             
             let results = 
                 HashSet(errors, errorInfoEqualityComparer)
                 |> Seq.choose(fun error ->
-                    if error.StartLineAlternate = 0 || error.EndLineAlternate = 0 then
+                    if error.StartLine = 0 || error.EndLine = 0 then
                         // F# error line numbers are one-based. Compiler returns 0 for global errors (reported by ProjectDiagnosticAnalyzer)
                         None
                     else
                         // Roslyn line numbers are zero-based
-                        let linePositionSpan = LinePositionSpan(LinePosition(error.StartLineAlternate - 1, error.StartColumn), LinePosition(error.EndLineAlternate - 1, error.EndColumn))
+                        let linePositionSpan = LinePositionSpan(LinePosition(error.StartLine - 1, error.StartColumn), LinePosition(error.EndLine - 1, error.EndColumn))
                         let textSpan = sourceText.Lines.GetTextSpan(linePositionSpan)
                         
                         // F# compiler report errors at end of file if parsing fails. It should be corrected to match Roslyn boundaries
@@ -113,35 +107,25 @@ type internal FSharpDocumentDiagnosticAnalyzer [<ImportingConstructor>] () =
     interface IFSharpDocumentDiagnosticAnalyzer with
 
         member this.AnalyzeSyntaxAsync(document: Document, cancellationToken: CancellationToken): Task<ImmutableArray<Diagnostic>> =
-            // if using LSP, just bail early
-            let settings = getSettings document
-            if settings.Advanced.UsePreviewDiagnostics then Task.FromResult(ImmutableArray<Diagnostic>.Empty)
-            else
-            let projectInfoManager = getProjectInfoManager document
             asyncMaybe {
-                let! parsingOptions, projectOptions = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken)
+                let! parsingOptions, projectOptions = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken, userOpName)
                 let! sourceText = document.GetTextAsync(cancellationToken)
                 let! textVersion = document.GetTextVersionAsync(cancellationToken)
                 return! 
-                    FSharpDocumentDiagnosticAnalyzer.GetDiagnostics(getChecker document, document.FilePath, sourceText, textVersion.GetHashCode(), parsingOptions, projectOptions, DiagnosticsType.Syntax)
+                    FSharpDocumentDiagnosticAnalyzer.GetDiagnostics(checkerProvider.Checker, document.FilePath, sourceText, textVersion.GetHashCode(), parsingOptions, projectOptions, DiagnosticsType.Syntax)
                     |> liftAsync
             } 
             |> Async.map (Option.defaultValue ImmutableArray<Diagnostic>.Empty)
             |> RoslynHelpers.StartAsyncAsTask cancellationToken
 
         member this.AnalyzeSemanticsAsync(document: Document, cancellationToken: CancellationToken): Task<ImmutableArray<Diagnostic>> =
-            // if using LSP, just bail early
-            let settings = getSettings document
-            if settings.Advanced.UsePreviewDiagnostics then Task.FromResult(ImmutableArray<Diagnostic>.Empty)
-            else
-            let projectInfoManager = getProjectInfoManager document
             asyncMaybe {
-                let! parsingOptions, _, projectOptions = projectInfoManager.TryGetOptionsForDocumentOrProject(document, cancellationToken) 
+                let! parsingOptions, _, projectOptions = projectInfoManager.TryGetOptionsForDocumentOrProject(document, cancellationToken, userOpName) 
                 let! sourceText = document.GetTextAsync(cancellationToken)
                 let! textVersion = document.GetTextVersionAsync(cancellationToken)
                 if document.Project.Name <> FSharpConstants.FSharpMiscellaneousFilesName || isScriptFile document.FilePath then
                     return! 
-                        FSharpDocumentDiagnosticAnalyzer.GetDiagnostics(getChecker document, document.FilePath, sourceText, textVersion.GetHashCode(), parsingOptions, projectOptions, DiagnosticsType.Semantic)
+                        FSharpDocumentDiagnosticAnalyzer.GetDiagnostics(checkerProvider.Checker, document.FilePath, sourceText, textVersion.GetHashCode(), parsingOptions, projectOptions, DiagnosticsType.Semantic)
                         |> liftAsync
                 else
                     return ImmutableArray<Diagnostic>.Empty

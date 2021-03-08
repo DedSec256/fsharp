@@ -11,7 +11,8 @@ open System
 open System.IO
 open System.Text
 open NUnit.Framework
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
 
 let private filePath = "C:\\test.fs"
 
@@ -26,7 +27,6 @@ let private projectOptions : FSharpProjectOptions =
       LoadTime = DateTime.MaxValue
       OriginalLoadReferences = []
       UnresolvedReferences = None
-      ExtraProjectInfo = None
       Stamp = None }
 
 let private checker = FSharpChecker.Create()
@@ -51,7 +51,7 @@ let (=>) (source: string) (expected: string list) =
         | FSharpCheckFileAnswer.Succeeded(checkFileResults) -> checkFileResults
 
     let actual = 
-        AssemblyContentProvider.getAssemblySignatureContent AssemblyContentType.Full checkFileResults.PartialAssemblySignature
+        AssemblyContent.GetAssemblySignatureContent AssemblyContentType.Full checkFileResults.PartialAssemblySignature
         |> List.map (fun x -> x.CleanedIdents |> String.concat ".") 
         |> List.sort
 
@@ -73,7 +73,7 @@ module MyType =
         "Test.MyType.func123"]
         
 [<Test>]
-let ``Module suffix added by an xplicitly applied MuduleSuffix attribute is removed``() =
+let ``Module suffix added by an explicitly applied ModuleSuffix attribute is removed``() =
     """
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MyType =
@@ -83,4 +83,12 @@ module MyType =
          "Test.MyType"
          "Test.MyType.func123" ]
 
-
+[<Test>]
+let ``Property getters and setters are removed``() =
+    """
+    type MyType() =
+        static member val MyProperty = 0 with get,set
+"""
+    => [ "Test"
+         "Test.MyType"
+         "Test.MyType.MyProperty" ]
