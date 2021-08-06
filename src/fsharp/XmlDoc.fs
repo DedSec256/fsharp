@@ -6,6 +6,7 @@ open System
 open System.IO
 open System.Xml
 open System.Xml.Linq
+open FSharp.Compiler.AbstractIL.AsciiParser
 open Internal.Utilities.Library
 open Internal.Utilities.Collections
 open FSharp.Compiler.ErrorLogger
@@ -145,7 +146,8 @@ and XmlDocStatics() =
 
 /// Used to collect XML documentation during lexing and parsing.
 type XmlDocCollector() =
-    let mutable savedLines = new ResizeArray<(string * range)>()
+    let mutable savedLines = new ResizeArray<string * range>()
+    let mutable nowCollecting = false
     let mutable savedGrabPoints = new ResizeArray<pos>()
     let posCompare p1 p2 = if posGeq p1 p2 then 1 else if posEq p1 p2 then 0 else -1
     let savedGrabPointsAsArray =
@@ -161,10 +163,19 @@ type XmlDocCollector() =
     member x.AddGrabPoint pos =
         check()
         savedGrabPoints.Add pos
+        nowCollecting <- false
 
     member x.AddXmlDocLine(line, range) =
         check()
         savedLines.Add(line, range)
+        nowCollecting <- true
+
+    member x.DropLast(position: Internal.Utilities.Text.Lexing.Position) =
+        check()
+        if nowCollecting then
+            x.AddGrabPoint(mkPos position.Line position.Column)
+
+        nowCollecting <- false
 
     member x.LinesBefore grabPointPos =
       try
@@ -178,7 +189,7 @@ type XmlDocCollector() =
                 0
             else
                 let prevGrabPointPos = grabPoints.[grabPointIndex-1]
-                Array.findFirstIndexWhereTrue lines (fun (_, m) -> posGeq m.End prevGrabPointPos)
+                Array.findFirstIndexWhereTrue lines (fun (_, m) -> posGt m.End prevGrabPointPos)
 
         let lines = lines.[firstLineIndexAfterPrevGrabPoint..firstLineIndexAfterGrabPoint-1]
         lines
@@ -203,14 +214,13 @@ type PreXmlDoc =
                 XmlDoc.Empty
             else
                 let lines = Array.map fst preLines
-                let m = Array.reduce Range.unionRanges (Array.map snd preLines)
+                let m = Array.reduce unionRanges (Array.map snd preLines)
                 let doc = XmlDoc (lines, m)
                 if check then
                    doc.Check(paramNamesOpt)
                 doc
 
     static member CreateFromGrabPoint(collector: XmlDocCollector, grabPointPos) =
-        collector.AddGrabPoint grabPointPos
         PreXmlDoc(grabPointPos, collector)
 
     static member Empty = PreXmlDocEmpty

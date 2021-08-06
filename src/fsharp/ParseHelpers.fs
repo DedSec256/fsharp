@@ -6,6 +6,8 @@ open FSharp.Compiler.AbstractIL
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Features
 open FSharp.Compiler.SyntaxTreeOps
+open FSharp.Compiler.Text
+open FSharp.Compiler.Text
 open FSharp.Compiler.UnicodeLexing
 open FSharp.Compiler.Text
 open FSharp.Compiler.Text.Position
@@ -106,13 +108,24 @@ module LexbufLocalXmlDocStore =
         let collector = unbox<XmlDocCollector>(collector)
         collector.AddXmlDocLine(lineText, range)
 
+    let DropLast (lexbuf: Lexbuf) =
+        let collector =
+            match lexbuf.BufferLocalStore.TryGetValue xmlDocKey with
+            | true, collector -> collector
+            | _ ->
+                let collector = box (XmlDocCollector())
+                lexbuf.BufferLocalStore.[xmlDocKey] <- collector
+                collector
+        let collector = unbox<XmlDocCollector>(collector)
+        collector.DropLast(lexbuf.StartPos)
+
     /// Called from the parser each time we parse a construct that marks the end of an XML doc comment range,
     /// e.g. a 'type' declaration. The markerRange is the range of the keyword that delimits the construct.
     let GrabXmlDocBeforeMarker (lexbuf: Lexbuf, markerRange: range)  =
         match lexbuf.BufferLocalStore.TryGetValue xmlDocKey with
         | true, collector ->
             let collector = unbox<XmlDocCollector>(collector)
-            PreXmlDoc.CreateFromGrabPoint(collector, markerRange.End)
+            PreXmlDoc.CreateFromGrabPoint(collector, markerRange.Start)
         | _ ->
             PreXmlDoc.Empty
 
