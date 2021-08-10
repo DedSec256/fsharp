@@ -46,7 +46,7 @@ module LexbufLocalXmlDocStore =
 
     val GrabXmlDocBeforeMarker: lexbuf:UnicodeLexing.Lexbuf * markerRange:range -> PreXmlDoc
 
-    val DropLast: lexbuf:UnicodeLexing.Lexbuf -> unit
+    val InterruptCurrentCollecting: lexbuf:UnicodeLexing.Lexbuf -> unit
 
 type LexerIfdefStackEntry =
     | IfDefIf

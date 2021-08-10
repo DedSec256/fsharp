@@ -108,7 +108,7 @@ module LexbufLocalXmlDocStore =
         let collector = unbox<XmlDocCollector>(collector)
         collector.AddXmlDocLine(lineText, range)
 
-    let DropLast (lexbuf: Lexbuf) =
+    let InterruptCurrentCollecting (lexbuf: Lexbuf) =
         let collector =
             match lexbuf.BufferLocalStore.TryGetValue xmlDocKey with
             | true, collector -> collector

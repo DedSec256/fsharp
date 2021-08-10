@@ -183,7 +183,7 @@ type XmlDocCollector() =
         let grabPoints = savedGrabPointsAsArray.Force()
         let firstLineIndexAfterGrabPoint = Array.findFirstIndexWhereTrue lines (fun (_, m) -> posGeq m.End grabPointPos)
         let grabPointIndex = Array.findFirstIndexWhereTrue grabPoints (fun pos -> posGeq pos grabPointPos)
-        assert (posEq grabPoints.[grabPointIndex] grabPointPos)
+        //assert (posEq grabPoints.[grabPointIndex] grabPointPos)
         let firstLineIndexAfterPrevGrabPoint =
             if grabPointIndex = 0 then
                 0
