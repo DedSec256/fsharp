@@ -3,10 +3,10 @@
 namespace FSharp.Compiler.Xml
 
 open System
+open System.Collections.Generic
 open System.IO
 open System.Xml
 open System.Xml.Linq
-open FSharp.Compiler.AbstractIL.AsciiParser
 open Internal.Utilities.Library
 open Internal.Utilities.Collections
 open FSharp.Compiler.ErrorLogger
@@ -146,12 +146,10 @@ and XmlDocStatics() =
 
 /// Used to collect XML documentation during lexing and parsing.
 type XmlDocCollector() =
-    let mutable savedLines = new ResizeArray<string * range>()
-    let mutable nowCollecting = false
-    let mutable savedGrabPoints = new ResizeArray<pos>()
+    let mutable savedLines = ResizeArray<string * range>()
+    let mutable currentCommentsCount = 0
+    let mutable savedGrabPoints = Dictionary<_, _>()
     let posCompare p1 p2 = if posGeq p1 p2 then 1 else if posEq p1 p2 then 0 else -1
-    let savedGrabPointsAsArray =
-        lazy (savedGrabPoints.ToArray() |> Array.sortWith posCompare)
 
     let savedLinesAsArray =
         lazy (savedLines.ToArray() |> Array.sortWith (fun (_, p1) (_, p2) -> posCompare p1.End p2.End))
@@ -160,41 +158,22 @@ type XmlDocCollector() =
         // can't add more XmlDoc elements to XmlDocCollector after extracting first XmlDoc from the overall results
         assert (not savedLinesAsArray.IsValueCreated)
 
-    member x.AddGrabPoint pos =
+    member x.AddGrabPoint(pos: pos) =
         check()
-        savedGrabPoints.Add pos
-        nowCollecting <- false
+        if currentCommentsCount = 0 then () else
+        savedGrabPoints.Add(pos, struct(savedLines.Count - currentCommentsCount, savedLines.Count - 1))
+        currentCommentsCount <- 0
 
     member x.AddXmlDocLine(line, range) =
         check()
         savedLines.Add(line, range)
-        nowCollecting <- true
-
-    member x.DropLast(position: Internal.Utilities.Text.Lexing.Position) =
-        check()
-        if nowCollecting then
-            x.AddGrabPoint(mkPos position.Line position.Column)
-
-        nowCollecting <- false
+        currentCommentsCount <- currentCommentsCount + 1
 
     member x.LinesBefore grabPointPos =
-      try
         let lines = savedLinesAsArray.Force()
-        let grabPoints = savedGrabPointsAsArray.Force()
-        let firstLineIndexAfterGrabPoint = Array.findFirstIndexWhereTrue lines (fun (_, m) -> posGeq m.End grabPointPos)
-        let grabPointIndex = Array.findFirstIndexWhereTrue grabPoints (fun pos -> posGeq pos grabPointPos)
-        //assert (posEq grabPoints.[grabPointIndex] grabPointPos)
-        let firstLineIndexAfterPrevGrabPoint =
-            if grabPointIndex = 0 then
-                0
-            else
-                let prevGrabPointPos = grabPoints.[grabPointIndex-1]
-                Array.findFirstIndexWhereTrue lines (fun (_, m) -> posGt m.End prevGrabPointPos)
-
-        let lines = lines.[firstLineIndexAfterPrevGrabPoint..firstLineIndexAfterGrabPoint-1]
-        lines
-      with e ->
-        [| |]
+        match savedGrabPoints.TryGetValue grabPointPos with
+        | true, struct(startIndex, endIndex) -> lines.[startIndex .. endIndex]
+        | false, _ -> [||]
 
 /// Represents the XmlDoc fragments as collected from the lexer during parsing
 type PreXmlDoc =

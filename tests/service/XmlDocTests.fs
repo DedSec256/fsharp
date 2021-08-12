@@ -12,7 +12,8 @@ open FSharp.Compiler.Symbols
 open FsUnit
 open NUnit.Framework
 
-let compareXml docs (symbol: FSharpSymbol) =
+let checkXml symbolName docs checkResults =
+    let symbol = findSymbolByName symbolName checkResults
     let xmlDoc =
         match symbol with
         | :? FSharpMemberOrFunctionOrValue as v -> v.XmlDoc
@@ -23,14 +24,17 @@ let compareXml docs (symbol: FSharpSymbol) =
     | FSharpXmlDoc.FromXmlText t -> t.UnprocessedLines |> shouldEqual docs
     | _ -> failwith "wrong XmlDoc kind"
 
+let checkXmls data checkResults =
+    for symbolName, docs in data do checkXml symbolName docs checkResults
+
 [<Test>]
 let ``Simple type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"A"|]
+    checkResults
+    |> checkXml "A" [|"A"|]
 
 [<Test>]
 let ``Multiline type xml doc``() =
@@ -40,8 +44,8 @@ let ``Multiline type xml doc``() =
 ///B
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"A"; "B"|]
+    checkResults
+    |> checkXml "A" [|"A"; "B"|]
 
 [<Test>]
 let ``Separated type xml doc``() =
@@ -51,8 +55,8 @@ let ``Separated type xml doc``() =
 ///B
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "A" [|"B"|]
 
 [<Test>]
 let ``Separated by simple comment type xml doc``() =
@@ -62,8 +66,8 @@ let ``Separated by simple comment type xml doc``() =
 ///B
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "A" [|"B"|]
 
 [<Test>]
 let ``Separated by multiline comment type xml doc``() =
@@ -74,8 +78,8 @@ delimiter *)
 ///B
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "A" [|"B"|]
 
 [<Test>]
 let ``Separated by star type xml doc``() =
@@ -85,8 +89,8 @@ let ``Separated by star type xml doc``() =
 ///B
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "A" [|"B"|]
 
 [<Test>]
 let Test2() =
@@ -96,8 +100,8 @@ let Test2() =
 ///B
 let f x = ()
 """
-    findSymbolByName "f" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "f" [|"B"|]
 
 [<Test>]
 let Test2123() =
@@ -109,8 +113,8 @@ let _ =
     let x = ()
     ()
 """
-    findSymbolByName "x" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "x" [|"B"|]
 
 [<Test>]
 let ``And type xml doc``() =
@@ -119,8 +123,8 @@ type A = class end
 ///B
 and B = class end
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "B" [|"B"|]
 
 [<Test>]
 let Test3() =
@@ -129,8 +133,8 @@ type A = class end
 and ///B
     B = class end
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [|"B"|]
+    checkResults
+    |> checkXml "B" [|"B"|]
 
 [<Test>]
 let Test31() =
@@ -140,8 +144,8 @@ type A = class end
 and ///B2
     B = class end
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [|"B1"|]
+    checkResults
+    |> checkXml "B" [|"B1"|]
 
 
 [<Test>]
@@ -153,11 +157,11 @@ type A =
     ///Two
     | Two
 """
-    findSymbolByName "One" checkResults
-    |> compareXml [|"One"|]
-
-    findSymbolByName "Two" checkResults
-    |> compareXml [|"Two"|]
+    checkResults
+    |> checkXmls [
+        "One", [|"One"|]
+        "Two", [|"Two"|]
+    ]
 
 
 [<Test>]
@@ -169,8 +173,8 @@ type A =
 
     member x.B() = ()
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [||]
+    checkResults
+    |> checkXml "B" [||]
 
 [<Test>]
 let Test42() =
@@ -183,8 +187,21 @@ type A =
     ///B3
     member x.B() = ()
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [|"B2"; "B3"|]
+    checkResults
+    |> checkXml "B" [|"B2"; "B3"|]
+
+[<Test>]
+let Test426() =
+    let _, checkResults = getParseAndCheckResults """
+type A =
+    ///B1
+    ///B2
+    [<NotNull>]
+    ///B3
+    member x.B() = ()
+"""
+    checkResults
+    |> checkXml "B" [|"B1"; "B2"|]
 
 [<Test>]
 let Test421() =
@@ -195,8 +212,8 @@ type A =
            ///B2
            private x.B() = ()
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [|"B1"|]
+    checkResults
+    |> checkXml "B" [|"B1"|]
 
 [<Test>]
 let Test141() =
@@ -207,8 +224,8 @@ let Test141() =
 ///B
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"A1"; "A2"|]
+    checkResults
+    |> checkXml "A" [|"A1"; "A2"|]
 
 [<Test>]
 let Test142() =
@@ -220,8 +237,8 @@ and
     ///B2
     B = class end
 """
-    findSymbolByName "B" checkResults
-    |> compareXml [|"B1"|]
+    checkResults
+    |> checkXml "B" [|"B1"|]
 
 
 [<Test>]
@@ -231,8 +248,8 @@ let Test143() =
 ///A
 type A = class end
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [||]
+    checkResults
+    |> checkXml "A" [||]
 
 [<Test>]
 let Test144() =
@@ -242,8 +259,8 @@ type A =
     ///M2
     abstract member M: unit
 """
-    findSymbolByName "get_M" checkResults
-    |> compareXml [|"M1"; "M2"|]
+    checkResults
+    |> checkXml "get_M" [|"M1"; "M2"|]
 
 [<Test>]
 let Test145() =
@@ -254,13 +271,13 @@ type A =
     ///M2
     abstract member M: unit
 """
-    findSymbolByName "get_M" checkResults
-    |> compareXml [|"M1"|]
+    checkResults
+    |> checkXml "get_M" [|"M1"|]
 
 [<Test>]
-let Property() =
+let ``Property accessors xml doc``() =
     let _, checkResults = getParseAndCheckResults """
-type A =
+type B =
     ///A1
     ///A2
     member ///A3
@@ -269,12 +286,12 @@ type A =
                 with get () = 5
                 ///SET
                 and set (_: int) = ()
+
+    member x.C = x.set_A(4)
 """
-    findSymbolByName "A" checkResults
-    |> compareXml [|"A1"; "A2"|]
 
-    findSymbolByName "get_A" checkResults
-    |> compareXml [|"A1"; "A2"|]
-
-    findSymbolByName "set_A" checkResults
-    |> compareXml [|"A1"; "A2"|]
+    checkResults
+    |> checkXmls [
+        "get_A", [|"A1"; "A2"|]
+        "set_A", [|"A1"; "A2"|]
+    ]

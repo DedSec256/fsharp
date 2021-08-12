@@ -1735,7 +1735,7 @@ memberCore:
      { let mRhs = $5.Range 
        let optReturnType = $3 
        let bindingBuilder, mBindLhs = $2 
-       (fun (xmlDoc: PreXmlDoc) vis memFlagsBuilder attrs rangeStart ->
+       (fun xmlDoc vis memFlagsBuilder attrs rangeStart ->
             let memberFlags = Some (memFlagsBuilder SynMemberKind.Member)
             let mWholeBindLhs = (mBindLhs, attrs) ||> unionRangeWithListBy (fun (a: SynAttributeList) -> a.Range)
             let binding = (bindingBuilder xmlDoc) (vis, $1, false, mWholeBindLhs, DebugPointAtBinding.NoneAtInvisible, optReturnType, $5, mRhs, [], attrs, memberFlags)
@@ -1748,7 +1748,7 @@ memberCore:
        let propertyNameBindingBuilder, _ = $2 
        let optPropertyType = $3 
        let isMutable = false
-       (fun _ visNoLongerUsed memFlagsBuilder attrs rangeStart ->
+       (fun xmlDoc visNoLongerUsed memFlagsBuilder attrs rangeStart ->
              let hasGet = ref false
              let hasSet = ref false
 
@@ -1764,7 +1764,7 @@ memberCore:
 
                    let attrs = attrs @ optAttrs
 
-                   let binding = (bindingBuilder PreXmlDoc.Empty) (visNoLongerUsed, optInline, isMutable, mBindLhs, DebugPointAtBinding.NoneAtInvisible, optReturnType, expr, exprm, [], attrs, Some (memFlagsBuilder SynMemberKind.Member))
+                   let binding = (bindingBuilder xmlDoc) (visNoLongerUsed, optInline, isMutable, mBindLhs, DebugPointAtBinding.NoneAtInvisible, optReturnType, expr, exprm, [], attrs, Some (memFlagsBuilder SynMemberKind.Member))
                    let (SynBinding (vis, _, isInline, _, attrs, doc, valSynData, pv, _, _, mBindLhs, spBind)) = binding 
                    let memberKind = 
                          let getset = 
@@ -1873,7 +1873,7 @@ memberCore:
 
                    let bindingPatAdjusted, xmlDocAdjusted = 
 
-                       let bindingOuter = (propertyNameBindingBuilder PreXmlDoc.Empty) (vis, optInline, isMutable, mWholeBindLhs, spBind, optReturnType, expr, exprm, [], attrs, Some(memFlagsBuilder SynMemberKind.Member))
+                       let bindingOuter = (propertyNameBindingBuilder xmlDoc) (vis, optInline, isMutable, mWholeBindLhs, spBind, optReturnType, expr, exprm, [], attrs, Some(memFlagsBuilder SynMemberKind.Member))
 
                        let (SynBinding (_, _, _, _, _, doc2, _, bindingPatOuter, _, _, _, _)) = bindingOuter 
                    

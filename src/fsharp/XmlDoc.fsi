@@ -2,8 +2,6 @@
 
 namespace FSharp.Compiler.Xml
 
-open System.Xml
-open FSharp.Compiler.AbstractIL.AsciiParser
 open FSharp.Compiler.Text
 open FSharp.Compiler.AbstractIL.IL
 
@@ -46,8 +44,6 @@ type internal XmlDocCollector =
     member AddXmlDocLine: line:string * range:range -> unit
 
     member LinesBefore: grabPointPos: pos -> (string * range) []
-
-    member DropLast: Internal.Utilities.Text.Lexing.Position -> unit
 
 /// Represents the XmlDoc fragments as collected from the lexer during parsing
 [<Sealed>]
