@@ -43,7 +43,9 @@ let ``simple signature type xml doc``() =
 ///A2
 type
     ///A3
-    A
+    internal
+             ///A4
+             A
 """
     checkResults
     |> checkXml "A" [|"A1"; "A2"|]
@@ -251,6 +253,18 @@ and
     checkResults
     |> checkXml "B" [|"B1"|]
 
+[<Test>]
+let ``type specifications xml doc``() =
+    let _, checkResults = getParseAndCheckResultsOfSignatureFile """
+type A
+and
+    ///B1
+    [<NotNull>]
+    ///B2
+    B
+"""
+    checkResults
+    |> checkXml "B" [|"B1"|]
 
 [<Test>]
 let Test143() =
@@ -274,7 +288,7 @@ type A =
     |> checkXml "get_M" [|"M1"; "M2"|]
 
 [<Test>]
-let Test145() =
+let ``abstract type member with attributes``() =
     let _, checkResults = getParseAndCheckResults """
 type A =
     ///M1
@@ -286,7 +300,7 @@ type A =
     |> checkXml "get_M" [|"M1"|]
 
 [<Test>]
-let Test14512() =
+let ``signature type member with attributes``() =
     let _, checkResults = getParseAndCheckResultsOfSignatureFile """
 type A =
     ///M1
@@ -334,6 +348,3 @@ type A =
 """
     checkResults
     |> checkXml "B" [|"B1"; "B2"|]
-
-
-//getParseResultsOfSignatureFile
