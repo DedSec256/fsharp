@@ -147,8 +147,9 @@ and XmlDocStatics() =
 /// Used to collect XML documentation during lexing and parsing.
 type XmlDocCollector() =
     let mutable savedLines = ResizeArray<string * range>()
-    let mutable currentCommentsCount = 0
     let mutable savedGrabPoints = Dictionary<_, _>()
+    let mutable currentGrabPointCommentsCount = 0
+
     let posCompare p1 p2 = if posGeq p1 p2 then 1 else if posEq p1 p2 then 0 else -1
 
     let savedLinesAsArray =
@@ -160,20 +161,23 @@ type XmlDocCollector() =
 
     member x.AddGrabPoint(pos: pos) =
         check()
-        if currentCommentsCount = 0 then () else
-        savedGrabPoints.Add(pos, struct(savedLines.Count - currentCommentsCount, savedLines.Count - 1))
-        currentCommentsCount <- 0
+        if currentGrabPointCommentsCount = 0 then () else
+        let commentsStartEndIndexes = struct(savedLines.Count - currentGrabPointCommentsCount, savedLines.Count - 1)
+        savedGrabPoints.Add(pos, commentsStartEndIndexes)
+        currentGrabPointCommentsCount <- 0
 
     member x.AddXmlDocLine(line, range) =
         check()
         savedLines.Add(line, range)
-        currentCommentsCount <- currentCommentsCount + 1
+        currentGrabPointCommentsCount <- currentGrabPointCommentsCount + 1
 
     member x.LinesBefore grabPointPos =
         let lines = savedLinesAsArray.Force()
         match savedGrabPoints.TryGetValue grabPointPos with
         | true, struct(startIndex, endIndex) -> lines.[startIndex .. endIndex]
         | false, _ -> [||]
+
+    member x.HasComments grabPointPos = savedGrabPoints.TryGetValue grabPointPos |> fst
 
 /// Represents the XmlDoc fragments as collected from the lexer during parsing
 type PreXmlDoc =
@@ -198,6 +202,13 @@ type PreXmlDoc =
                 if check then
                    doc.Check(paramNamesOpt)
                 doc
+
+    member x.IsEmpty =
+        match x with
+        | PreXmlDirect (lines, _) -> lines |> Array.forall String.IsNullOrWhiteSpace
+        | PreXmlMerge(a, b) -> a.IsEmpty && b.IsEmpty
+        | PreXmlDocEmpty -> true
+        | PreXmlDoc (pos, collector) -> not (collector.HasComments pos)
 
     static member CreateFromGrabPoint(collector: XmlDocCollector, grabPointPos) =
         PreXmlDoc(grabPointPos, collector)

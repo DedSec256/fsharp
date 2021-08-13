@@ -28,7 +28,7 @@ let checkXmls data checkResults =
     for symbolName, docs in data do checkXml symbolName docs checkResults
 
 [<Test>]
-let ``Simple type xml doc``() =
+let ``simple type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 type A = class end
@@ -37,7 +37,31 @@ type A = class end
     |> checkXml "A" [|"A"|]
 
 [<Test>]
-let ``Multiline type xml doc``() =
+let ``simple signature type xml doc``() =
+    let _, checkResults = getParseAndCheckResultsOfSignatureFile """
+///A1
+///A2
+type
+    ///A3
+    A
+"""
+    checkResults
+    |> checkXml "A" [|"A1"; "A2"|]
+
+[<Test>]
+let ``xml doc before/after type name``() =
+    let _, checkResults = getParseAndCheckResults """
+///A1
+type
+    ///A2
+    [<NotNull>]
+    A = class end
+"""
+    checkResults
+    |> checkXml "A" [|"A1"|]
+
+[<Test>]
+let ``multiline type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 
@@ -48,7 +72,7 @@ type A = class end
     |> checkXml "A" [|"A"; "B"|]
 
 [<Test>]
-let ``Separated type xml doc``() =
+let ``separated type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 ()
@@ -59,7 +83,7 @@ type A = class end
     |> checkXml "A" [|"B"|]
 
 [<Test>]
-let ``Separated by simple comment type xml doc``() =
+let ``separated by simple comment type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 // Simple comment delimiter
@@ -70,7 +94,7 @@ type A = class end
     |> checkXml "A" [|"B"|]
 
 [<Test>]
-let ``Separated by multiline comment type xml doc``() =
+let ``separated by multiline comment type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 (* Multiline comment
@@ -82,7 +106,7 @@ type A = class end
     |> checkXml "A" [|"B"|]
 
 [<Test>]
-let ``Separated by star type xml doc``() =
+let ``separated by star type xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 (*)
@@ -92,8 +116,8 @@ type A = class end
     checkResults
     |> checkXml "A" [|"B"|]
 
-[<Test>]
-let Test2() =
+[<Test; Ignore("TODO")>]
+let Let1() =
     let _, checkResults = getParseAndCheckResults """
 ///A
 1 + 1
@@ -103,8 +127,8 @@ let f x = ()
     checkResults
     |> checkXml "f" [|"B"|]
 
-[<Test>]
-let Test2123() =
+[<Test; Ignore("TODO")>]
+let Let2() =
     let _, checkResults = getParseAndCheckResults """
 let _ =
     ///A
@@ -127,7 +151,7 @@ and B = class end
     |> checkXml "B" [|"B"|]
 
 [<Test>]
-let Test3() =
+let ``type xml doc after and``() =
     let _, checkResults = getParseAndCheckResults """
 type A = class end
 and ///B
@@ -137,7 +161,7 @@ and ///B
     |> checkXml "B" [|"B"|]
 
 [<Test>]
-let Test31() =
+let ``type xml docs before/after and``() =
     let _, checkResults = getParseAndCheckResults """
 type A = class end
 ///B1
@@ -149,7 +173,7 @@ and ///B2
 
 
 [<Test>]
-let Test4() =
+let ``union cases``() =
     let _, checkResults = getParseAndCheckResults """
 type A =
     ///One
@@ -163,21 +187,8 @@ type A =
         "Two", [|"Two"|]
     ]
 
-
 [<Test>]
-let Test41() =
-    let _, checkResults = getParseAndCheckResults """
-type A =
-    member x.A() = ///B
-        ()
-
-    member x.B() = ()
-"""
-    checkResults
-    |> checkXml "B" [||]
-
-[<Test>]
-let Test42() =
+let ``type member multiline xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 type A =
     member x.A() = ///B1
@@ -191,7 +202,7 @@ type A =
     |> checkXml "B" [|"B2"; "B3"|]
 
 [<Test>]
-let Test426() =
+let ``type member with attributes``() =
     let _, checkResults = getParseAndCheckResults """
 type A =
     ///B1
@@ -204,7 +215,7 @@ type A =
     |> checkXml "B" [|"B1"; "B2"|]
 
 [<Test>]
-let Test421() =
+let ``type member xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 type A =
     ///B1
@@ -275,6 +286,19 @@ type A =
     |> checkXml "get_M" [|"M1"|]
 
 [<Test>]
+let Test14512() =
+    let _, checkResults = getParseAndCheckResultsOfSignatureFile """
+type A =
+    ///M1
+    ///M2
+    [<NotNull>]
+    ///M3
+    abstract member M: unit
+"""
+    checkResults
+    |> checkXml "get_M" [|"M1"; "M2"|]
+
+[<Test>]
 let ``Property accessors xml doc``() =
     let _, checkResults = getParseAndCheckResults """
 type B =
@@ -295,3 +319,21 @@ type B =
         "get_A", [|"A1"; "A2"|]
         "set_A", [|"A1"; "A2"|]
     ]
+
+[<Test>]
+let ``record multiline xml doc``() =
+    let _, checkResults = getParseAndCheckResults """
+type A =
+    {
+        ///B1
+        ///B2
+        B: int
+    }
+
+{ B = 1 }.B
+"""
+    checkResults
+    |> checkXml "B" [|"B1"; "B2"|]
+
+
+//getParseResultsOfSignatureFile

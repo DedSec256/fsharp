@@ -826,12 +826,13 @@ moduleSpfn:
 
         match $4 with
         | [] -> raiseParseErrorAt (rhs2 parseState 3 4) (FSComp.SR.parsUnexpectedEmptyModuleDefn ())
-        | SynTypeDefnSig (SynComponentInfo (cas, a, cs, b, c, d, d2, d3), e, f, g) :: tail ->
+        | SynTypeDefnSig (SynComponentInfo (cas, a, cs, b, _, d, d2, d3), e, f, g) :: tail ->
             let attrs = $1 @ cas
             let mTc =
                 let keywordM = rhs parseState 3
                 (keywordM, attrs) ||> unionRangeWithListBy (fun (a: SynAttributeList) -> a.Range) |> unionRanges g
-            let tc = (SynTypeDefnSig(SynComponentInfo(attrs, a, cs, b, c, d, d2, d3), e, f, mTc))
+            let xmlDoc = grabXmlDoc(parseState, $1, 3)
+            let tc = (SynTypeDefnSig(SynComponentInfo(attrs, a, cs, b, xmlDoc, d, d2, d3), e, f, mTc))
             let m = (mTc, tail) ||> unionRangeWithListBy (fun (a: SynTypeDefnSig) -> a.Range)
 
             SynModuleSigDecl.Types (tc :: tail, m) }
@@ -1521,7 +1522,7 @@ memberFlags:
 typeNameInfo: 
   | opt_attributes tyconNameAndTyparDecls opt_typeConstraints
      { let typars, lid, fixity, vis = $2
-       let xmlDoc = grabXmlDoc(parseState, $1, 2)
+       let xmlDoc = grabXmlDoc(parseState, $1, 1)
        SynComponentInfo ($1, typars, $3, lid, xmlDoc, fixity, vis, rangeOfLid lid) }
 
 /* Part of a set of type definitions */
@@ -1529,7 +1530,7 @@ tyconDefnList:
   | AND tyconDefn tyconDefnList 
      { let xmlDoc = grabXmlDoc(parseState, [], 1)
        let tyconDefn =
-           if xmlDoc.ToXmlDoc(false, Some []).IsEmpty then $2 else
+           if xmlDoc.IsEmpty then $2 else
            let (SynTypeDefn(SynComponentInfo (a, typars, c, lid, _, fixity, vis, rangeOfLid), typeRepr, members, implicitConstructor, range)) = $2
            SynTypeDefn(SynComponentInfo (a, typars, c, lid, xmlDoc, fixity, vis, rangeOfLid), typeRepr, members, implicitConstructor, range)
        tyconDefn :: $3 }
