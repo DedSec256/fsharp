@@ -1,5 +1,5 @@
 
-//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.6.1055.0
+//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.8.3928.0
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 
 
@@ -13,7 +13,12 @@
 .assembly extern FSharp.Core
 {
   .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A )                         // .?_....:
-  .ver 4:4:1:0
+  .ver 5:0:0:0
+}
+.assembly extern netstandard
+{
+  .publickeytoken = (CC 7B 13 FF CD 2D DD 51 )                         // .{...-.Q
+  .ver 2:0:0:0
 }
 .assembly Lock01
 {
@@ -29,20 +34,20 @@
 }
 .mresource public FSharpSignatureData.Lock01
 {
-  // Offset: 0x00000000 Length: 0x00000184
+  // Offset: 0x00000000 Length: 0x00000180
 }
 .mresource public FSharpOptimizationData.Lock01
 {
   // Offset: 0x00000188 Length: 0x00000064
 }
 .module Lock01.exe
-// MVID: {59B19213-2BCA-B308-A745-03831392B159}
+// MVID: {611C4D7C-2BCA-B308-A745-03837C4D1C61}
 .imagebase 0x00400000
 .file alignment 0x00000200
 .stackreserve 0x00100000
 .subsystem 0x0003       // WINDOWS_CUI
 .corflags 0x00000001    //  ILONLY
-// Image base: 0x02FB0000
+// Image base: 0x071E0000
 
 
 // =============== CLASS MEMBERS DECLARATION ===================
@@ -54,6 +59,7 @@
   .class auto ansi serializable sealed nested assembly beforefieldinit clo@20
          extends class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [FSharp.Core]Microsoft.FSharp.Core.Unit,class [FSharp.Core]Microsoft.FSharp.Core.Unit>
   {
+    .field static assembly initonly class Lock01/clo@20 @_instance
     .method assembly specialname rtspecialname 
             instance void  .ctor() cil managed
     {
@@ -72,10 +78,20 @@
       // Code size       2 (0x2)
       .maxstack  8
       .language '{AB4F38C9-B6E6-43BA-BE3B-58080B2CCCE3}', '{994B45C4-E6E9-11D2-903F-00C04FA302A1}', '{5A869D0B-6611-11D3-BD2A-0000F80849BD}'
-      .line 20,20 : 19,21 'C:\\GitHub\\dsyme\\visualfsharp\\tests\\fsharpqa\\Source\\CodeGen\\EmittedIL\\Misc\\Lock01.fs'
+      .line 20,20 : 19,21 'C:\\GitHub\\dsyme\\fsharp\\tests\\fsharpqa\\source\\CodeGen\\EmittedIL\\Misc\\Lock01.fs'
       IL_0000:  ldnull
       IL_0001:  ret
     } // end of method clo@20::Invoke
+
+    .method private specialname rtspecialname static 
+            void  .cctor() cil managed
+    {
+      // Code size       11 (0xb)
+      .maxstack  10
+      IL_0000:  newobj     instance void Lock01/clo@20::.ctor()
+      IL_0005:  stsfld     class Lock01/clo@20 Lock01/clo@20::@_instance
+      IL_000a:  ret
+    } // end of method clo@20::.cctor
 
   } // end of class clo@20
 
@@ -107,13 +123,12 @@
   .method public static void  main@() cil managed
   {
     .entrypoint
-    // Code size       68 (0x44)
+    // Code size       56 (0x38)
     .maxstack  4
     .locals init ([0] object o,
              [1] object V_1,
              [2] class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [FSharp.Core]Microsoft.FSharp.Core.Unit,class [FSharp.Core]Microsoft.FSharp.Core.Unit> V_2,
-             [3] bool V_3,
-             [4] class [FSharp.Core]Microsoft.FSharp.Core.Unit V_4)
+             [3] bool V_3)
     .line 19,19 : 1,28 ''
     IL_0000:  newobj     instance void [mscorlib]System.Object::.ctor()
     IL_0005:  dup
@@ -122,7 +137,7 @@
     .line 20,20 : 1,23 ''
     IL_000c:  call       object Lock01::get_o()
     IL_0011:  stloc.1
-    IL_0012:  newobj     instance void Lock01/clo@20::.ctor()
+    IL_0012:  ldsfld     class Lock01/clo@20 Lock01/clo@20::@_instance
     IL_0017:  stloc.2
     IL_0018:  ldc.i4.0
     IL_0019:  stloc.3
@@ -130,39 +145,30 @@
     {
       IL_001a:  ldloc.1
       IL_001b:  ldloca.s   V_3
-      IL_001d:  call       void [mscorlib]System.Threading.Monitor::Enter(object,
-                                                                          bool&)
+      IL_001d:  call       void [netstandard]System.Threading.Monitor::Enter(object,
+                                                                             bool&)
       IL_0022:  ldloc.2
       IL_0023:  ldnull
       IL_0024:  callvirt   instance !1 class [FSharp.Core]Microsoft.FSharp.Core.FSharpFunc`2<class [FSharp.Core]Microsoft.FSharp.Core.Unit,class [FSharp.Core]Microsoft.FSharp.Core.Unit>::Invoke(!0)
-      IL_0029:  stloc.s    V_4
-      IL_002b:  leave.s    IL_0040
+      IL_0029:  pop
+      IL_002a:  leave.s    IL_0037
 
+      .line 100001,100001 : 0,0 ''
     }  // end .try
     finally
     {
-      IL_002d:  ldloc.3
-      IL_002e:  brfalse.s  IL_0032
-
-      IL_0030:  br.s       IL_0034
-
-      IL_0032:  br.s       IL_003d
+      IL_002c:  ldloc.3
+      IL_002d:  brfalse.s  IL_0036
 
       .line 100001,100001 : 0,0 ''
-      IL_0034:  ldloc.1
-      IL_0035:  call       void [mscorlib]System.Threading.Monitor::Exit(object)
-      IL_003a:  ldnull
-      IL_003b:  pop
-      IL_003c:  endfinally
+      IL_002f:  ldloc.1
+      IL_0030:  call       void [netstandard]System.Threading.Monitor::Exit(object)
+      IL_0035:  endfinally
       .line 100001,100001 : 0,0 ''
-      IL_003d:  ldnull
-      IL_003e:  pop
-      IL_003f:  endfinally
+      IL_0036:  endfinally
       .line 100001,100001 : 0,0 ''
     }  // end handler
-    IL_0040:  ldloc.s    V_4
-    IL_0042:  pop
-    IL_0043:  ret
+    IL_0037:  ret
   } // end of method $Lock01::main@
 
 } // end of class '<StartupCode$Lock01>'.$Lock01

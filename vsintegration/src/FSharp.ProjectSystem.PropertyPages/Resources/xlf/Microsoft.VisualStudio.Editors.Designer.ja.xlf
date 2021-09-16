@@ -1968,7 +1968,7 @@ CONSIDER: get this from CodeDom</note>
       </trans-unit>
       <trans-unit id="RSE_Type_PNG">
         <source>Portable Network Graphics</source>
-        <target state="translated">ポータブル ネットワーク グラフィックス</target>
+        <target state="translated">移植可能なネットワーク グラフィックス</target>
         <note>Friendly Image types</note>
       </trans-unit>
       <trans-unit id="RSE_Type_TIFF">
@@ -2062,7 +2062,7 @@ CONSIDER: get this from CodeDom</note>
       </trans-unit>
       <trans-unit id="RSE_FilterSave_PNG">
         <source>Portable Network Graphics</source>
-        <target state="translated">ポータブル ネットワーク グラフィックス</target>
+        <target state="translated">移植可能なネットワーク グラフィックス</target>
         <note># File dialog filters
 #
 # E.g., for icons, the actual filter created would look like "Icons (*.ico)".  These resources
@@ -2729,7 +2729,7 @@ app.config ファイルでの新しい値は '{1}' です
       </trans-unit>
       <trans-unit id="PPG_WPFApp_CantOpenOrCreateAppXaml_1Arg">
         <source>There was an error trying to open or create the application definition file for this project.  {0}</source>
-        <target state="translated">このプロジェクトのアプリケーション定義ファイル {0} を開くときまたは作成するときにエラーが発生しました。{0}</target>
+        <target state="translated">このプロジェクトのアプリケーション定義ファイルを開くときまたは作成するときにエラーが発生しました。{0}</target>
         <note />
       </trans-unit>
       <trans-unit id="PPG_WPFApp_ErrorControlMessage_1Arg">
@@ -2754,7 +2754,7 @@ app.config ファイルでの新しい値は '{1}' です
       </trans-unit>
       <trans-unit id="PPG_WPFApp_CouldntCreateApplicationEventsFile_1Arg">
         <source>An error occurred trying to create the application events file.  {0}</source>
-        <target state="translated">アプリケーション イベント ファイル {0} を作成するときにエラーが発生しました。{0}</target>
+        <target state="translated">アプリケーション イベント ファイルを作成するときにエラーが発生しました。{0}</target>
         <note />
       </trans-unit>
       <trans-unit id="General_InvalidArgument_1Arg">
@@ -2794,7 +2794,7 @@ app.config ファイルでの新しい値は '{1}' です
       </trans-unit>
       <trans-unit id="PPG_Services_HelpLabelText">
         <source>Client application services enable your Windows-based applications to use the ASP.NET login (authentication), roles, and profile (settings) services.  </source>
-        <target state="translated">クライアント アプリケーション サービスを使用すると、Windows ベースのアプリケーションから、ASP.NET ログイン (認証)、ロール、およびプロファイル (設定) サービスを使用できます。</target>
+        <target state="translated">クライアント アプリケーション サービスを使用すると、Windows ベースのアプリケーションから、ASP.NET ログイン (認証)、ロール、およびプロファイル (設定) サービスを使用できます。  </target>
         <note />
       </trans-unit>
       <trans-unit id="PPG_Services_HelpLabelLink">
@@ -2839,7 +2839,7 @@ app.config ファイルでの新しい値は '{1}' です
       </trans-unit>
       <trans-unit id="PPG_Services_VersionWarning">
         <source>To enable client application services, you must set the Target Framework for your application to .NET Framework 3.5 or later. In C#, you can do this on the Application property page. In Visual Basic, you can do this one the Compile property page by clicking Advanced Compile Options.</source>
-        <target state="translated">クライアント アプリケーション サービスを有効にするには、アプリケーションのターゲット フレームワークを .NET Framework 3.5 以降に設定する必要があります。C# では、これはアプリケーション プロパティ ページで行います。Visual Basic では、[詳細コンパイル オプション]5D; をクリックしてコンパイル プロパティ ページで行います。</target>
+        <target state="translated">クライアント アプリケーション サービスを有効にするには、アプリケーションのターゲット フレームワークを .NET Framework 3.5 以降に設定する必要があります。C# では、これはアプリケーション プロパティ ページで行います。Visual Basic では、[詳細コンパイル オプション] をクリックしてコンパイル プロパティ ページで行います。</target>
         <note />
       </trans-unit>
       <trans-unit id="PPG_Services_InvalidAppConfigXml">

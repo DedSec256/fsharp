@@ -70,16 +70,6 @@ type Build() =
         ()
 
     [<Test>]
-    member public this.MissingToolPathError() =
-        let tool = new FSharp.Build.Fsc()
-        tool.ToolPath <- ""
-        try
-            let p = tool.InternalGenerateFullPathToTool()
-            Assert.Fail("should not succeed")
-        with e -> 
-            e.Message.AssertMatchesPattern("ToolPath is unknown; specify the path to the tool.")
-        
-    [<Test>]
     member public this.TestCodePage() =
         let tool = new FSharp.Build.Fsc()
         printfn "By the way, the registry or app.config tool path is %s" tool.ToolPath
@@ -89,11 +79,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--codepage:65001" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -105,11 +94,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("-g" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -121,11 +109,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--debug:pdbonly" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -139,11 +126,10 @@ type Build() =
         AssertEqual ("--define:FOO=3" + Environment.NewLine +
                      "--define:BAR=4" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -155,11 +141,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--nowarn:52,109" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -170,11 +155,10 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -185,12 +169,11 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--warnaserror-:52,109" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -202,11 +185,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--versionfile:src/version" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -218,11 +200,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--doc:foo.xml" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -234,11 +215,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--sig:foo.fsi" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -250,11 +230,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--keyfile:key.txt" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -266,11 +245,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--noframework" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -281,11 +259,10 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize-" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -297,11 +274,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         // REVIEW we don't put the default, is that desired?
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -312,13 +288,12 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
                      "--nocopyfsharpcore" + Environment.NewLine +
                      "--yadda" + Environment.NewLine +
-                     "yadda" + Environment.NewLine)
+                     "yadda")
                     cmd
 
     [<Test>]
@@ -330,11 +305,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("-o:oUt.dll" + Environment.NewLine +
                      "--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -346,11 +320,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--pdb:out.pdb" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -362,11 +335,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--platform:x64" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -378,11 +350,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--platform:x86" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -395,11 +366,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "-r:" + dll + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -412,11 +382,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--lib:c:\\sd\\staging\\tools\\nunit\\,c:\\Foo" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -429,11 +398,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--lib:c:\\program files,c:\\sd\\staging\\tools\\nunit,c:\\Foo" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -445,11 +413,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--resource:Foo.resources" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -462,13 +429,12 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
                      "--nocopyfsharpcore" + Environment.NewLine +
                      src + Environment.NewLine +
-                     src + Environment.NewLine)
+                     src)
                     cmd
         ()
 
@@ -481,11 +447,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--target:library" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -497,11 +462,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--target:winexe" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -513,11 +477,10 @@ type Build() =
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
                      "--target:module" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -527,12 +490,11 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--utf8output" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -542,12 +504,11 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--win32res:foo.res" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd
 
     [<Test>]
@@ -557,12 +518,11 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--win32manifest:foo.manifest" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd 
 
     [<Test>]
@@ -572,11 +532,10 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--highentropyva+" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd 
 
     [<Test>]
@@ -586,12 +545,11 @@ type Build() =
         let cmd = tool.InternalGenerateResponseFileCommands()
         printfn "cmd=\"%s\"" cmd
         AssertEqual ("--optimize+" + Environment.NewLine +
-                     "--warnaserror:76" + Environment.NewLine +
                      "--fullpaths" + Environment.NewLine +
                      "--flaterrors" + Environment.NewLine +
                      "--subsystemversion:6.02" + Environment.NewLine +
                      "--highentropyva-" + Environment.NewLine +
-                     "--nocopyfsharpcore" + Environment.NewLine)
+                     "--nocopyfsharpcore")
                     cmd 
 
     [<Test>]
@@ -602,7 +560,7 @@ type Build() =
         tool.DebugType <- "full"
         tool.DefineConstants <- [| MakeTaskItem "FOO=3"
                                    MakeTaskItem "BAR=4" |]
-        tool.DisabledWarnings <- "52 109"
+        tool.DisabledWarnings <- "52,109"
         tool.VersionFile <- "src/version"
         tool.DocumentationFile <- "foo.xml"
         tool.GenerateInterfaceFile <- "foo.fsi"
@@ -653,7 +611,6 @@ type Build() =
             "--nowarn:52,109" + Environment.NewLine +
             "--warn:4" + Environment.NewLine +
             "--warnaserror" + Environment.NewLine +
-            "--warnaserror:76" + Environment.NewLine +
             "--vserrors" + Environment.NewLine +
             "--utf8output" + Environment.NewLine +
             "--fullpaths" + Environment.NewLine +
@@ -665,7 +622,7 @@ type Build() =
             "--other:internal quote" + Environment.NewLine +
             "blah" + Environment.NewLine +
             "foo.fs" + Environment.NewLine +
-            @"C:\Program Files\spaces.fs" + Environment.NewLine
+            @"C:\Program Files\spaces.fs"
 
         AssertEqual expected cmd
 
@@ -697,7 +654,6 @@ type Build() =
             "--nowarn:52,109"
             "--warn:4"
             "--warnaserror"
-            "--warnaserror:76"
             "--vserrors"
             "--utf8output"
             "--fullpaths"
@@ -711,3 +667,29 @@ type Build() =
         AssertEqual expectedFlags hostObject.Flags 
         let expectedSources = [| "foo.fs"; "C:\\Program Files\\spaces.fs" |]
         AssertEqual expectedSources hostObject.Sources
+
+    [<Test>]
+    member public this.``DisabledWarnings build property``() =
+        let tool = new FSharp.Build.Fsc()
+        tool.DisabledWarnings <- "
+        
+        \n52,,\n,,,109,110;\r73
+        
+        ,
+        
+        ;
+        85;
+        "
+        let cmd = tool.InternalGenerateResponseFileCommands()
+        printfn "cmd=\"%s\"" cmd
+
+        let expected =
+            "--optimize+" + Environment.NewLine +
+            "--nowarn:52,109,110,73,85" + Environment.NewLine +
+            "--fullpaths" + Environment.NewLine +
+            "--flaterrors" + Environment.NewLine +
+            "--highentropyva-" + Environment.NewLine  +
+            "--nocopyfsharpcore"
+
+        AssertEqual expected cmd
+

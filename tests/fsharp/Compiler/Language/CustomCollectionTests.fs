@@ -1,7 +1,8 @@
 ﻿namespace FSharp.Compiler.UnitTests
 
 open NUnit.Framework
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Test
+open FSharp.Compiler.Diagnostics
 
 [<TestFixture>]
 module CustomCollectionTests =
@@ -13,12 +14,12 @@ open System
 type foo() = 
     let mutable i = ""
     member this.GetReverseIndex(_x: int, y: string) = y + " "
-    member __.Item with get (_x: string) = i and set idx value = i <- idx + value
+    member _.Item with get (_x: string) = i and set idx value = i <- idx + value
 
 let a = foo()
-a.[^"2"] <- "-1"
+a[^"2"] <- "-1"
 
-if a.["2"] <> "2 -1" then failwithf "expected 2 -1 but got %A" a.["2"]
+if a["2"] <> "2 -1" then failwithf "expected 2 -1 but got %A" a["2"]
              """
 
     [<Test>]
@@ -33,9 +34,9 @@ type foo() =
     member this.GetSlice(_: string option, _: string option) = i
 
 let a = foo()
-a.[^"2"..^"1"] <- "-1"
+a[^"2"..^"1"] <- "-1"
 
-if a.["2".."1"] <> "2 1 -1" then failwithf "expected 2 1 -1 but got %A" a.["2".."1"]           
+if a["2".."1"] <> "2 1 -1" then failwithf "expected 2 1 -1 but got %A" a["2".."1"]           
             """
  
     [<Test>]
@@ -50,7 +51,7 @@ type foo() =
 
 let a = foo()
 
-if a.[^2] <> 12 then failwith "expected 12"
+if a[^2] <> 12 then failwith "expected 12"
             """
 
     [<Test>]
@@ -62,12 +63,12 @@ open System
 type foo() = 
     let mutable i = ""
     member this.GetReverseIndex(x: int, y: string) = x.ToString() + " " + y
-    member __.Item with get (_x: string) = i and set (idx1, idx2) value = i <- idx1 + " " + idx2 + " " + value
+    member _.Item with get (_x: string) = i and set (idx1, idx2) value = i <- idx1 + " " + idx2 + " " + value
 
 let a = foo()
-a.[^"1",^"2"] <- "3"
+a[^"1",^"2"] <- "3"
 
-if a.[""] <> "0 1 1 2 3" then failwithf "expected 0 1 1 2 3 but got %A" a.[""]
+if a[""] <> "0 1 1 2 3" then failwithf "expected 0 1 1 2 3 but got %A" a[""]
             """
 
     [<Test>]
@@ -82,12 +83,12 @@ type foo() =
 
 let a = foo()
 
-if a.[^2,^1] <> 24 then failwithf "expected 23 but got %A" a.[^2,^1]
+if a[^2,^1] <> 24 then failwithf "expected 23 but got %A" a[^2,^1]
             """
 
     [<Test>]
     let ``Custom collection with Item and no GetReverseIndex should not support reverse index indexing``() =
-        CompilerAssert.TypeCheckSingleError
+        CompilerAssert.TypeCheckSingleErrorWithOptions [| "--langversion:preview" |]
             """
 open System
 
@@ -98,11 +99,10 @@ let a = foo()
 
 if a.[^2] <> 12 then failwith "expected 12"
             """
-            FSharpErrorSeverity.Error
+            FSharpDiagnosticSeverity.Error
             39
             (9,7,9,9)
-            "The field, constructor or member 'GetReverseIndex' is not defined."
-
+            "The type 'foo' does not define the field, constructor or member 'GetReverseIndex'."
 
     [<Test>]
     let ``Custom collection with GetSlice and GetReverseIndex should support reverse index slicing``() =
@@ -120,7 +120,7 @@ type foo() =
 
 let a = foo()
 
-if a.[^2..1] <> 13 then failwith "expected 13"
+if a[^2..1] <> 13 then failwith "expected 13"
             """
  
     [<Test>]
@@ -137,9 +137,9 @@ type foo() =
 
 let a = foo()
 
-if a.[^2..1] <> 13 then failwith "expected 13"
+if a[^2..1] <> 13 then failwith "expected 13"
             """
-            FSharpErrorSeverity.Error
+            FSharpDiagnosticSeverity.Error
             39
-            (12,7,12,9)
-            "The field, constructor or member 'GetReverseIndex' is not defined."
+            (12,6,12,8)
+            "The type 'foo' does not define the field, constructor or member 'GetReverseIndex'."

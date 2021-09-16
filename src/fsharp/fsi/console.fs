@@ -83,47 +83,27 @@ module internal Utils =
         with e ->
              FSharp.Compiler.ErrorLogger.warning(Failure(sprintf "Note: an unexpected exception in fsi.exe readline console support. Consider starting fsi.exe with the --no-readline option and report the stack trace below to the .NET or Mono implementors\n%s\n%s\n" e.Message e.StackTrace))
 
-    // Quick and dirty dirty method lookup for inlined IL
-    // In some situations, we can't use ldtoken to obtain a RuntimeMethodHandle, since the method
-    // in question's token may contain typars from an external type environment.  Such a token would
-    // cause the PE file to be flagged as invalid.
-    // In such a situation, we'll want to search out the MethodRef in a similar fashion to bindMethodBySearch
-    // but since we can't use ldtoken to obtain System.Type objects, we'll need to do everything with strings.
-    // This is the least fool-proof method for resolving the binding, but since the scenarios it's used in are
-    // so constrained, (fsi 2.0, methods with generic multi-dimensional arrays in their signatures), it's
-    // acceptable
-    let findMethod (parentT:Type,nm,marity,argtys : string [],rty : string) =
-        let staticOrInstanceBindingFlags = BindingFlags.Instance ||| BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.DeclaredOnly
-        let methInfos = parentT.GetMethods(staticOrInstanceBindingFlags) |> Array.toList
-
-        let methInfos = methInfos |> List.filter (fun methInfo -> methInfo.Name = nm)
-        match methInfos with
-        | [methInfo] ->
-            methInfo
-        | _ ->
-            let select (methInfo:MethodInfo) =
-                let mtyargTIs = if methInfo.IsGenericMethod then methInfo.GetGenericArguments() else [| |]
-                if mtyargTIs.Length  <> marity then false else
-
-                let haveArgTs =
-                    let parameters = Array.toList (methInfo.GetParameters())
-                    parameters |> List.map (fun param -> param.ParameterType)
-                let haveResT  = methInfo.ReturnType
-
-                if argtys.Length <> haveArgTs.Length then false else
-                let res = rty :: (Array.toList argtys) = (List.map (fun (t : System.Type) -> t.Name) (haveResT :: haveArgTs))
-                res
-
-            match List.tryFind select methInfos with
-            | None          -> failwith "Internal Error: cannot bind to method"
-            | Some methInfo -> methInfo
-
+    let rec previousWordFromIdx (line: string) (idx, isInWord) =
+        if idx < 0 then 0 else
+        match line.Chars(idx), isInWord with
+        | ' ', true -> idx + 1
+        | ' ', false -> previousWordFromIdx line (idx - 1, false)
+        | _, _ -> previousWordFromIdx line (idx - 1, true)
+        
+    let rec nextWordFromIdx (line: string) (idx, isInWord) =
+        if idx >= line.Length then line.Length - 1 else
+        match line.Chars(idx), isInWord with
+        | ' ', true -> idx 
+        | ' ', false -> nextWordFromIdx line (idx + 1, false)
+        | _, _ -> nextWordFromIdx line (idx + 1, true)
+                    
 [<Sealed>]
 type internal Cursor =
     static member ResetTo(top,left) =
         Utils.guard(fun () ->
            Console.CursorTop <- min top (Console.BufferHeight - 1)
            Console.CursorLeft <- left)
+
     static member Move(inset, delta) =
         let position = Console.CursorTop * (Console.BufferWidth - inset) + (Console.CursorLeft - inset) + delta
         let top  = position / (Console.BufferWidth - inset)
@@ -133,7 +113,7 @@ type internal Cursor =
 type internal Anchor =
     {top:int; left:int}
     static member Current(inset) = {top=Console.CursorTop;left= max inset Console.CursorLeft}
-
+    static member Top(inset) = {top = 0; left = inset}
     member p.PlaceAt(inset, index) =
         //printf "p.top = %d, p.left = %d, inset = %d, index = %d\n" p.top p.left inset index
         let left = inset + (( (p.left - inset) + index) % (Console.BufferWidth - inset))
@@ -302,6 +282,24 @@ type internal ReadLineConsole() =
                 let c = input.Chars(current)
                 current <- current + 1
                 Cursor.Move(x.Inset, x.GetCharacterSize(c))
+                
+        let moveWordLeft() =
+            if (current > 0 && (current - 1 < input.Length)) then
+                let line = input.ToString()
+                current <- Utils.previousWordFromIdx line (current - 1, false)
+                anchor.PlaceAt(x.Inset, current)
+                
+        let moveWordRight() =
+            if (current < input.Length) then
+                let line = input.ToString()
+                let idxToMoveTo = Utils.nextWordFromIdx line (current + 1, false)
+                
+                // if has reached end of the last word
+                if idxToMoveTo = current && current < line.Length
+                then current <- line.Length
+                else current <- idxToMoveTo
+                
+                anchor.PlaceAt(x.Inset, current)
 
         let setInput(line:string) =
             input.Length <- 0
@@ -334,6 +332,20 @@ type internal ReadLineConsole() =
             if (input.Length > 0 && current < input.Length) then
                 input.Remove(current, 1) |> ignore
                 render()
+                
+        let deleteFromStartOfLineToCursor() =
+            if (input.Length > 0 && current > 0) then
+                input.Remove (0, current) |> ignore
+                current <- 0
+                render()
+            
+        let deleteWordLeadingToCursor() =
+            if (input.Length > 0 && current > 0) then
+                let line = input.ToString()
+                let idx = Utils.previousWordFromIdx line (current - 1, false)
+                input.Remove(idx, current - idx) |> ignore
+                current <- idx
+                render()
 
         let deleteToEndOfLine() =
             if (current < input.Length) then
@@ -347,23 +359,40 @@ type internal ReadLineConsole() =
             let c = if (key.Key = ConsoleKey.F6) then '\x1A' else key.KeyChar
             let c = ConsoleOptions.readKeyFixup c
             insertChar(c)
-
+            
         let backspace() =
             if (input.Length > 0 && current > 0) then
                 input.Remove(current - 1, 1) |> ignore
                 current <- current - 1
                 render()
-
-        let enter() =
+        let enter() = 
             Console.Write("\n")
             let line = input.ToString()
             if (line = "\x1A") then null
-            else
-                if (line.Length > 0) then
+            else 
+                if (line.Length > 0) then 
                     history.AddLast(line)
                 line
+        let clear() = 
+            current <- input.Length
+            let setPrompt prompt = 
+                if prompt then // We only allow clearing if prompt is ">"
+                    Console.Clear()
+                    Console.Write (x.Prompt)
+                    Console.Write(input.ToString())
+                    anchor <- Anchor.Top(x.Inset)   
+            let previous = history.Previous()
+            history.Next() |> ignore
+            if previous = "" then
+                setPrompt true
+            else
+                setPrompt (previous.EndsWith(";;"))
 
-        let rec read() =
+            
+        let home() =
+            current <- 0
+            anchor.PlaceAt(x.Inset,0)
+        let rec read() = 
             let key = Console.ReadKey true
 
             match key.Key with
@@ -384,62 +413,69 @@ type internal ReadLineConsole() =
             | ConsoleKey.DownArrow ->
                 setInput(history.Next())
                 change()
-            | ConsoleKey.RightArrow ->
+            | ConsoleKey.RightArrow when key.Modifiers &&& ConsoleModifiers.Control = enum 0 ->
                 moveRight()
                 change()
-            | ConsoleKey.LeftArrow ->
+            | ConsoleKey.LeftArrow when key.Modifiers &&& ConsoleModifiers.Control = enum 0 ->
                 moveLeft()
                 change()
             | ConsoleKey.Escape ->
                 setInput String.Empty
                 change()
             | ConsoleKey.Home ->
-                current <- 0
-                anchor.PlaceAt(x.Inset,0)
+                home()
                 change()
             | ConsoleKey.End ->
                 current <- input.Length
                 anchor.PlaceAt(x.Inset,rendered)
                 change()
             | _ ->
-            match (key.Modifiers, key.KeyChar) with
-            // Control-A
-            | (ConsoleModifiers.Control, '\001') ->
-                current <- 0
-                anchor.PlaceAt(x.Inset,0)
+            match (key.Modifiers, key.Key) with
+            | (ConsoleModifiers.Control, ConsoleKey.A) ->
+                home()
                 change ()
-            // Control-E
-            | (ConsoleModifiers.Control, '\005') ->
-                current <-input.Length
-                anchor.PlaceAt(x.Inset,rendered)
+            | (ConsoleModifiers.Control, ConsoleKey.E) ->
+                current <- input.Length
+                anchor.PlaceAt(x.Inset, rendered)
                 change ()
-            // Control-B
-            | (ConsoleModifiers.Control, '\002') ->
+            | (ConsoleModifiers.Control, ConsoleKey.B) ->
                 moveLeft()
                 change ()
-            // Control-f
-            | (ConsoleModifiers.Control, '\006') ->
+            | (ConsoleModifiers.Control, ConsoleKey.F) ->
                 moveRight()
                 change ()
-            // Control-k delete to end of line
-            | (ConsoleModifiers.Control, '\011') ->
+            | (ConsoleModifiers.Control, ConsoleKey.LeftArrow) 
+            | (ConsoleModifiers.Alt, ConsoleKey.B) ->
+                moveWordLeft()
+                change ()
+            | (ConsoleModifiers.Control, ConsoleKey.RightArrow) 
+            | (ConsoleModifiers.Alt, ConsoleKey.F) ->
+                moveWordRight()
+                change ()
+            | (ConsoleModifiers.Control, ConsoleKey.K) ->
                 deleteToEndOfLine()
                 change()
-            // Control-P
-            | (ConsoleModifiers.Control, '\016') ->
+            | (ConsoleModifiers.Control,ConsoleKey.P) ->
                 setInput(history.Previous())
                 change()
-            // Control-n
-            | (ConsoleModifiers.Control, '\014') ->
+            | (ConsoleModifiers.Control, ConsoleKey.N) ->
                 setInput(history.Next())
                 change()
-            // Control-d
-            | (ConsoleModifiers.Control, '\004') ->
+            | (ConsoleModifiers.Control, ConsoleKey.D) ->
                 if (input.Length = 0) then
                     exit 0 //quit
                 else
                     delete()
                     change()
+            | (ConsoleModifiers.Control, ConsoleKey.L) ->
+                clear()
+                change()
+            | (ConsoleModifiers.Control, ConsoleKey.U) ->
+                deleteFromStartOfLineToCursor()
+                change()
+            | (ConsoleModifiers.Control, ConsoleKey.W) ->
+                deleteWordLeadingToCursor()
+                change()
             | _ ->
                 // Note: If KeyChar=0, the not a proper char, e.g. it could be part of a multi key-press character,
                 //       e.g. e-acute is ' and e with the French (Belgium) IME and US Intl KB.

@@ -13,56 +13,44 @@ open Microsoft.CodeAnalysis.CodeFixes
 open Microsoft.CodeAnalysis.CodeActions
 
 open FSharp.Compiler
-open FSharp.Compiler.Range
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.AbstractIL.Internal.Library 
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Text
 
 [<ExportCodeFixProvider(FSharpConstants.FSharpLanguageName, Name = "AddOpen"); Shared>]
 type internal FSharpAddOpenCodeFixProvider
     [<ImportingConstructor>]
     (
-        checkerProvider: FSharpCheckerProvider, 
-        projectInfoManager: FSharpProjectOptionsManager,
         assemblyContentProvider: AssemblyContentProvider
     ) =
     inherit CodeFixProvider()
 
-    static let userOpName = "FSharpAddOpenCodeFixProvider"
     let fixableDiagnosticIds = ["FS0039"; "FS0043"]
 
-    let checker = checkerProvider.Checker
     let fixUnderscoresInMenuText (text: string) = text.Replace("_", "__")
 
-    let qualifySymbolFix (context: CodeFixContext) (fullName, qualifier) = 
-        CodeAction.Create(
+    let qualifySymbolFix (context: CodeFixContext) (fullName, qualifier) =
+        CodeFixHelpers.createTextChangeCodeFix(
             fixUnderscoresInMenuText fullName,
-            fun (cancellationToken: CancellationToken) -> 
-                async {
-                    let! cancellationToken = Async.CancellationToken
-                    let! sourceText = context.Document.GetTextAsync(cancellationToken) |> Async.AwaitTask
-                    return context.Document.WithText(sourceText.Replace(context.Span, qualifier))
-                } |> RoslynHelpers.StartAsyncAsTask(cancellationToken))
+            context,
+            (fun () -> asyncMaybe.Return [| TextChange(context.Span, qualifier) |]))
 
     let openNamespaceFix (context: CodeFixContext) ctx name ns multipleNames = 
         let displayText = "open " + ns + if multipleNames then " (" + name + ")" else ""
-        // TODO when fresh Roslyn NuGet packages are published, assign "Namespace" Tag to this CodeAction to show proper glyph.
         CodeAction.Create(
             fixUnderscoresInMenuText displayText,
             (fun (cancellationToken: CancellationToken) -> 
                 async {
-                    let! cancellationToken = Async.CancellationToken
                     let! sourceText = context.Document.GetTextAsync(cancellationToken) |> Async.AwaitTask
                     let changedText, _ = OpenDeclarationHelper.insertOpenDeclaration sourceText ctx ns
                     return context.Document.WithText(changedText)
                 } |> RoslynHelpers.StartAsyncAsTask(cancellationToken)),
             displayText)
 
-    let getSuggestions (context: CodeFixContext) (candidates: (Entity * InsertContext) list) : unit =
-        //Logging.Logging.logInfof "Candidates: %+A" candidates
-
+    let addSuggestionsAsCodeFixes (context: CodeFixContext) (candidates: (InsertionContextEntity * InsertionContext) list) =
         let openNamespaceFixes =
             candidates
-            |> Seq.choose (fun (entity, ctx) -> entity.Namespace |> Option.map (fun ns -> ns, entity.Name, ctx))
+            |> Seq.choose (fun (entity, ctx) -> entity.Namespace |> Option.map (fun ns -> ns, entity.FullDisplayName, ctx))
             |> Seq.groupBy (fun (ns, _, _) -> ns)
             |> Seq.map (fun (ns, xs) -> 
                 ns, 
@@ -91,34 +79,34 @@ type internal FSharpAddOpenCodeFixProvider
         for codeFix in openNamespaceFixes @ qualifiedSymbolFixes do
             context.RegisterCodeFix(codeFix, context.Diagnostics |> Seq.filter (fun x -> fixableDiagnosticIds |> List.contains x.Id) |> Seq.toImmutableArray)
 
-    override __.FixableDiagnosticIds = Seq.toImmutableArray fixableDiagnosticIds
+    override _.FixableDiagnosticIds = Seq.toImmutableArray fixableDiagnosticIds
 
-    override __.RegisterCodeFixesAsync context : Task =
+    override _.RegisterCodeFixesAsync context : Task =
         asyncMaybe {
             let document = context.Document
-            let! parsingOptions, projectOptions = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, context.CancellationToken)
-            let! sourceText = context.Document.GetTextAsync(context.CancellationToken)
-            let! _, parsedInput, checkResults = checker.ParseAndCheckDocument(document, projectOptions, sourceText = sourceText, userOpName = userOpName)
+
+            let! sourceText = document.GetTextAsync(context.CancellationToken)
+            let! parseResults, checkResults = document.GetFSharpParseAndCheckResultsAsync(nameof(FSharpAddOpenCodeFixProvider)) |> liftAsync
             let line = sourceText.Lines.GetLineFromPosition(context.Span.End)
             let linePos = sourceText.Lines.GetLinePosition(context.Span.End)
-            let defines = CompilerEnvironment.GetCompilationDefinesForEditing parsingOptions
+            let! defines = document.GetFSharpCompilationDefinesAsync(nameof(FSharpAddOpenCodeFixProvider)) |> liftAsync
             
             let! symbol = 
-                asyncMaybe {
-                    let! lexerSymbol = Tokenizer.getSymbolAtPosition(document.Id, sourceText, context.Span.End, document.FilePath, defines, SymbolLookupKind.Greedy, false)
-                    return! checkResults.GetSymbolUseAtLocation(Line.fromZ linePos.Line, lexerSymbol.Ident.idRange.EndColumn, line.ToString(), lexerSymbol.FullIsland, userOpName=userOpName)
-                } |> liftAsync
+                maybe {
+                    let! lexerSymbol = Tokenizer.getSymbolAtPosition(document.Id, sourceText, context.Span.End, document.FilePath, defines, SymbolLookupKind.Greedy, false, false)
+                    return checkResults.GetSymbolUseAtLocation(Line.fromZ linePos.Line, lexerSymbol.Ident.idRange.EndColumn, line.ToString(), lexerSymbol.FullIsland)
+                }
 
             do! Option.guard symbol.IsNone
 
             let unresolvedIdentRange =
                 let startLinePos = sourceText.Lines.GetLinePosition context.Span.Start
-                let startPos = Pos.fromZ startLinePos.Line startLinePos.Character
+                let startPos = Position.fromZ startLinePos.Line startLinePos.Character
                 let endLinePos = sourceText.Lines.GetLinePosition context.Span.End
-                let endPos = Pos.fromZ endLinePos.Line endLinePos.Character
+                let endPos = Position.fromZ endLinePos.Line endLinePos.Character
                 Range.mkRange context.Document.FilePath startPos endPos
             
-            let isAttribute = UntypedParseImpl.GetEntityKind(unresolvedIdentRange.Start, parsedInput) = Some EntityKind.Attribute
+            let isAttribute = ParsedInput.GetEntityKind(unresolvedIdentRange.Start, parseResults.ParseTree) = Some EntityKind.Attribute
             
             let entities =
                 assemblyContentProvider.GetAllEntitiesInProjectAndReferencedAssemblies checkResults
@@ -134,7 +122,7 @@ type internal FSharpAddOpenCodeFixProvider
                                   s.CleanedIdents 
                                   |> Array.replace (s.CleanedIdents.Length - 1) (lastIdent.Substring(0, lastIdent.Length - 9)) ])
 
-            let longIdent = ParsedInput.getLongIdentAt parsedInput unresolvedIdentRange.End
+            let longIdent = ParsedInput.GetLongIdentAt parseResults.ParseTree unresolvedIdentRange.End
 
             let! maybeUnresolvedIdents =
                 longIdent 
@@ -146,11 +134,11 @@ type internal FSharpAddOpenCodeFixProvider
                     |> List.toArray)
                                                     
             let insertionPoint = 
-                if document.FSharpOptions.CodeFixes.AlwaysPlaceOpensAtTopLevel then OpenStatementInsertionPoint.TopLevel
+                if document.Project.IsFSharpCodeFixesAlwaysPlaceOpensAtTopLevelEnabled then OpenStatementInsertionPoint.TopLevel
                 else OpenStatementInsertionPoint.Nearest
 
-            let createEntity = ParsedInput.tryFindInsertionContext unresolvedIdentRange.StartLine parsedInput maybeUnresolvedIdents insertionPoint
-            return entities |> Seq.map createEntity |> Seq.concat |> Seq.toList |> getSuggestions context
+            let createEntity = ParsedInput.TryFindInsertionContext unresolvedIdentRange.StartLine parseResults.ParseTree maybeUnresolvedIdents insertionPoint
+            return entities |> Seq.map createEntity |> Seq.concat |> Seq.toList |> addSuggestionsAsCodeFixes context
         } 
         |> Async.Ignore 
         |> RoslynHelpers.StartAsyncUnitAsTask(context.CancellationToken)

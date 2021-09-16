@@ -1,7 +1,8 @@
 ﻿namespace FSharp.Compiler.UnitTests
 
 open NUnit.Framework
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Test
+open FSharp.Compiler.Diagnostics
 
 [<TestFixture>]
 module SlicingQuotationTests =

@@ -1,52 +1,111 @@
 // Copyright (c) Microsoft Corporation.  All Rights Reserved.  See License.txt in the project root for license information.
 
-#if INTERACTIVE
-#load "../utils/ResizeArray.fs" "../absil/illib.fs" "../fsharp/ReferenceResolver.fs"
-#else
-module internal FSharp.Compiler.SimulatedMSBuildReferenceResolver
-#endif
+module internal FSharp.Compiler.CodeAnalysis.SimulatedMSBuildReferenceResolver
 
 open System
 open System.IO
 open System.Reflection
+open Microsoft.Build.Utilities
+open Internal.Utilities.Library
+open FSharp.Compiler.IO
+
+#if !FX_NO_WIN_REGISTRY
 open Microsoft.Win32
-open FSharp.Compiler.ReferenceResolver
-open FSharp.Compiler.AbstractIL.Internal.Library
+#endif
+
+// ATTENTION!: the following code needs to be updated every time we are switching to the new MSBuild version because new .NET framework version was released
+// 1. List of frameworks
+// 2. DeriveTargetFrameworkDirectoriesFor45Plus
+// 3. HighestInstalledRefAssembliesOrDotNETFramework
+// 4. GetPathToDotNetFrameworkImlpementationAssemblies
+[<Literal>]
+let private Net45 = "v4.5"
+
+[<Literal>]
+let private Net451 = "v4.5.1"
+
+[<Literal>]
+let private Net452 = "v4.5.2" // not available in Dev15 MSBuild version
+
+[<Literal>]
+let private Net46 = "v4.6"
+
+[<Literal>]
+let private Net461 = "v4.6.1"
+
+[<Literal>]
+let private Net462 = "v4.6.2"
+
+[<Literal>]
+let private Net47 = "v4.7"
+
+[<Literal>]
+let private Net471 = "v4.7.1"
+
+[<Literal>]
+let private Net472 = "v4.7.2"
+
+[<Literal>]
+let private Net48 = "v4.8"
+
+let SupportedDesktopFrameworkVersions = [ Net48; Net472; Net471; Net47; Net462; Net461; Net46; Net452; Net451; Net45 ]
 
 let private SimulatedMSBuildResolver =
-    let supportedFrameworks = [|
-        "v4.7.2"
-        "v4.7.1"
-        "v4.7"
-        "v4.6.2"
-        "v4.6.1"
-        "v4.6"
-        "v4.5.1"
-        "v4.5"
-        "v4.0"
-    |]
-    { new Resolver with
+
+    /// Get the path to the .NET Framework implementation assemblies by using ToolLocationHelper.GetPathToDotNetFramework
+    /// This is only used to specify the "last resort" path for assembly resolution.
+    let GetPathToDotNetFrameworkImlpementationAssemblies v =
+        let v =
+            match v with
+            | Net45 ->  Some TargetDotNetFrameworkVersion.Version45
+            | Net451 -> Some TargetDotNetFrameworkVersion.Version451
+            | Net452 -> Some TargetDotNetFrameworkVersion.Version452
+            | Net46 -> Some TargetDotNetFrameworkVersion.Version46
+            | Net461 -> Some TargetDotNetFrameworkVersion.Version461
+            | Net462 -> Some TargetDotNetFrameworkVersion.Version462
+            | Net47 -> Some TargetDotNetFrameworkVersion.Version47
+            | Net471 -> Some TargetDotNetFrameworkVersion.Version471
+            | Net472 -> Some TargetDotNetFrameworkVersion.Version472
+            | Net48 -> Some TargetDotNetFrameworkVersion.Version48
+            | _ -> assert false; None
+        match v with
+        | Some v ->
+            match ToolLocationHelper.GetPathToDotNetFramework v with
+            | null -> []
+            | x -> [x]
+        | _ -> []
+
+    let GetPathToDotNetFrameworkReferenceAssemblies version =
+#if NETSTANDARD
+        ignore version
+        let r : string list = []
+        r
+#else
+        match Microsoft.Build.Utilities.ToolLocationHelper.GetPathToStandardLibraries(".NETFramework",version,"") with
+        | null | "" -> []
+        | x -> [x]
+#endif
+
+    { new ILegacyReferenceResolver with
         member x.HighestInstalledNetFrameworkVersion() =
 
             let root = x.DotNetFrameworkReferenceAssembliesRootDirectory
-            let fwOpt = supportedFrameworks |> Seq.tryFind(fun fw -> Directory.Exists(Path.Combine(root, fw) ))
+            let fwOpt = SupportedDesktopFrameworkVersions |> Seq.tryFind(fun fw -> FileSystem.DirectoryExistsShim(Path.Combine(root, fw) ))
             match fwOpt with
             | Some fw -> fw
             | None -> "v4.5"
 
-        member __.DotNetFrameworkReferenceAssembliesRootDirectory =
-#if !FX_RESHAPED_MSBUILD
-            if System.Environment.OSVersion.Platform = System.PlatformID.Win32NT then
+        member _.DotNetFrameworkReferenceAssembliesRootDirectory =
+            if Environment.OSVersion.Platform = PlatformID.Win32NT then
                 let PF =
                     match Environment.GetEnvironmentVariable("ProgramFiles(x86)") with
                     | null -> Environment.GetEnvironmentVariable("ProgramFiles")  // if PFx86 is null, then we are 32-bit and just get PF
                     | s -> s
                 PF + @"\Reference Assemblies\Microsoft\Framework\.NETFramework"
             else
-#endif
                 ""
 
-        member __.Resolve(resolutionEnvironment, references, targetFrameworkVersion, targetFrameworkDirectories, targetProcessorArchitecture,
+        member _.Resolve(resolutionEnvironment, references, targetFrameworkVersion, targetFrameworkDirectories, targetProcessorArchitecture,
                             fsharpCoreDir, explicitIncludeDirs, implicitIncludeDir, logMessage, logWarningOrError) =
 
 #if !FX_NO_WIN_REGISTRY
@@ -88,9 +147,11 @@ let private SimulatedMSBuildResolver =
                 if System.Environment.OSVersion.Platform = System.PlatformID.Win32NT then
                     yield! registrySearchPaths()
 #endif
+                yield! GetPathToDotNetFrameworkReferenceAssemblies targetFrameworkVersion
+                yield! GetPathToDotNetFrameworkImlpementationAssemblies targetFrameworkVersion
               ]
 
-            for (r, baggage) in references do
+            for r, baggage in references do
                 //printfn "resolving %s" r
                 let mutable found = false
                 let success path =
@@ -100,12 +161,11 @@ let private SimulatedMSBuildResolver =
                         results.Add { itemSpec = path; prepareToolTip = snd; baggage=baggage }
 
                 try
-                    if not found && Path.IsPathRooted r then
-                        if FileSystem.SafeExists r then
+                    if not found && FileSystem.IsPathRootedShim r then
+                        if FileSystem.FileExistsShim r then
                             success r
                 with e -> logWarningOrError false "SR001" (e.ToString())
 
-#if !FX_RESHAPED_MSBUILD
                 // For this one we need to get the version search exactly right, without doing a load
                 try
                     if not found && r.StartsWithOrdinal("FSharp.Core, Version=") && Environment.OSVersion.Platform = PlatformID.Win32NT then
@@ -117,10 +177,9 @@ let private SimulatedMSBuildResolver =
                                 | s -> s
                             PF + @"\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\"  + n.Version.ToString()
                         let trialPath = Path.Combine(fscoreDir0, n.Name + ".dll")
-                        if FileSystem.SafeExists trialPath then
+                        if FileSystem.FileExistsShim trialPath then
                             success trialPath
                 with e -> logWarningOrError false "SR001" (e.ToString())
-#endif
 
                 let isFileName =
                     r.EndsWith("dll", StringComparison.OrdinalIgnoreCase) ||
@@ -132,11 +191,10 @@ let private SimulatedMSBuildResolver =
                   try
                     if not found then
                         let trialPath = Path.Combine(searchPath, qual)
-                        if FileSystem.SafeExists trialPath then
+                        if FileSystem.FileExistsShim trialPath then
                             success trialPath
                   with e -> logWarningOrError false "SR001" (e.ToString())
 
-#if !FX_RESHAPED_MSBUILD
                 try
                     // Search the GAC on Windows
                     if not found && not isFileName && Environment.OSVersion.Platform = PlatformID.Win32NT then
@@ -146,13 +204,13 @@ let private SimulatedMSBuildResolver =
                         match n.Version, n.GetPublicKeyToken()  with
                         | null, _ | _, null ->
                             let options =
-                                [ if Directory.Exists gac then
-                                    for gacDir in Directory.EnumerateDirectories gac do
+                                [ if FileSystem.DirectoryExistsShim gac then
+                                    for gacDir in FileSystem.EnumerateDirectoriesShim gac do
                                         let assemblyDir = Path.Combine(gacDir, n.Name)
-                                        if Directory.Exists assemblyDir then
-                                            for tdir in Directory.EnumerateDirectories assemblyDir do
+                                        if FileSystem.DirectoryExistsShim assemblyDir then
+                                            for tdir in FileSystem.EnumerateDirectoriesShim assemblyDir do
                                                 let trialPath = Path.Combine(tdir, qual)
-                                                if FileSystem.SafeExists trialPath then
+                                                if FileSystem.FileExistsShim trialPath then
                                                     yield trialPath ]
                             //printfn "sorting GAC paths: %A" options
                             options
@@ -161,26 +219,26 @@ let private SimulatedMSBuildResolver =
                             |> function None -> () | Some p -> success p
 
                         | v, tok ->
-                            if Directory.Exists gac then
+                            if FileSystem.DirectoryExistsShim gac then
                                 for gacDir in Directory.EnumerateDirectories gac do
                                     //printfn "searching GAC directory: %s" gacDir
                                     let assemblyDir = Path.Combine(gacDir, n.Name)
-                                    if Directory.Exists assemblyDir then
+                                    if FileSystem.DirectoryExistsShim assemblyDir then
                                         //printfn "searching GAC directory: %s" assemblyDir
 
                                         let tokText = String.concat "" [| for b in tok -> sprintf "%02x" b |]
                                         let verDir = Path.Combine(assemblyDir, "v4.0_"+v.ToString()+"__"+tokText)
                                         //printfn "searching GAC directory: %s" verDir
 
-                                        if Directory.Exists verDir then
+                                        if FileSystem.DirectoryExistsShim verDir then
                                             let trialPath = Path.Combine(verDir, qual)
                                             //printfn "searching GAC: %s" trialPath
-                                            if FileSystem.SafeExists trialPath then
+                                            if FileSystem.FileExistsShim trialPath then
                                                 success trialPath
                 with e -> logWarningOrError false "SR001" (e.ToString())
-#endif
 
             results.ToArray() }
+    |> LegacyReferenceResolver
 
 let internal getResolver () = SimulatedMSBuildResolver
 

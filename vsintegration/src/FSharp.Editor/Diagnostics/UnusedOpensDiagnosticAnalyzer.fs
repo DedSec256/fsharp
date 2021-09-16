@@ -7,52 +7,40 @@ open System.Composition
 open System.Collections.Immutable
 open System.Diagnostics
 open System.Threading
-open System.Threading.Tasks
 
 open Microsoft.CodeAnalysis
-open Microsoft.CodeAnalysis.Text
-open Microsoft.CodeAnalysis.Diagnostics
-open FSharp.Compiler
-open FSharp.Compiler.Ast
-open FSharp.Compiler.Range
-open FSharp.Compiler.SourceCodeServices
-open Microsoft.VisualStudio.FSharp.Editor.Symbols
-open Microsoft.CodeAnalysis.Host.Mef
+
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Text
+
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Diagnostics
 
 [<Export(typeof<IFSharpUnusedOpensDiagnosticAnalyzer>)>]
-type internal UnusedOpensDiagnosticAnalyzer [<ImportingConstructor>] () =
+type internal UnusedOpensDiagnosticAnalyzer
+    [<ImportingConstructor>]
+    (
+    ) =
 
-    let getProjectInfoManager (document: Document) = document.Project.Solution.Workspace.Services.GetService<FSharpCheckerWorkspaceService>().FSharpProjectOptionsManager
-    let getChecker (document: Document) = document.Project.Solution.Workspace.Services.GetService<FSharpCheckerWorkspaceService>().Checker
-
-    static let userOpName = "UnusedOpensAnalyzer"
-
-    static member GetUnusedOpenRanges(document: Document, options, checker: FSharpChecker) : Async<Option<range list>> =
+    static member GetUnusedOpenRanges(document: Document) : Async<Option<range list>> =
         asyncMaybe {
-            do! Option.guard document.FSharpOptions.CodeFixes.UnusedOpens
+            do! Option.guard document.Project.IsFSharpCodeFixesUnusedOpensEnabled
             let! sourceText = document.GetTextAsync()
-            let! _, _, checkResults = checker.ParseAndCheckDocument(document, options, sourceText = sourceText, userOpName = userOpName)
-#if DEBUG
-            let sw = Stopwatch.StartNew()
-#endif
+            let! _, checkResults = document.GetFSharpParseAndCheckResultsAsync(nameof(UnusedOpensDiagnosticAnalyzer)) |> liftAsync
             let! unusedOpens = UnusedOpens.getUnusedOpens(checkResults, fun lineNumber -> sourceText.Lines.[Line.toZ lineNumber].ToString()) |> liftAsync
-#if DEBUG
-            Logging.Logging.logInfof "*** Got %d unused opens in %O" unusedOpens.Length sw.Elapsed
-#endif
             return unusedOpens
         } 
 
     interface IFSharpUnusedOpensDiagnosticAnalyzer with
 
-        member this.AnalyzeSemanticsAsync(descriptor, document: Document, cancellationToken: CancellationToken) =
+        member _.AnalyzeSemanticsAsync(descriptor, document: Document, cancellationToken: CancellationToken) =
+            if document.Project.IsFSharpMiscellaneousOrMetadata && not document.IsFSharpScript then Tasks.Task.FromResult(ImmutableArray.Empty)
+            else
+
             asyncMaybe {
                 do Trace.TraceInformation("{0:n3} (start) UnusedOpensAnalyzer", DateTime.Now.TimeOfDay.TotalSeconds)
-                do! Async.Sleep DefaultTuning.UnusedOpensAnalyzerInitialDelay |> liftAsync // be less intrusive, give other work priority most of the time
-                let! _parsingOptions, projectOptions = getProjectInfoManager(document).TryGetOptionsForEditingDocumentOrProject(document, cancellationToken)
                 let! sourceText = document.GetTextAsync()
-                let checker = getChecker document
-                let! unusedOpens = UnusedOpensDiagnosticAnalyzer.GetUnusedOpenRanges(document, projectOptions, checker)
+                let! unusedOpens = UnusedOpensDiagnosticAnalyzer.GetUnusedOpenRanges(document)
             
                 return 
                     unusedOpens

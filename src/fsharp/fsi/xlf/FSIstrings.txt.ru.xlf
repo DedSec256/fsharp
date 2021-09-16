@@ -2,14 +2,19 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
   <file datatype="xml" source-language="en" target-language="ru" original="../FSIstrings.resx">
     <body>
+      <trans-unit id="fsiIntroPackageSourceUriInfo">
+        <source>Include package source uri when searching for packages</source>
+        <target state="translated">Включать исходный URI пакета при поиске пакетов</target>
+        <note />
+      </trans-unit>
       <trans-unit id="fsiOperationCouldNotBeCompleted">
         <source>Operation could not be completed due to earlier error</source>
         <target state="translated">Операция не может быть завершена из-за предыдущей ошибки</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiOperationFailed">
-        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpErrorInfo use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
-        <target state="translated">Не удалось выполнить операцию. Текст ошибки был выведен в потоке ошибок. Чтобы вернуть соответствующие сведения FSharpErrorInfo, используйте EvalInteractionNonThrowing, EvalScriptNonThrowing или EvalExpressionNonThrowing</target>
+        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpDiagnostic use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
+        <target state="translated">Не удалось выполнить операцию. Текст ошибки был выведен в потоке ошибок. Чтобы вернуть соответствующие сведения FSharpDiagnostic, используйте EvalInteractionNonThrowing, EvalScriptNonThrowing или EvalExpressionNonThrowing</target>
         <note />
       </trans-unit>
       <trans-unit id="stoppedDueToError">
@@ -122,11 +127,6 @@
         <target state="translated">Каталог "{0}" не существует</target>
         <note />
       </trans-unit>
-      <trans-unit id="fsiInvalidDirective">
-        <source>Invalid directive '#{0} {1}'</source>
-        <target state="translated">Недопустимая директива "#{0} {1}"</target>
-        <note />
-      </trans-unit>
       <trans-unit id="fsiLineTooLong">
         <source>Warning: line too long, ignoring some characters\n</source>
         <target state="translated">Предупреждение: слишком длинная строка, некоторые знаки игнорируются\n</target>
@@ -209,7 +209,7 @@
       </trans-unit>
       <trans-unit id="fsiAbortingMainThread">
         <source>- Aborting main thread...</source>
-        <target state="translated">— Отменяется главный поток…</target>
+        <target state="translated">— Отменяется главный поток...</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiCouldNotInstallCtrlCHandler">

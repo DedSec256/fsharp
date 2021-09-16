@@ -10,6 +10,13 @@ module Core_quotes
 
 
 #nowarn "57"
+open System
+open System.Reflection
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.Patterns
+open Microsoft.FSharp.Quotations.DerivedPatterns
+
+
 let failures = ref []
 
 let report_failure (s : string) = 
@@ -27,12 +34,19 @@ let check s v1 v2 =
        eprintf " FAILED: got %A, expected %A" v1 v2 
        report_failure s
 
+let rec removeDoubleSpaces (s: string) =
+   let s2 = s.Replace("  ", " ")
+   if s = s2 then s else removeDoubleSpaces s2
 
-open System
-open System.Reflection
-open Microsoft.FSharp.Quotations
-open Microsoft.FSharp.Quotations.Patterns
-open Microsoft.FSharp.Quotations.DerivedPatterns
+let normalizeActivePatternResults (s: string) =
+   System.Text.RegularExpressions.Regex(@"activePatternResult\d+").Replace(s, "activePatternResult")
+
+let checkStrings s (v1: string) (v2: string) = 
+    check s 
+       (v1.Replace("\r","").Replace("\n","") |> removeDoubleSpaces |> normalizeActivePatternResults)
+       (v2.Replace("\r","").Replace("\n","") |> removeDoubleSpaces |> normalizeActivePatternResults)
+
+let checkQuoteString s expected (q: Expr)  = checkStrings s (sprintf "%A" q) expected
 
 let (|TypedValue|_|) (v : 'T) value = 
     match value with 
@@ -1444,42 +1458,39 @@ end
 module MoreQuotationsTests = 
 
     let t1 = <@@ try 1 with e when true -> 2 | e -> 3 @@>
-    printfn "t1 = %A" t1
-    check "vwjnkwve0-vwnio" 
-        (sprintf "%A" t1) 
-    "TryWith (Value (1), matchValue,
-            IfThenElse (Let (e, matchValue, Value (true)),
-                        Let (e, matchValue, Value (1)),
-                        Let (e, matchValue, Value (1))), matchValue,
-            IfThenElse (Let (e, matchValue, Value (true)),
-                        Let (e, matchValue, Value (2)),
-                        Let (e, matchValue, Value (3))))"
+    checkStrings "vwjnkwve0-vwnio" 
+        (sprintf "%A" t1)
+        """TryWith (Value (1), matchValue,
+          IfThenElse (Let (e, matchValue, Value (true)),
+                      Let (e, matchValue, Value (1)),
+                      Let (e, matchValue, Value (1))), matchValue,
+          IfThenElse (Let (e, matchValue, Value (true)),
+                      Let (e, matchValue, Value (2)),
+                      Let (e, matchValue, Value (3))))"""
 
     [<ReflectedDefinition>]
     let k (x:int) =
        try 1 with _ when true -> 2 | e -> 3
 
     let t2 = <@@ Map.empty.[0] @@>
-    printfn "t2 = %A" t2
-    check "vwjnkwve0-vwnio1" 
+    checkStrings "vwjnkwve0-vwnio1" 
        (sprintf "%A" t2) 
        "PropertyGet (Some (Call (None, Empty, [])), Item, [Value (0)])"
 
 
     let t4 = <@@ use a = new System.IO.StreamWriter(System.IO.Stream.Null) in a @@>
-    printfn "t4 = %A" t4
-    check "vwjnkwve0-vwnio3" 
+    checkStrings "vwjnkwve0-vwnio3" 
         (sprintf "%A" t4) 
-    "Let (a, NewObject (StreamWriter, FieldGet (None, Null)),
+        "Let (a, NewObject (StreamWriter, FieldGet (None, Null)),
         TryFinally (a,
                     IfThenElse (TypeTest (IDisposable, Coerce (a, Object)),
                                 Call (Some (Call (None, UnboxGeneric,
                                                 [Coerce (a, Object)])), Dispose,
                                     []), Value (<null>))))"
 
-    check "vwjnkwve0-vwnio3fuull" 
+    checkStrings "vwjnkwve0-vwnio3fuull" 
         (t4.ToString(true))
-    "Let (a,
+        "Let (a,
         NewObject (Void .ctor(System.IO.Stream),
                 FieldGet (None, System.IO.Stream Null)),
         TryFinally (a,
@@ -1492,47 +1503,129 @@ module MoreQuotationsTests =
 
 
     let t5 = <@@ try failwith "test" with _ when true -> 0 @@>
-    printfn "t5 = %A" t5
+    checkStrings "vwekwvel5" (sprintf "%A" t5) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+         IfThenElse (Value (true), Value (1), Value (0)), matchValue,
+         IfThenElse (Value (true), Value (0), Call (None, Reraise, [])))"""
     
     let t6 = <@@ let mutable a = 0 in a <- 2 @@>
 
-    printfn "t6 = %A" t6
+    checkStrings "vwewvwewe6" (sprintf "%A" t6) 
+        """Let (a, Value (0), VarSet (a, Value (2)))"""
 
     let f (x: _ byref) = x
 
     let t7 = <@@ let mutable a = 0 in f (&a) @@>
-    printfn "t7 = %A" t7
-    
-    let t8 = <@@ for i in 1s .. 10s do printfn "%A" i @@>
-    printfn "t8 = %A" t8
+    checkStrings "vwewvwewe7" (sprintf "%A" t7) 
+        """Let (a, Value (0), Call (None, f, [AddressOf (a)]))"""
 
-    let t9 = <@@ try failwith "test" with Failure _ -> 0  @@>
-    printfn "t9 = %A" t9
+    let t8 = <@@ for i in 1s .. 10s do printfn "%A" i @@>
+    checkStrings "vwewvwewe8" (sprintf "%A" t8) 
+        """Let (inputSequence, Call (None, op_Range, [Value (1s), Value (10s)]),
+        Let (enumerator, Call (Some (inputSequence), GetEnumerator, []),
+             TryFinally (WhileLoop (Call (Some (enumerator), MoveNext, []),
+                                    Let (i,
+                                         PropertyGet (Some (enumerator), Current,
+                                                      []),
+                                         Application (Let (clo1,
+                                                           Call (None,
+                                                                 PrintFormatLine,
+                                                                 [Coerce (NewObject (PrintfFormat`5,
+                                                                                     Value ("%A")),
+                                                                          PrintfFormat`4)]),
+                                                           Lambda (arg10,
+                                                                   Application (clo1,
+                                                                                arg10))),
+                                                      i))),
+                         IfThenElse (TypeTest (IDisposable,
+                                               Coerce (enumerator, Object)),
+                                     Call (Some (Call (None, UnboxGeneric,
+                                                       [Coerce (enumerator, Object)])),
+                                           Dispose, []), Value (<null>)))))"""
+
+    let t9() = <@@ try failwith "test" with Failure _ -> 0  @@>
+    checkStrings "vwewvwewe9" (sprintf "%A" (t9())) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+        Let (activePatternResult1557, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1557, Some),
+                         Value (1), Value (0))), matchValue,
+        Let (activePatternResult1558, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1558, Some),
+                         Value (0), Call (None, Reraise, []))))"""
 
     let t9b = <@@ Failure "fil" @@>
-    printfn "t9b = %A" t9b
+    checkStrings "vwewvwewe9b" (sprintf "%A" t9b) 
+        """Call (None, Failure, [Value ("fil")])"""
+
     let t9c = <@@ match Failure "fil" with Failure msg -> msg |  _ -> "no" @@>
-    printfn "t9c = %A" t9c
+    checkStrings "vwewvwewe9c" (sprintf "%A" t9c) 
+        """Let (matchValue, Call (None, Failure, [Value ("fil")]),
+        Let (activePatternResult1564, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1564, Some),
+                         Let (msg,
+                              PropertyGet (Some (activePatternResult1564), Value,
+                                           []), msg), Value ("no"))))"""
 
     let t10 = <@@ try failwith "test" with Failure _ -> 0 |  _ -> 1 @@>
-    printfn "t10 = %A" t10
+    checkStrings "vwewvwewe10" (sprintf "%A" t10) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+        Let (activePatternResult1565, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1565, Some),
+                         Value (1), Value (1))), matchValue,
+        Let (activePatternResult1566, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1566, Some),
+                         Value (0), Value (1))))"""
 
     let t11 = <@@ try failwith "test" with :? System.NullReferenceException -> 0 @@>
-    printfn "t11 = %A" t11
+    checkStrings "vwewvwewe11" (sprintf "%A" t11) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+        IfThenElse (TypeTest (NullReferenceException, matchValue), Value (1),
+                    Value (0)), matchValue,
+        IfThenElse (TypeTest (NullReferenceException, matchValue), Value (0),
+                    Call (None, Reraise, [])))"""
 
     let t12 = <@@ try failwith "test" with :? System.NullReferenceException as n -> 0 @@>
-    printfn "t12 = %A" t12
+    checkStrings "vwewvwewe12" (sprintf "%A" t12) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+        IfThenElse (TypeTest (NullReferenceException, matchValue),
+                    Let (n, Call (None, UnboxGeneric, [matchValue]), Value (1)),
+                    Value (0)), matchValue,
+        IfThenElse (TypeTest (NullReferenceException, matchValue),
+                    Let (n, Call (None, UnboxGeneric, [matchValue]), Value (0)),
+                    Call (None, Reraise, [])))"""
 
     let t13 = <@@ try failwith "test" with Failure _ -> 1 | :? System.NullReferenceException as n -> 0 @@>
-    printfn "t13 = %A" t13
+    checkStrings "vwewvwewe13" (sprintf "%A" t13) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+        Let (activePatternResult1576, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1576, Some),
+                         Value (1),
+                         IfThenElse (TypeTest (NullReferenceException,
+                                               matchValue),
+                                     Let (n,
+                                          Call (None, UnboxGeneric,
+                                                [matchValue]), Value (1)),
+                                     Value (0)))), matchValue,
+        Let (activePatternResult1577, Call (None, FailurePattern, [matchValue]),
+             IfThenElse (UnionCaseTest (activePatternResult1577, Some),
+                         Value (1),
+                         IfThenElse (TypeTest (NullReferenceException,
+                                               matchValue),
+                                     Let (n,
+                                          Call (None, UnboxGeneric,
+                                                [matchValue]), Value (0)),
+                                     Call (None, Reraise, [])))))"""
 
     let t14 = <@@ try failwith "test" with _ when true -> 0 @@>
-    printfn "t14 = %A" t14
+    checkStrings "vwewvwewe13" (sprintf "%A" t14) 
+        """TryWith (Call (None, FailWith, [Value ("test")]), matchValue,
+        IfThenElse (Value (true), Value (1), Value (0)), matchValue,
+        IfThenElse (Value (true), Value (0), Call (None, Reraise, [])))"""
 
-    let _ = <@@ let x : int option = None in x.IsSome @@> |> printfn "quote = %A" 
-    let _ = <@@ let x : int option = None in x.IsNone @@> |> printfn "quote = %A" 
-    let _ = <@@ let x : int option = None in x.Value @@> |> printfn "quote = %A" 
-    let _ = <@@ let x : int option = None in x.ToString() @@> |> printfn "quote = %A" 
+    let _ = <@@ let x : int option = None in x.IsSome @@> |> checkQuoteString "fqekhec1" """Let (x, NewUnionCase (None), Call (None, get_IsSome, [x]))"""
+    let _ = <@@ let x : int option = None in x.IsNone @@> |> checkQuoteString "fqekhec2" """Let (x, NewUnionCase (None), Call (None, get_IsNone, [x]))"""
+    let _ = <@@ let x : int option = None in x.Value @@> |> checkQuoteString "fqekhec3" """Let (x, NewUnionCase (None), PropertyGet (Some (x), Value, []))"""
+    let _ = <@@ let x : int option = None in x.ToString() @@> |> checkQuoteString "fqekhec4" """Let (x, NewUnionCase (None), Call (Some (x), ToString, []))"""
 
     module Extensions = 
         type System.Object with 
@@ -1562,63 +1655,63 @@ module MoreQuotationsTests =
             member x.Int32ExtensionIndexer2 with set(idx:int) (v:int) = ()
  
         let v = new obj()
-        let _ = <@@ v.ExtensionMethod0() @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod1() @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod2(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod3(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod4(3,4) @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod5(3,4) @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionProperty1 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionProperty2 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionProperty3 <- 4 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionIndexer1(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionIndexer2(3) <- 4 @@> |> printfn "quote = %A"
+        let _ = <@@ v.ExtensionMethod0() @@>  |> checkQuoteString "fqekhec5" """Call (None, Object.ExtensionMethod0, [PropertyGet (None, v, [])])"""
+        let _ = <@@ v.ExtensionMethod1() @@> |> checkQuoteString "fqekhec6" """Call (None, Object.ExtensionMethod1, [PropertyGet (None, v, [])])"""
+        let _ = <@@ v.ExtensionMethod2(3) @@> |> checkQuoteString "fqekhec7" """Call (None, Object.ExtensionMethod2, [PropertyGet (None, v, []), Value (3)])"""
+        let _ = <@@ v.ExtensionMethod3(3) @@> |> checkQuoteString "fqekhec8" """Call (None, Object.ExtensionMethod3, [PropertyGet (None, v, []), Value (3)])"""
+        let _ = <@@ v.ExtensionMethod4(3,4) @@> |> checkQuoteString "fqekhec9" """Call (None, Object.ExtensionMethod4, [PropertyGet (None, v, []), Value (3), Value (4)])"""
+        let _ = <@@ v.ExtensionMethod5(3,4) @@> |> checkQuoteString "fqekhec10" """Call (None, Object.ExtensionMethod5, [PropertyGet (None, v, []), NewTuple (Value (3), Value (4))])"""
+        let _ = <@@ v.ExtensionProperty1 @@> |> checkQuoteString "fqekhec11" """Call (None, Object.get_ExtensionProperty1, [PropertyGet (None, v, [])])"""
+        let _ = <@@ v.ExtensionProperty2 @@> |> checkQuoteString "fqekhec12" """Call (None, Object.get_ExtensionProperty2, [PropertyGet (None, v, [])])"""
+        let _ = <@@ v.ExtensionProperty3 <- 4 @@> |> checkQuoteString "fqekhec13" """Call (None, Object.set_ExtensionProperty3, [PropertyGet (None, v, []), Value (4)])"""
+        let _ = <@@ v.ExtensionIndexer1(3) @@> |> checkQuoteString "fqekhec14" """Call (None, Object.get_ExtensionIndexer1, [PropertyGet (None, v, []), Value (3)])"""
+        let _ = <@@ v.ExtensionIndexer2(3) <- 4 @@> |> checkQuoteString "fqekhec15" """Call (None, Object.set_ExtensionIndexer2, [PropertyGet (None, v, []), Value (3), Value (4)])"""
 
-        let _ = <@@ v.ExtensionMethod0 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod1 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod2 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod3 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod4 @@> |> printfn "quote = %A"
-        let _ = <@@ v.ExtensionMethod5 @@> |> printfn "quote = %A"
+        let _ = <@@ v.ExtensionMethod0 @@> |> checkQuoteString "fqekhec16" """Lambda (unitVar, Call (None, Object.ExtensionMethod0, [PropertyGet (None, v, [])]))"""
+        let _ = <@@ v.ExtensionMethod1 @@> |> checkQuoteString "fqekhec17" """Lambda (unitVar, Call (None, Object.ExtensionMethod1, [PropertyGet (None, v, [])]))"""
+        let _ = <@@ v.ExtensionMethod2 @@> |> checkQuoteString "fqekhec18" """Lambda (arg00, Call (None, Object.ExtensionMethod2, [PropertyGet (None, v, []), arg00]))"""
+        let _ = <@@ v.ExtensionMethod3 @@> |> checkQuoteString "fqekhec19" """Lambda (arg00, Call (None, Object.ExtensionMethod3, [PropertyGet (None, v, []), arg00]))"""
+        let _ = <@@ v.ExtensionMethod4 @@> |> checkQuoteString "fqekhec20" """Lambda (tupledArg, Let (arg00, TupleGet (tupledArg, 0), Let (arg01, TupleGet (tupledArg, 1), Call (None, Object.ExtensionMethod4, [PropertyGet (None, v, []), arg00, arg01]))))"""
+        let _ = <@@ v.ExtensionMethod5 @@> |> checkQuoteString "fqekhec21" """Lambda (arg00, Call (None, Object.ExtensionMethod5, [PropertyGet (None, v, []), arg00]))"""
 
         let v2 = 3
-        let _ = <@@ v2.ExtensionMethod0() @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod1() @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod2(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod3(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod4(3,4) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod5(3,4) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionProperty1 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionProperty2 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionProperty3 <- 4 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionIndexer1(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionIndexer2(3) <- 4 @@> |> printfn "quote = %A"
+        let _ = <@@ v2.ExtensionMethod0() @@> |> checkQuoteString "fqekhec22" """Call (None, Object.ExtensionMethod0, [Coerce (PropertyGet (None, v2, []), Object)])"""
+        let _ = <@@ v2.ExtensionMethod1() @@> |> checkQuoteString "fqekhec23" """Call (None, Object.ExtensionMethod1, [Coerce (PropertyGet (None, v2, []), Object)])"""
+        let _ = <@@ v2.ExtensionMethod2(3) @@> |> checkQuoteString "fqekhec24" """Call (None, Object.ExtensionMethod2, [Coerce (PropertyGet (None, v2, []), Object), Value (3)])"""
+        let _ = <@@ v2.ExtensionMethod3(3) @@> |> checkQuoteString "fqekhec25" """Call (None, Object.ExtensionMethod3, [Coerce (PropertyGet (None, v2, []), Object), Value (3)])"""
+        let _ = <@@ v2.ExtensionMethod4(3,4) @@> |> checkQuoteString "fqekhec26" """Call (None, Object.ExtensionMethod4, [Coerce (PropertyGet (None, v2, []), Object), Value (3), Value (4)])"""
+        let _ = <@@ v2.ExtensionMethod5(3,4) @@> |> checkQuoteString "fqekhec27" """Call (None, Object.ExtensionMethod5, [Coerce (PropertyGet (None, v2, []), Object), NewTuple (Value (3), Value (4))])"""
+        let _ = <@@ v2.ExtensionProperty1 @@> |> checkQuoteString "fqekhec28" """Call (None, Object.get_ExtensionProperty1, [Coerce (PropertyGet (None, v2, []), Object)])"""
+        let _ = <@@ v2.ExtensionProperty2 @@> |> checkQuoteString "fqekhec29" """Call (None, Object.get_ExtensionProperty2, [Coerce (PropertyGet (None, v2, []), Object)])"""
+        let _ = <@@ v2.ExtensionProperty3 <- 4 @@> |> checkQuoteString "fqekhec30" """Call (None, Object.set_ExtensionProperty3, [Coerce (PropertyGet (None, v2, []), Object), Value (4)])"""
+        let _ = <@@ v2.ExtensionIndexer1(3) @@> |> checkQuoteString "fqekhec31" """Call (None, Object.get_ExtensionIndexer1, [Coerce (PropertyGet (None, v2, []), Object), Value (3)])"""
+        let _ = <@@ v2.ExtensionIndexer2(3) <- 4 @@> |> checkQuoteString "fqekhec32" """Call (None, Object.set_ExtensionIndexer2, [Coerce (PropertyGet (None, v2, []), Object), Value (3), Value (4)])"""
 
-        let _ = <@@ v2.ExtensionMethod0 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod1 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod2 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod3 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod4 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.ExtensionMethod5 @@> |> printfn "quote = %A"
+        let _ = <@@ v2.ExtensionMethod0 @@> |> checkQuoteString "fqekhec33" """Lambda (unitVar, Call (None, Object.ExtensionMethod0, [Coerce (PropertyGet (None, v2, []), Object)]))"""
+        let _ = <@@ v2.ExtensionMethod1 @@> |> checkQuoteString "fqekhec34" """Lambda (unitVar, Call (None, Object.ExtensionMethod1, [Coerce (PropertyGet (None, v2, []), Object)]))"""
+        let _ = <@@ v2.ExtensionMethod2 @@> |> checkQuoteString "fqekhec35" """Lambda (arg00, Call (None, Object.ExtensionMethod2, [Coerce (PropertyGet (None, v2, []), Object), arg00]))"""
+        let _ = <@@ v2.ExtensionMethod3 @@> |> checkQuoteString "fqekhec36" """Lambda (arg00, Call (None, Object.ExtensionMethod3, [Coerce (PropertyGet (None, v2, []), Object), arg00]))"""
+        let _ = <@@ v2.ExtensionMethod4 @@> |> checkQuoteString "fqekhec37" """Lambda (tupledArg, Let (arg00, TupleGet (tupledArg, 0), Let (arg01, TupleGet (tupledArg, 1), Call (None, Object.ExtensionMethod4, [Coerce (PropertyGet (None, v2, []), Object), arg00, arg01]))))"""
+        let _ = <@@ v2.ExtensionMethod5 @@> |> checkQuoteString "fqekhec38" """Lambda (arg00, Call (None, Object.ExtensionMethod5, [Coerce (PropertyGet (None, v2, []), Object), arg00]))"""
 
-        let _ = <@@ v2.Int32ExtensionMethod0() @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod1() @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod2(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod3(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod4(3,4) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod5(3,4) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionProperty1 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionProperty2 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionProperty3 <- 4 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionIndexer1(3) @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionIndexer2(3) <- 4 @@> |> printfn "quote = %A"
+        let _ = <@@ v2.Int32ExtensionMethod0() @@> |> checkQuoteString "fqekhec39" """Call (None, Int32.Int32ExtensionMethod0, [PropertyGet (None, v2, [])])"""
+        let _ = <@@ v2.Int32ExtensionMethod1() @@> |> checkQuoteString "fqekhec40" """Call (None, Int32.Int32ExtensionMethod1, [PropertyGet (None, v2, [])])"""
+        let _ = <@@ v2.Int32ExtensionMethod2(3) @@> |> checkQuoteString "fqekhec41" """Call (None, Int32.Int32ExtensionMethod2, [PropertyGet (None, v2, []), Value (3)])"""
+        let _ = <@@ v2.Int32ExtensionMethod3(3) @@> |> checkQuoteString "fqekhec42" """Call (None, Int32.Int32ExtensionMethod3, [PropertyGet (None, v2, []), Value (3)])"""
+        let _ = <@@ v2.Int32ExtensionMethod4(3,4) @@> |> checkQuoteString "fqekhec43" """Call (None, Int32.Int32ExtensionMethod4, [PropertyGet (None, v2, []), Value (3), Value (4)])"""
+        let _ = <@@ v2.Int32ExtensionMethod5(3,4) @@> |> checkQuoteString "fqekhec44" """Call (None, Int32.Int32ExtensionMethod5, [PropertyGet (None, v2, []), NewTuple (Value (3), Value (4))])"""
+        let _ = <@@ v2.Int32ExtensionProperty1 @@> |> checkQuoteString "fqekhec45" """Call (None, Int32.get_Int32ExtensionProperty1, [PropertyGet (None, v2, [])])"""
+        let _ = <@@ v2.Int32ExtensionProperty2 @@> |> checkQuoteString "fqekhec46" """Call (None, Int32.get_Int32ExtensionProperty2, [PropertyGet (None, v2, [])])"""
+        let _ = <@@ v2.Int32ExtensionProperty3 <- 4 @@> |> checkQuoteString "fqekhec47" """Call (None, Int32.set_Int32ExtensionProperty3, [PropertyGet (None, v2, []), Value (4)])"""
+        let _ = <@@ v2.Int32ExtensionIndexer1(3) @@> |> checkQuoteString "fqekhec48" """Call (None, Int32.get_Int32ExtensionIndexer1, [PropertyGet (None, v2, []), Value (3)])"""
+        let _ = <@@ v2.Int32ExtensionIndexer2(3) <- 4 @@> |> checkQuoteString "fqekhec49" """Call (None, Int32.set_Int32ExtensionIndexer2, [PropertyGet (None, v2, []), Value (3), Value (4)])"""
 
-        let _ = <@@ v2.Int32ExtensionMethod0 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod1 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod2 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod3 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod4 @@> |> printfn "quote = %A"
-        let _ = <@@ v2.Int32ExtensionMethod5 @@> |> printfn "quote = %A"
+        let _ = <@@ v2.Int32ExtensionMethod0 @@> |> checkQuoteString "fqekhec50" """Lambda (unitVar, Call (None, Int32.Int32ExtensionMethod0, [PropertyGet (None, v2, [])]))"""
+        let _ = <@@ v2.Int32ExtensionMethod1 @@> |> checkQuoteString "fqekhec51" """Lambda (unitVar, Call (None, Int32.Int32ExtensionMethod1, [PropertyGet (None, v2, [])]))"""
+        let _ = <@@ v2.Int32ExtensionMethod2 @@> |> checkQuoteString "fqekhec52" """Lambda (arg00, Call (None, Int32.Int32ExtensionMethod2, [PropertyGet (None, v2, []), arg00]))"""
+        let _ = <@@ v2.Int32ExtensionMethod3 @@> |> checkQuoteString "fqekhec53" """Lambda (arg00, Call (None, Int32.Int32ExtensionMethod3, [PropertyGet (None, v2, []), arg00]))"""
+        let _ = <@@ v2.Int32ExtensionMethod4 @@> |> checkQuoteString "fqekhec54" """Lambda (tupledArg, Let (arg00, TupleGet (tupledArg, 0), Let (arg01, TupleGet (tupledArg, 1), Call (None, Int32.Int32ExtensionMethod4, [PropertyGet (None, v2, []), arg00, arg01]))))"""
+        let _ = <@@ v2.Int32ExtensionMethod5 @@> |> checkQuoteString "fqekhec55" """Lambda (arg00, Call (None, Int32.Int32ExtensionMethod5, [PropertyGet (None, v2, []), arg00]))"""
 
 
 module QuotationConstructionTests = 
@@ -2819,7 +2912,7 @@ module ReflectionOverTypeInstantiations =
 
     let notRequired opname item = 
         let msg = sprintf "The operation '%s' on item '%s' should not be called on provided type, member or parameter" opname item
-        System.Diagnostics.Debug.Assert (false, msg)
+        //System.Diagnostics.Debug.Assert (false, msg)
         raise (System.NotSupportedException msg)
 
     /// DO NOT ADJUST THIS TYPE - it is the implementation of symbol types from the F# type provider starer pack. 
@@ -3161,6 +3254,883 @@ module TestMatchBang =
             (Ok ())
 
     testSimpleMatchBang()
+    
+#if LANGVERSION_PREVIEW
+module WitnessTests = 
+    open FSharp.Data.UnitSystems.SI.UnitSymbols
+
+    test "check CallWithWitness"      
+        (<@ 1 + 1  @> 
+         |> function 
+            | CallWithWitnesses(None, minfo1, minfo2, witnessArgs, args) -> 
+                minfo1.Name = "op_Addition" && 
+                minfo1.GetParameters().Length = 2 && 
+                minfo2.Name = "op_Addition$W" &&
+                minfo2.GetParameters().Length = 3 && 
+                (printfn "checking witnessArgs.Length = %d... args.Length"; true) &&
+                witnessArgs.Length = 1 &&
+                (printfn "checking args.Length = %d... args.Length"; true) &&
+                args.Length = 2 &&
+                (printfn "checking witnessArgs is a Lambda..."; true) &&
+                (match witnessArgs with [ Lambda _ ] -> true | _ -> false) &&
+                (printfn "checking witnessArg is the expected call..."; true) &&
+                (match witnessArgs with [ Lambda (v1A, Lambda (v2A, Call(None, m, [ Patterns.Var v1B; Patterns.Var v2B]))) ] when m.Name = "op_Addition" && v1A = v1B && v2A = v2B -> true | _ -> false)
+                (printfn "checking witnessArg is not a CalWithWitnesses..."; true) &&
+                (match witnessArgs with [ Lambda (v1A, Lambda (v2A, CallWithWitnesses _)) ] -> false | _ -> true) &&
+                (printfn "checking args..."; true) &&
+                (match args with [ Int32 _; Int32 _ ] -> true | _ -> false)
+            | _ -> false)
+
+    test "check CallWithWitness (DateTime + TimeSpan)"      
+        (<@ System.DateTime.Now + System.TimeSpan.Zero  @> 
+         |> function 
+            | CallWithWitnesses(None, minfo1, minfo2, witnessArgs, args) -> 
+                minfo1.Name = "op_Addition" && 
+                (printfn "checking minfo1.GetParameters().Length..."; true) &&
+                minfo1.GetParameters().Length = 2 && 
+                minfo2.Name = "op_Addition$W" &&
+                (printfn "checking minfo2.GetParameters().Length..."; true) &&
+                minfo2.GetParameters().Length = 3 && 
+                (printfn "checking witnessArgs.Length..."; true) &&
+                witnessArgs.Length = 1 &&
+                (printfn "checking witnessArg is the expected call, witnessArgs = %A" witnessArgs; true) &&
+                (match witnessArgs with 
+                  | [ Lambda (v1A, Lambda (v2A, Call(None, m, [Patterns.Var v1B; Patterns.Var v2B]))) ]  
+                       when m.Name = "op_Addition" 
+                            && m.GetParameters().[0].ParameterType.Name = "DateTime" 
+                            && m.GetParameters().[1].ParameterType.Name = "TimeSpan" 
+                            && v1A = v1B 
+                            && v2A = v2B -> true 
+                  | _ -> false)
+                (printfn "checking witnessArg is not a CallWithWitnesses, witnessArgs = %A" witnessArgs; true) &&
+                (match witnessArgs with [ Lambda (v1A, Lambda (v2A, CallWithWitnesses args)) ] -> printfn "unexpected! %A" args; false | _ -> true) &&
+                args.Length = 2 &&
+                (printfn "checking args..."; true) &&
+                (match args with [ _; _ ] -> true | _ -> false) &&
+                (match witnessArgs with [ Lambda _ ] -> true | _ -> false)
+            | CallWithWitnesses _ -> 
+                printfn "no object"
+                false
+            | _ -> 
+                printfn "incorrect node"
+                false)
+
+    test "check Call (DateTime + TimeSpan)"      
+        (<@ System.DateTime.Now + System.TimeSpan.Zero  @> 
+         |> function 
+            | Call(None, minfo1, args) -> 
+                minfo1.Name = "op_Addition" && 
+                (printfn "checking minfo1.GetParameters().Length..."; true) &&
+                minfo1.GetParameters().Length = 2 && 
+                //minfo2.GetParameters().[0].Name = "op_Addition" && 
+                args.Length = 2 &&
+                (match args with [ _; _ ] -> true | _ -> false)
+            | _ -> false)
+
+    type C() = 
+        static member inline StaticAdd (x, y) = x + y
+        member inline __.InstanceAdd (x, y) = x + y
+
+    test "check CallWithWitness (DateTime + TimeSpan) using static member"      
+        (<@ C.StaticAdd(System.DateTime.Now, System.TimeSpan.Zero)  @> 
+         |> function 
+            | CallWithWitnesses(None, minfo1, minfo2, witnessArgs, args) -> 
+                minfo1.IsStatic && 
+                minfo1.Name = "StaticAdd" && 
+                (printfn "checking minfo1.GetParameters().Length..."; true) &&
+                minfo1.GetParameters().Length = 2 && 
+                minfo2.IsStatic && 
+                minfo2.Name = "StaticAdd$W" &&
+                (printfn "checking minfo2.GetParameters().Length = %d..." (minfo2.GetParameters().Length); true) &&
+                minfo2.GetParameters().Length = 3 && 
+                (printfn "checking witnessArgs.Length..."; true) &&
+                witnessArgs.Length = 1 &&
+                (printfn "checking args.Length..."; true) &&
+                args.Length = 2 &&
+                (printfn "witnessArgs..."; true) &&
+                (match witnessArgs with [ Lambda _ ] -> true | _ -> false) &&
+                (printfn "args..."; true) &&
+                (match args with [ _; _ ] -> true | _ -> false)
+            | CallWithWitnesses(None, minfo1, minfo2, witnessArgs, args) -> 
+                printfn "no object..."
+                false
+            | _ -> false)
+
+    test "check CallWithWitness (DateTime + TimeSpan) using instance member"      
+        (<@ C().InstanceAdd(System.DateTime.Now, System.TimeSpan.Zero)  @> 
+         |> function 
+            | CallWithWitnesses(Some _obj, minfo1, minfo2, witnessArgs, args) -> 
+                not minfo1.IsStatic && 
+                minfo1.Name = "InstanceAdd" && 
+                (printfn "checking minfo1.GetParameters().Length..."; true) &&
+                minfo1.GetParameters().Length = 2 && 
+                not minfo2.IsStatic && 
+                minfo2.Name = "InstanceAdd$W" &&
+                (printfn "checking minfo2.GetParameters().Length = %d..." (minfo2.GetParameters().Length); true) &&
+                minfo2.GetParameters().Length = 3 && 
+                (printfn "checking witnessArgs.Length..."; true) &&
+                witnessArgs.Length = 1 &&
+                (printfn "checking args.Length..."; true) &&
+                args.Length = 2 &&
+                (printfn "witnessArgs..."; true) &&
+                (match witnessArgs with [ Lambda _ ] -> true | _ -> false) &&
+                (printfn "args..."; true) &&
+                (match args with [ _; _ ] -> true | _ -> false)
+            | CallWithWitnesses(None, minfo1, minfo2, witnessArgs, args) -> 
+                printfn "no object..."
+                false
+            | _ -> false)
+
+    test "check CallWithWitnesses all operators)"      
+      (let tests = 
+            [ <@@ sin 1.0  @@>, true
+              <@@ sin 1.0f  @@>, true
+              <@@ sign 1.0f  @@>, true
+              <@@ sqrt 1.0f<m>  @@>, true
+              <@@ 2.0f ** 2.0f  @@>, true
+              <@@ atan2 3.0 4.0  @@>, true
+              <@@ 1.0f + 4.0f  @@>, true
+              <@@ 1.0f - 4.0f  @@>, true
+              <@@ 1.0f * 4.0f  @@>, true
+              <@@ 1.0M * 4.0M  @@>, true
+              <@@ 1.0f / 4.0f  @@>, true
+              <@@ 1 % 4  @@>, true
+              <@@ -(4.0M)  @@>, true
+
+              <@@ 1y <<< 3  @@>, true
+              <@@ 1uy <<< 3  @@>, true
+              <@@ 1s <<< 3  @@>, true
+              <@@ 1us <<< 3  @@>, true
+              <@@ 1 <<< 3  @@>, true
+              <@@ 1u <<< 3  @@>, true
+              <@@ 1L <<< 3  @@>, true
+              <@@ 1UL <<< 3  @@>, true
+              <@@ LanguagePrimitives.GenericOne<nativeint> <<< 3  @@>, false
+              <@@ LanguagePrimitives.GenericOne<unativeint> <<< 3  @@>, false
+
+              <@@ 1y >>> 3  @@>, true
+              <@@ 1uy >>> 3  @@>, true
+              <@@ 1s >>> 3  @@>, true
+              <@@ 1us >>> 3  @@>, true
+              <@@ 1 >>> 3  @@>, true
+              <@@ 1u >>> 3  @@>, true
+              <@@ 1L >>> 3  @@>, true
+              <@@ 1UL >>> 3  @@>, true
+              <@@ LanguagePrimitives.GenericOne<nativeint> >>> 3  @@>, false
+              <@@ LanguagePrimitives.GenericOne<unativeint> >>> 3  @@>, false
+              
+              <@@ 1y &&& 3y  @@>, true
+              <@@ 1uy &&& 3uy  @@>, true
+              <@@ 1s &&& 3s  @@>, true
+              <@@ 1us &&& 3us  @@>, true
+              <@@ 1 &&& 3  @@>, true
+              <@@ 1u &&& 3u  @@>, true
+              <@@ 1L &&& 3L  @@>, true
+              <@@ 1UL &&& 3UL  @@>, true
+              <@@ LanguagePrimitives.GenericOne<nativeint> &&& LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ LanguagePrimitives.GenericOne<unativeint> &&& LanguagePrimitives.GenericOne<unativeint>  @@>, false
+
+              <@@ 1y ||| 3y  @@>, true
+              <@@ 1uy ||| 3uy  @@>, true
+              <@@ 1s ||| 3s  @@>, true
+              <@@ 1us ||| 3us  @@>, true
+              <@@ 1 ||| 3  @@>, true
+              <@@ 1u ||| 3u  @@>, true
+              <@@ 1L ||| 3L  @@>, true
+              <@@ 1UL ||| 3UL  @@>, true
+              <@@ LanguagePrimitives.GenericOne<nativeint> ||| LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ LanguagePrimitives.GenericOne<unativeint> ||| LanguagePrimitives.GenericOne<unativeint>  @@>, false
+
+              <@@ 1y ^^^ 3y  @@>, true
+              <@@ 1uy ^^^ 3uy  @@>, true
+              <@@ 1s ^^^ 3s  @@>, true
+              <@@ 1us ^^^ 3us  @@>, true
+              <@@ 1 ^^^ 3  @@>, true
+              <@@ 1u ^^^ 3u  @@>, true
+              <@@ 1L ^^^ 3L  @@>, true
+              <@@ 1UL ^^^ 3UL  @@>, true
+              <@@ LanguagePrimitives.GenericOne<nativeint> ^^^ LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ LanguagePrimitives.GenericOne<unativeint> ^^^ LanguagePrimitives.GenericOne<unativeint>  @@>, false
+
+              <@@ ~~~3y  @@>, true
+              <@@ ~~~3uy  @@>, true
+              <@@ ~~~3s  @@>, true
+              <@@ ~~~3us  @@>, true
+              <@@ ~~~3  @@>, true
+              <@@ ~~~3u  @@>, true
+              <@@ ~~~3L  @@>, true
+              <@@ ~~~3UL  @@>, true
+              <@@ ~~~LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ ~~~LanguagePrimitives.GenericOne<unativeint>  @@>, false
+
+              <@@ byte 3uy  @@>, true
+              <@@ byte 3y  @@>, true
+              <@@ byte 3s  @@>, true
+              <@@ byte 3us  @@>, true
+              <@@ byte 3  @@>, true
+              <@@ byte 3u  @@>, true
+              <@@ byte 3L  @@>, true
+              <@@ byte 3UL  @@>, true
+              <@@ byte 3.0f  @@>, true
+              <@@ byte 3.0  @@>, true
+              <@@ byte LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ byte LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ byte 3.0M  @@>, true
+              <@@ byte "3"  @@>, false
+
+              <@@ sbyte 3uy  @@>, true
+              <@@ sbyte 3y  @@>, true
+              <@@ sbyte 3s  @@>, true
+              <@@ sbyte 3us  @@>, true
+              <@@ sbyte 3  @@>, true
+              <@@ sbyte 3u  @@>, true
+              <@@ sbyte 3L  @@>, true
+              <@@ sbyte 3UL  @@>, true
+              <@@ sbyte 3.0f  @@>, true
+              <@@ sbyte 3.0  @@>, true
+              <@@ sbyte LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ sbyte LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ sbyte 3.0M  @@>, true
+              <@@ sbyte "3"  @@>, false
+
+              <@@ int16 3uy  @@>, true
+              <@@ int16 3y  @@>, true
+              <@@ int16 3s  @@>, true
+              <@@ int16 3us  @@>, true
+              <@@ int16 3  @@>, true
+              <@@ int16 3u  @@>, true
+              <@@ int16 3L  @@>, true
+              <@@ int16 3UL  @@>, true
+              <@@ int16 3.0f  @@>, true
+              <@@ int16 3.0  @@>, true
+              <@@ int16 LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ int16 LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ int16 3.0M  @@>, true
+              <@@ int16 "3"  @@>, false
+
+              <@@ uint16 3uy  @@>, true
+              <@@ uint16 3y  @@>, true
+              <@@ uint16 3s  @@>, true
+              <@@ uint16 3us  @@>, true
+              <@@ uint16 3  @@>, true
+              <@@ uint16 3u  @@>, true
+              <@@ uint16 3L  @@>, true
+              <@@ uint16 3UL  @@>, true
+              <@@ uint16 3.0f  @@>, true
+              <@@ uint16 3.0  @@>, true
+              <@@ uint16 LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ uint16 LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ uint16 3.0M  @@>, true
+              <@@ uint16 "3"  @@>, false
+
+              <@@ int32 3uy  @@>, true
+              <@@ int32 3y  @@>, true
+              <@@ int32 3s  @@>, true
+              <@@ int32 3us  @@>, true
+              <@@ int32 3  @@>, true
+              <@@ int32 3u  @@>, true
+              <@@ int32 3L  @@>, true
+              <@@ int32 3UL  @@>, true
+              <@@ int32 3.0f  @@>, true
+              <@@ int32 3.0  @@>, true
+              <@@ int32 LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ int32 LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ int32 3.0M  @@>, true
+              <@@ int32 "3"  @@>, false
+
+              <@@ uint32 3uy  @@>, true
+              <@@ uint32 3y  @@>, true
+              <@@ uint32 3s  @@>, true
+              <@@ uint32 3us  @@>, true
+              <@@ uint32 3  @@>, true
+              <@@ uint32 3u  @@>, true
+              <@@ uint32 3L  @@>, true
+              <@@ uint32 3UL  @@>, true
+              <@@ uint32 3.0f  @@>, true
+              <@@ uint32 3.0  @@>, true
+              <@@ uint32 LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ uint32 LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ uint32 3.0M  @@>, true
+              <@@ uint32 "3"  @@>, false
+
+              <@@ int64 3uy  @@>, true
+              <@@ int64 3y  @@>, true
+              <@@ int64 3s  @@>, true
+              <@@ int64 3us  @@>, true
+              <@@ int64 3  @@>, true
+              <@@ int64 3u  @@>, true
+              <@@ int64 3L  @@>, true
+              <@@ int64 3UL  @@>, true
+              <@@ int64 3.0f  @@>, true
+              <@@ int64 3.0  @@>, true
+              <@@ int64 LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ int64 LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ int64 3.0M  @@>, true
+              <@@ int64 "3"  @@>, false
+              
+              <@@ uint64 3uy  @@>, true
+              <@@ uint64 3y  @@>, true
+              <@@ uint64 3s  @@>, true
+              <@@ uint64 3us  @@>, true
+              <@@ uint64 3  @@>, true
+              <@@ uint64 3u  @@>, true
+              <@@ uint64 3L  @@>, true
+              <@@ uint64 3UL  @@>, true
+              <@@ uint64 3.0f  @@>, true
+              <@@ uint64 3.0  @@>, true
+              <@@ uint64 LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ uint64 LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              <@@ uint64 3.0M  @@>, true
+              <@@ uint64 "3"  @@>, false
+
+              <@@ nativeint 3uy  @@>, true
+              <@@ nativeint 3y  @@>, true
+              <@@ nativeint 3s  @@>, true
+              <@@ nativeint 3us  @@>, true
+              <@@ nativeint 3  @@>, true
+              <@@ nativeint 3u  @@>, true
+              <@@ nativeint 3L  @@>, true
+              <@@ nativeint 3UL  @@>, true
+              <@@ nativeint 3.0f  @@>, true
+              <@@ nativeint 3.0  @@>, true
+              <@@ nativeint LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ nativeint LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              //<@@ nativeint 3.0M  @@>, false
+              //<@@ nativeint "3"  @@>, false
+
+              <@@ unativeint 3uy  @@>, true
+              <@@ unativeint 3y  @@>, true
+              <@@ unativeint 3s  @@>, true
+              <@@ unativeint 3us  @@>, true
+              <@@ unativeint 3  @@>, true
+              <@@ unativeint 3u  @@>, true
+              <@@ unativeint 3L  @@>, true
+              <@@ unativeint 3UL  @@>, true
+              <@@ unativeint 3.0f  @@>, true
+              <@@ unativeint 3.0  @@>, true
+              <@@ unativeint LanguagePrimitives.GenericOne<nativeint>  @@>, false
+              <@@ unativeint LanguagePrimitives.GenericOne<unativeint>  @@>, false
+              //<@@ unativeint 3.0M  @@>, true
+              //<@@ unativeint "3"  @@>, true
+
+              <@@ LanguagePrimitives.GenericZero<float>  @@>, true
+              <@@ LanguagePrimitives.GenericZero<float32>  @@>, true
+              <@@ LanguagePrimitives.GenericZero<int>  @@>, true
+              <@@ LanguagePrimitives.GenericZero<int64>  @@>, true
+              <@@ LanguagePrimitives.GenericZero<uint64>  @@>, true
+              <@@ LanguagePrimitives.GenericZero<nativeint>  @@>, true
+              <@@ LanguagePrimitives.GenericOne<float>  @@>, true
+              <@@ LanguagePrimitives.GenericOne<float32>  @@>, true
+              <@@ LanguagePrimitives.GenericOne<int>  @@>, true
+              <@@ LanguagePrimitives.GenericOne<int64>  @@>, true
+              <@@ LanguagePrimitives.GenericOne<uint64>  @@>, true
+              <@@ LanguagePrimitives.GenericOne<nativeint>  @@>, true
+              <@@ List.sum [ 1; 2 ]  @@>, true
+              <@@ List.sum [ 1.0f; 2.0f ]  @@>, true
+              <@@ List.sum [ 1.0; 2.0 ]  @@>, true
+              <@@ List.sum [ 1.0M; 2.0M ]  @@>, true
+              <@@ List.average [ 1.0; 2.0 ]  @@>, true
+              <@@ List.average [ 1.0f; 2.0f ]  @@>, true
+              <@@ List.average [ 1.0M; 2.0M ]  @@>, true 
+            ]
+
+       tests |> List.forall (fun (test, canEval) -> 
+           if canEval then 
+               printfn "--> checking we can evaluate %A" test
+               FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation test |> ignore
+               printfn "<-- evaluated!"
+           else
+               printfn "skipping evaluation of %A because LinqExpressionConverter can't handle it" test
+           printfn "checking %A" test
+           match test with
+            | CallWithWitnesses(None, minfo1, minfo2, witnessArgs, args) -> 
+                minfo1.IsStatic && 
+                minfo2.IsStatic && 
+                minfo2.Name = minfo1.Name + "$W" &&
+    (*
+                (printfn "checking minfo2.GetParameters().Length = %d..." (minfo2.GetParameters().Length); true) &&
+                minfo2.GetParameters().Length = 3 && 
+                (printfn "checking witnessArgs.Length..."; true) &&
+                witnessArgs.Length = 1 &&
+                (printfn "checking args.Length..."; true) &&
+                args.Length = 2 &&
+                (printfn "witnessArgs..."; true) &&
+                (match witnessArgs with [ Lambda _ ] -> true | _ -> false) &&
+                (printfn "args..."; true) &&
+                (match args with [ _; _ ] -> true | _ -> false)
+                *)
+                true
+            | _ -> false))
+
+module MoreWitnessTests =
+
+    open System.Runtime.CompilerServices
+    open System.IO
+
+    [<ReflectedDefinition>]
+    module Tests = 
+        let inline f0 (x: 'T) : (unit -> 'T) list = 
+           [] 
+
+        let inline f (x: 'T) : (unit -> 'T) list = 
+           [(fun () -> x + x)] 
+
+        type C() =
+            member inline __.F(x: 'T) = x + x
+
+        [<AutoOpen>]
+        module M = 
+
+            type C with 
+                member inline __.F2(x: 'T) = x + x
+                static member inline F2Static(x: 'T) = x + x
+
+            [<Extension>]
+            type FileExt =
+               [<Extension>]
+               static member CreateDirectory(fileInfo: FileInfo) =
+                   Directory.CreateDirectory fileInfo.Directory.FullName
+
+               [<Extension>]
+               static member inline F3(s: string, x: 'T) =
+                   x + x
+
+               [<Extension>]
+               static member inline F4(s: string, x1: 'T, x2: 'T) =
+                   x1 + x2
+
+
+        [<ReflectedDefinition>]
+        module Usage  = 
+            let q0 = <@ f0 3 @>
+            let q1 = <@ f 3 @>
+            let q2 = <@ C().F(3) @>
+            let q3 = <@ C().F2(3) @>
+            let q4 = <@ C.F2Static(3) @>
+            let q5 = <@ "".F3(3) @>
+            let q6 = <@ "".F4(3, 4) @>
+
+            check "wekncjeck1" (q0.ToString()) "Call (None, f0, [Value (3)])"
+            check "wekncjeck2" (q1.ToString()) "Call (None, f, [Value (3)])"
+            check "wekncjeck3" (q2.ToString()) "Call (Some (NewObject (C)), F, [Value (3)])"
+            check "wekncjeck4" (q3.ToString()) "Call (None, C.F2, [NewObject (C), Value (3)])"
+            check "wekncjeck5" (q4.ToString()) "Call (None, C.F2Static.Static, [Value (3)])"
+            check "wekncjeck6" (q5.ToString()) "Call (None, F3, [Value (\"\"), Value (3)])"
+            check "wekncjeck7" (q6.ToString()) "Call (None, F4, [Value (\"\"), Value (3), Value (4)])"
+
+            check "ewlknweknl1" (FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q0) (box ([] : (unit -> int) list))
+            check "ewlknweknl2" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q1 with :? ((unit -> int) list) as x -> x.[0] ()) 6
+            check "ewlknweknl3" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q2 with :? int as x -> x) 6
+            check "ewlknweknl4" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q3 with :? int as x -> x) 6
+            check "ewlknweknl5" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q4 with :? int as x -> x) 6
+            check "ewlknweknl6" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q5 with :? int as x -> x) 6
+            check "ewlknweknl7" (match FSharp.Linq.RuntimeHelpers.LeafExpressionConverter.EvaluateQuotation q6 with :? int as x -> x) 7
+
+// Check we can take ReflectedDefinition of things involving witness and trait calls
+module QuotationsOfGenericCodeWithWitnesses =
+    [<ReflectedDefinition>]
+    let inline f1 (x: ^T) = x + x // ( ^T : (static member Foo: int -> int) (3))
+
+    match <@ f1 1 @> with
+    | Quotations.Patterns.Call(_, mi, _) -> 
+        let mi1 = mi.GetGenericMethodDefinition() 
+        let q1 = Quotations.Expr.TryGetReflectedDefinition(mi1)
+        check "vwehwevrwv" q1 None
+    | q -> report_failure (sprintf "gfwhoewvioh - unexpected %A" q)
+
+
+    match <@ f1 1 @> with
+    | Quotations.Patterns.CallWithWitnesses(_, mi, minfoWithWitnesses, _, _) -> 
+        let q2 = Quotations.Expr.TryGetReflectedDefinition(minfoWithWitnesses)
+
+        match q2 with 
+        | Some (Lambda (witnessArgVar, Lambda(v, CallWithWitnesses(None, mi, minfoWithWitnesses, [Var witnessArgVar2], [a2;b2])))) -> 
+        
+            check "cewlkjwvw0a" witnessArgVar.Name "op_Addition"
+            check "cewlkjwvw0b" witnessArgVar.Type (typeof<int -> int -> int>)
+            check "cewlkjwvw1a" witnessArgVar2.Name "op_Addition"
+            check "cewlkjwvw1b" witnessArgVar2.Type (typeof<int -> int -> int>)
+            check "cewlkjwvw2" minfoWithWitnesses.Name "op_Addition$W"
+            check "vjnvwiowve" a2 b2 
+            check "cewlkjwvw0" witnessArgVar witnessArgVar2
+
+        | q -> report_failure (sprintf "gfwhoewvioh32 - unexpected %A" q)
+            
+    | q -> report_failure (sprintf "gfwhoewvioh37 - unexpected %A" q)
+    
+    
+    type C() = 
+        static member Foo (x:int) = x
+
+    [<ReflectedDefinition>]
+    let inline f3 (x: ^T) =
+        ( ^T : (static member Foo: int -> int) (3))
+
+    match <@ f3 (C()) @> with
+    | Quotations.Patterns.Call(_, mi, _) -> 
+        let mi3 = mi.GetGenericMethodDefinition()
+        let q3 = Quotations.Expr.TryGetReflectedDefinition(mi3)
+        check "fekjevwlw" q3 None
+    | q -> report_failure (sprintf "3kjhhjkkjhe9 - %A unexpected"  q)
+
+    match <@ f3 (C()) @> with 
+    | Quotations.Patterns.CallWithWitnesses(_, mi, miw, [w4], _) -> 
+        let q4 = Quotations.Expr.TryGetReflectedDefinition(miw)
+
+        check "vwroirvjkn" miw.Name "f3$W"
+
+        match q4 with 
+        | Some (Lambda(witnessArgVar, Lambda(v, Application(Var witnessArgVar2, Int32 3)))) -> 
+            check "vwehjrwlkj0" witnessArgVar.Name "Foo"
+            check "vwehjrwlkj1" witnessArgVar.Type (typeof<int -> int>)
+            check "vwehjrwlkj2" witnessArgVar2.Name "Foo"
+            check "vwehjrwlkj3" witnessArgVar2 witnessArgVar
+        | _ -> report_failure (sprintf "3kjhhjkkjhe1 - %A unexpected"  q4)
+
+        match w4 with 
+        | Lambda(v, Call(None, miFoo, [Var v2])) -> 
+           check "vewhjwveoi1" miFoo.Name "Foo"
+           check "vewhjwveoi2" v v2
+        | _ -> report_failure (sprintf "3kjhhjkkjhe2 - %A unexpected"  w4)
+
+    | q -> report_failure (sprintf "3kjhhjkkjhe0 - %A unexpected"  q)
+
+/// Check we can take quotations of implicit operator trait calls
+
+module QuotationOfConcreteTraitCalls =
+    
+    type Foo(s: string) =
+         member _.S = s
+         static member (?) (foo : Foo, name : string) = foo.S + name
+         static member (++) (foo : Foo, name : string) = foo.S + name
+         static member (?<-) (foo : Foo, name : string, v : string) = ()
+
+    let foo = Foo("hello, ")
+
+    // Desugared form is ok, but ? desugars to a method with constraints which aren't allowed in quotes
+    let q1 = <@ Foo.op_Dynamic(foo, "uhh") @>
+    let q2 = <@ foo ? uhh @>
+
+    let q3 = <@ Foo.op_DynamicAssignment(foo, "uhh", "hm") @>
+    let q4 = <@ foo ? uhh <- "hm" @>
+    let q5 = <@ foo ++ "uhh" @>
+
+    let cleanup (s:string) = s.Replace(" ","").Replace("\n","").Replace("\r","")
+    check "wekncjeck112a" (cleanup (sprintf "%0A" q1)) "Call(None,op_Dynamic,[PropertyGet(None,foo,[]),Value(\"uhh\")])"
+    check "wekncjeck112b" (cleanup (sprintf "%0A" q2)) "Application(Application(Lambda(arg0,Lambda(arg1,Call(None,op_Dynamic,[arg0,arg1]))),PropertyGet(None,foo,[])),Value(\"uhh\"))"
+    check "wekncjeck112c" (cleanup (sprintf "%0A" q3)) "Call(None,op_DynamicAssignment,[PropertyGet(None,foo,[]),Value(\"uhh\"),Value(\"hm\")])"
+    check "wekncjeck112d" (cleanup (sprintf "%0A" q4)) "Application(Application(Application(Lambda(arg0,Lambda(arg1,Lambda(arg2,Call(None,op_DynamicAssignment,[arg0,arg1,arg2])))),PropertyGet(None,foo,[])),Value(\"uhh\")),Value(\"hm\"))"
+    check "wekncjeck112e" (cleanup (sprintf "%0A" q5)) "Application(Application(Lambda(arg0,Lambda(arg1,Call(None,op_PlusPlus,[arg0,arg1]))),PropertyGet(None,foo,[])),Value(\"uhh\"))"
+
+    // Let bound functions handle this ok
+    let (?) o s =
+        printfn "%s" s
+
+    // No error here because it binds to the let bound version
+    let q8 = <@ foo ? uhh @>
+
+// Check we can take ReflectedDefinition of things involving multiple implicit witnesses and trait calls
+module QuotationsOfGenericCodeWithMultipleWitnesses =
+
+    // This has three type paramters and two witnesses, one for + and one for -
+    [<ReflectedDefinition>]
+    let inline f1 x y z = (x + y) - z
+
+    match <@ f1 1 2 3 @> with
+    | Quotations.Patterns.Call(_, mi, _) -> 
+        let q1 = Quotations.Expr.TryGetReflectedDefinition(mi)
+        check "vwehwevrwv" q1 None
+    | q -> report_failure (sprintf "gfwhoewvioh - unexpected %A" q)
+
+    match <@ f1 1 2 3 @> with
+    | Quotations.Patterns.CallWithWitnesses(_, mi, minfoWithWitnesses, _, _) -> 
+        let q2 = Quotations.Expr.TryGetReflectedDefinition(minfoWithWitnesses)
+
+        match q2 with 
+        | Some (Lambda (witnessArgVarAdd, 
+                 Lambda (witnessArgVarSub, 
+                    Lambda(xVar, 
+                      Lambda(yVar, 
+                        Lambda(zVar, 
+                           CallWithWitnesses(None, mi1, minfoWithWitnesses1, [Var witnessArgVarSub2], 
+                            [CallWithWitnesses(None, mi2, minfoWithWitnesses2, [Var witnessArgVarAdd2], 
+                               [Var xVar2; Var yVar2]);
+                             Var zVar2]))))))) -> 
+        
+            check "cewlkjwv54" witnessArgVarAdd.Name "op_Addition"
+            check "cewlkjwv55" witnessArgVarSub.Name "op_Subtraction"
+            check "cewlkjwv56" witnessArgVarAdd.Type (typeof<int -> int -> int>)
+            check "cewlkjwv57" witnessArgVarSub.Type (typeof<int -> int -> int>)
+            check "cewlkjwv58" witnessArgVarAdd witnessArgVarAdd2
+            check "cewlkjwv59" witnessArgVarSub witnessArgVarSub2
+            check "cewlkjwv60" xVar xVar2
+            check "cewlkjwv61" yVar yVar2
+            check "cewlkjwv62" zVar zVar2
+
+        | q -> report_failure (sprintf "gfwhoewvioh32 - unexpected %A" q)
+            
+    | q -> report_failure (sprintf "gfwhoewvioh37 - unexpected %A" q)
+    
+// Like QuotationsOfGenericCodeWithMultipleWitnesses but with implementation code the other way around
+module QuotationsOfGenericCodeWithMultipleWitnesses2 =
+
+    [<ReflectedDefinition>]
+    let inline f1 x y z = (x - y) + z
+
+    match <@ f1 1 2 3 @> with
+    | Quotations.Patterns.Call(_, mi, _) -> 
+        let q1 = Quotations.Expr.TryGetReflectedDefinition(mi)
+        check "xvwehwevrwv" q1 None
+    | q -> report_failure (sprintf "xgfwhoewvioh - unexpected %A" q)
+
+    match <@ f1 1 2 3 @> with
+    | Quotations.Patterns.CallWithWitnesses(_, mi, minfoWithWitnesses, _, _) -> 
+        let q2 = Quotations.Expr.TryGetReflectedDefinition(minfoWithWitnesses)
+
+        match q2 with 
+        | Some (Lambda (witnessArgVarAdd, 
+                 Lambda (witnessArgVarSub, 
+                    Lambda(xVar, 
+                      Lambda(yVar, 
+                        Lambda(zVar, 
+                           CallWithWitnesses(None, mi1, minfoWithWitnesses1, [Var witnessArgVarAdd2], 
+                            [CallWithWitnesses(None, mi2, minfoWithWitnesses2, [Var witnessArgVarSub2], 
+                               [Var xVar2; Var yVar2]);
+                             Var zVar2]))))))) -> 
+        
+            check "xcewlkjwv54" witnessArgVarAdd.Name "op_Addition"
+            check "xcewlkjwv55" witnessArgVarSub.Name "op_Subtraction"
+            check "xcewlkjwv56" witnessArgVarAdd.Type (typeof<int -> int -> int>)
+            check "xcewlkjwv57" witnessArgVarSub.Type (typeof<int -> int -> int>)
+            check "xcewlkjwv58" witnessArgVarAdd witnessArgVarAdd2
+            check "xcewlkjwv59" witnessArgVarSub witnessArgVarSub2
+            check "xcewlkjwv60" xVar xVar2
+            check "xcewlkjwv61" yVar yVar2
+            check "xcewlkjwv62" zVar zVar2
+
+        | q -> report_failure (sprintf "xgfwhoewvioh32 - unexpected %A" q)
+            
+    | q -> report_failure (sprintf "xgfwhoewvioh37 - unexpected %A" q)
+    
+    
+module TestOuterConstrainedClass =
+    // This example where there is an outer constrained class caused numerous failures
+    // because it was trying to pass witnesses for the constraint in the type 
+    //
+    // No witnesses are passed for these
+    type hoop< ^a when ^a : (static member (+) : ^a * ^a -> ^a) > =
+        { Group1 : ^a
+          Group2 : ^a } 
+        static member inline (+) (x, y) = x.Group1 + y.Group2
+        //member inline this.Sum = this.Group1 + this.Group2 
+
+    let z = { Group1 = 1; Group2 = 2 } + { Group1 = 2; Group2 = 3 } // ok
+
+module TestInlineQuotationOfAbsOperator  =
+
+    let inline f x = <@ abs x @>
+
+    type C(n:int) = 
+        static member Abs(c: C) = C(-c.P)
+        member x.P = n
+
+    let v1 = f 3
+    let v2 = f 3.4
+    let v3 = f (C(4))
+    
+    test "check abs1" 
+       (match v1 with 
+         | CallWithWitnesses(None, minfo1, minfo2, [Value(f,_)], [Int32 3]) ->
+             minfo1.Name = "Abs" && minfo2.Name = "Abs$W" && ((f :?> (int -> int)) -3 = 3)
+         | _ -> false)
+
+    test "check abs2" 
+       (match v2 with 
+         | CallWithWitnesses(None, minfo1, minfo2, [Value(f,_)], [Double 3.4]) ->
+             minfo1.Name = "Abs" && minfo2.Name = "Abs$W"  && ((f :?> (double -> double)) -3.0 = 3.0)
+         | _ -> false)
+
+    test "check abs3" 
+       (match v3 with 
+         | CallWithWitnesses(None, minfo1, minfo2, [Value(f,_)], [Value (v,_)]) ->
+             minfo1.Name = "Abs" && minfo2.Name = "Abs$W"  && ((v :?> C).P = 4) && (((f :?> (C -> C)) (C(-7))).P = 7)
+         | _ -> false)
+
+    
+module TestQuotationOfListSum =
+    type Point =
+        { x: int; y: int }
+        static member Zero = { x=0; y=0 }
+        static member (+) (p1, p2) = { x= p1.x + p2.x; y = p1.y + p2.y }
+    let points = [{x=1; y=10}]
+
+    let q = <@ List.sum points @>
+
+    match q with 
+     | CallWithWitnesses(None, minfo1, minfo2, [w1; w2], [_]) ->
+         test "check List.sum 111" (minfo1.Name = "Sum")
+         test "check List.sum 112" (minfo2.Name = "Sum$W")
+         printfn "w1 = %A" w1
+         match w1 with 
+         | Lambda(v, PropertyGet(None, miFoo, [])) -> 
+           test  "check List.sum 113" (miFoo.Name = "Zero")
+         | _ -> 
+           test  "check List.sum 114" false
+         match w2 with 
+         | Lambda(v, Lambda(v2, Call(None, miFoo, [_;_]))) -> 
+           test  "check List.sum 115" (miFoo.Name = "op_Addition")
+         | _ -> 
+           test  "check List.sum 116" false
+     | _ -> 
+         test "check List.sum 117" false
+
+
+module TestQuotationOfListSum2 =
+    type Point =
+        { x: int; y: int }
+        static member Zero = { x=0; y=0 }
+        static member (+) (p1, p2) = { x= p1.x + p2.x; y = p1.y + p2.y }
+    let points = [{x=1; y=10}]
+
+    let inline quoteListSum points = <@ List.sum points @>
+
+    match quoteListSum points with 
+     | CallWithWitnesses(None, minfo1, minfo2, [Value (f1, _); Value (f2, _)], [Value (v,_)]) ->
+         test "check List.sum 211" (minfo1.Name = "Sum")
+         test "check List.sum 212" (minfo2.Name = "Sum$W")
+         test "check List.sum 213" (((v :?> Point list) = points))
+         test "check List.sum 214" ((((f1 :?> (unit -> Point)) ()) = Point.Zero))
+         test "check List.sum 215" ((((f2 :?> (Point -> Point -> Point)) {x=1;y=1} {x=1;y=2}) = {x=2;y=3}))
+     | _ -> 
+         test "check List.sum 216" false
+
+
+module ComputationExpressionWithOptionalsAndParamArray =
+    open System
+    type InputKind =
+        | Text of placeholder:string option
+        | Password of placeholder: string option
+    type InputOptions =
+      { Label: string option
+        Kind : InputKind
+        Validators : (string -> bool) array }
+    type InputBuilder() =
+        member t.Yield(_) =
+          { Label = None
+            Kind = Text None
+            Validators = [||] }
+        [<CustomOperation("text")>]
+        member this.Text(io, ?placeholder) =
+            { io with Kind = Text placeholder }
+        [<CustomOperation("password")>]
+        member this.Password(io, ?placeholder) =
+            { io with Kind = Password placeholder }
+        [<CustomOperation("label")>]
+        member this.Label(io, label) =
+            { io with Label = Some label }
+        [<CustomOperation("with_validators")>]
+        member this.Validators(io, [<ParamArray>] validators) =
+            { io with Validators = validators }
+
+    let input = InputBuilder()
+    let name =
+        input {
+            label "Name"
+            text
+            with_validators
+                (String.IsNullOrWhiteSpace >> not)
+        }
+    let email =
+        input {
+            label "Email"
+            text "Your email"
+            with_validators
+                (String.IsNullOrWhiteSpace >> not)
+                (fun s -> s.Contains "@")
+        }
+    let password =
+        input {
+            label "Password"
+            password "Must contains at least 6 characters, one number and one uppercase"
+            with_validators
+                (String.exists Char.IsUpper)
+                (String.exists Char.IsDigit)
+                (fun s -> s.Length >= 6)
+        }
+    check "vewhkvh1" name.Kind (Text None)
+    check "vewhkvh2" email.Kind (Text (Some "Your email"))
+    check "vewhkvh3" email.Label (Some "Email")
+    check "vewhkvh4" email.Validators.Length 2
+    check "vewhkvh5" password.Label (Some "Password")
+    check "vewhkvh6" password.Validators.Length 3
+
+#endif
+
+module QuotationOfComputationExpressionZipOperation =
+
+    type Builder() =
+      member __.Bind (x, f) = f x
+      member __.Return x = x
+      member __.For (x, f) = f x
+      member __.Yield x = x
+      [<CustomOperation("var", MaintainsVariableSpaceUsingBind = true, IsLikeZip=true)>]
+      member __.Var (x, y, f) = f x y
+
+    let builder = Builder()
+
+    let q = 
+        <@  builder {
+                let! x = 1
+                var y in 2
+                return x + y
+            } @> 
+
+    let actual = (q.ToString())
+    checkStrings "brewbreebr" actual 
+       """Application (Lambda (builder@,
+                     Call (Some (builder@), For,
+                           [Call (Some (builder@), Var,
+                                  [Call (Some (builder@), Bind,
+                                         [Value (1),
+                                          Lambda (_arg1,
+                                                  Let (x, _arg1,
+                                                       Call (Some (builder@),
+                                                             Yield, [x])))]),
+                                   Value (2),
+                                   Lambda (x, Lambda (y, NewTuple (x, y)))]),
+                            Lambda (_arg2,
+                                    Let (y, TupleGet (_arg2, 1),
+                                         Let (x, TupleGet (_arg2, 0),
+                                              Call (Some (builder@), Return,
+                                                    [Call (None, op_Addition,
+                                                           [x, y])]))))])),
+             PropertyGet (None, builder, []))"""
+        
+module CheckEliminatedConstructs = 
+    let isNullQuoted (ts : 't[]) =
+        <@
+            match ts with
+            | null -> true
+            | _ -> false
+        @>
+
+    let actual1 = ((isNullQuoted [| |]).ToString())
+    checkStrings "brewbreebrvwe1" actual1
+       """IfThenElse (Call (None, op_Equality, [ValueWithName ([||], ts), Value (<null>)]),
+            Value (true), Value (false))"""
+        
+module Interpolation =
+    let interpolatedNoHoleQuoted = <@ $"abc" @>
+    let actual1 = interpolatedNoHoleQuoted.ToString()
+    checkStrings "brewbreebrwhat1" actual1 """Value ("abc")"""
+
+    let interpolatedWithLiteralQuoted = <@ $"abc {1} def" @>
+    let actual2 = interpolatedWithLiteralQuoted.ToString()
+    checkStrings "brewbreebrwhat2" actual2
+        """Call (None, PrintFormatToString,
+                 [NewObject (PrintfFormat`5, Value ("abc %P() def"),
+                             NewArray (Object, Call (None, Box, [Value (1)])),
+                             Value (<null>))])"""
 
 module TestAssemblyAttributes = 
     let attributes = System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttributes(false)
@@ -3174,8 +4144,8 @@ let aa =
       stdout.WriteLine "Test Passed"
       System.IO.File.WriteAllText("test.ok","ok")
       exit 0
-  | _ -> 
-      stdout.WriteLine "Test Failed"
+  | errs -> 
+      printfn "Test Failed, errors = %A" errs
       exit 1
 #endif
 

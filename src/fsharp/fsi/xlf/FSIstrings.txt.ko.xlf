@@ -2,14 +2,19 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
   <file datatype="xml" source-language="en" target-language="ko" original="../FSIstrings.resx">
     <body>
+      <trans-unit id="fsiIntroPackageSourceUriInfo">
+        <source>Include package source uri when searching for packages</source>
+        <target state="translated">패키지를 검색할 때 패키지 원본 URI 포함</target>
+        <note />
+      </trans-unit>
       <trans-unit id="fsiOperationCouldNotBeCompleted">
         <source>Operation could not be completed due to earlier error</source>
         <target state="translated">이전 오류로 인해 작업을 완료할 수 없습니다.</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiOperationFailed">
-        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpErrorInfo use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
-        <target state="translated">작업이 실패했습니다. 오류 텍스트가 오류 스트림에 인쇄되었습니다. 해당 FSharpErrorInfo를 반환하려면 EvalInteractionNonThrowing, EvalScriptNonThrowing 또는 EvalExpressionNonThrowing를 사용하세요.</target>
+        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpDiagnostic use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
+        <target state="translated">작업이 실패했습니다. 오류 텍스트가 오류 스트림에 출력되었습니다. 해당 FSharpDiagnostic을 반환하려면 EvalInteractionNonThrowing, EvalScriptNonThrowing 또는 EvalExpressionNonThrowing을 사용하세요.</target>
         <note />
       </trans-unit>
       <trans-unit id="stoppedDueToError">
@@ -120,11 +125,6 @@
       <trans-unit id="fsiDirectoryDoesNotExist">
         <source>Directory '{0}' doesn't exist</source>
         <target state="translated">'{0}' 디렉터리가 없습니다.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="fsiInvalidDirective">
-        <source>Invalid directive '#{0} {1}'</source>
-        <target state="translated">잘못된 지시문 '#{0} {1}'</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiLineTooLong">

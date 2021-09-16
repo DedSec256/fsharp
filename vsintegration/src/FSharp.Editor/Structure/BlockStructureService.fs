@@ -7,14 +7,12 @@ open System.Collections.Immutable
 open System.Threading.Tasks
 
 open Microsoft.CodeAnalysis
-open Microsoft.CodeAnalysis.Host.Mef
 open Microsoft.CodeAnalysis.Text
-open Microsoft.CodeAnalysis.Structure
 open Microsoft.CodeAnalysis.ExternalAccess.FSharp.Structure
 
-open FSharp.Compiler
-open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.SourceCodeServices.Structure
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.EditorServices.Structure
+open FSharp.Compiler.Syntax
 
 module internal BlockStructure =
     let scopeToBlockType = function
@@ -25,7 +23,7 @@ module internal BlockStructure =
         | Scope.Interface
         | Scope.TypeExtension
         | Scope.RecordDefn
-        | Scope.CompExpr
+        | Scope.ComputationExpr
         | Scope.ObjExpr
         | Scope.UnionDefn
         | Scope.Attribute
@@ -51,7 +49,6 @@ module internal BlockStructure =
         | Scope.IfThenElse-> FSharpBlockTypes.Conditional
         | Scope.Tuple
         | Scope.ArrayOrList
-        | Scope.CompExprInternal
         | Scope.Quote
         | Scope.SpecialFunc
         | Scope.Lambda
@@ -86,7 +83,7 @@ module internal BlockStructure =
         | Scope.Interface
         | Scope.TypeExtension
         | Scope.RecordDefn
-        | Scope.CompExpr
+        | Scope.ComputationExpr
         | Scope.ObjExpr
         | Scope.UnionDefn
         | Scope.Type
@@ -106,7 +103,6 @@ module internal BlockStructure =
         | Scope.IfThenElse
         | Scope.Tuple
         | Scope.ArrayOrList
-        | Scope.CompExprInternal
         | Scope.Quote
         | Scope.Lambda
         | Scope.LetOrUseBang
@@ -118,7 +114,7 @@ module internal BlockStructure =
         | Scope.While
         | Scope.For -> false
 
-    let createBlockSpans isBlockStructureEnabled (sourceText:SourceText) (parsedInput:Ast.ParsedInput) =
+    let createBlockSpans isBlockStructureEnabled (sourceText:SourceText) (parsedInput:ParsedInput) =
         let linetext = sourceText.Lines |> Seq.map (fun x -> x.ToString()) |> Seq.toArray
         
         Structure.getOutliningRanges linetext parsedInput
@@ -143,18 +139,15 @@ module internal BlockStructure =
 open BlockStructure
  
 [<Export(typeof<IFSharpBlockStructureService>)>]
-type internal FSharpBlockStructureService [<ImportingConstructor>] (checkerProvider: FSharpCheckerProvider, projectInfoManager: FSharpProjectOptionsManager) =
-        
-    static let userOpName = "FSharpBlockStructure"
+type internal FSharpBlockStructureService [<ImportingConstructor>] () =
 
     interface IFSharpBlockStructureService with
  
-        member __.GetBlockStructureAsync(document, cancellationToken) : Task<FSharpBlockStructure> =
+        member _.GetBlockStructureAsync(document, cancellationToken) : Task<FSharpBlockStructure> =
             asyncMaybe {
-                let! parsingOptions, _options = projectInfoManager.TryGetOptionsForEditingDocumentOrProject(document, cancellationToken)
                 let! sourceText = document.GetTextAsync(cancellationToken)
-                let! parsedInput = checkerProvider.Checker.ParseDocument(document, parsingOptions, sourceText, userOpName)
-                return createBlockSpans document.FSharpOptions.Advanced.IsBlockStructureEnabled sourceText parsedInput |> Seq.toImmutableArray
+                let! parseResults = document.GetFSharpParseResultsAsync(nameof(FSharpBlockStructureService)) |> liftAsync
+                return createBlockSpans document.Project.IsFSharpBlockStructureEnabled sourceText parseResults.ParseTree |> Seq.toImmutableArray
             } 
             |> Async.map (Option.defaultValue ImmutableArray<_>.Empty)
             |> Async.map FSharpBlockStructure

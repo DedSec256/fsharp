@@ -4,15 +4,21 @@ namespace FSharp.Compiler
 
 #if !NO_EXTENSIONTYPING
 
-
-open System
-open System.Reflection
-open Microsoft.FSharp.Core.CompilerServices
-open FSharp.Compiler.Range
+open Internal.Utilities.Library
+open FSharp.Core.CompilerServices
 open FSharp.Compiler.AbstractIL.IL
+open FSharp.Compiler.Text
+
+[<Sealed>]
+type internal TypeProviderToken = 
+    interface LockToken
+
+[<Sealed;Class>]
+type internal TypeProviderLock =
+    inherit Lock<TypeProviderToken>
 
 /// Stores and transports aggregated list of errors reported by the type provider
-type internal TypeProviderError =
+type TypeProviderError =
     inherit System.Exception
     
     /// creates new instance of TypeProviderError that represents one error
@@ -42,7 +48,7 @@ type internal TypeProviderError =
 type internal Tainted<'T> =
 
     /// Create an initial tainted value
-    static member CreateAll : (ITypeProvider * ILScopeRef) list -> Tainted<ITypeProvider> list
+    static member CreateAll : (ITypeProvider * ILScopeRef * string) list -> Tainted<ITypeProvider> list
 
     /// A type provider that produced the value
     member TypeProvider : Tainted<ITypeProvider>
@@ -90,7 +96,6 @@ type internal Tainted<'T> =
     /// Assert that the value is of 'U and coerce the value.
     /// If coercion fails, the failure will be blamed on a type provider
     member Coerce<'U> : range:range -> Tainted<'U>
-
 
 [<RequireQualifiedAccess>]
 module internal Tainted =

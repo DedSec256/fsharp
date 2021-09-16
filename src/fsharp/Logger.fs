@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.  All Rights Reserved.  See License.txt in the project root for license information.
 
-namespace FSharp.Compiler
+namespace FSharp.Compiler.Diagnostics
 
 open System.Diagnostics.Tracing
 open System
@@ -11,6 +11,8 @@ type LogCompilerFunctionId =
     | Service_IncrementalBuildersCache_BuildingNewCache = 3
     | Service_IncrementalBuildersCache_GettingCache = 4
     | CompileOps_TypeCheckOneInputAndFinishEventually = 5
+    | IncrementalBuild_CreateItemKeyStoreAndSemanticClassification = 6
+    | IncrementalBuild_TypeCheck = 7
     
 /// This is for ETW tracing across FSharp.Compiler.
 [<Sealed;EventSource(Name = "FSharpCompiler")>]
@@ -54,16 +56,16 @@ type FSharpCompilerEventSource() =
 [<RequireQualifiedAccess>]
 module Logger =
 
-    let Log(functionId) = 
+    let Log functionId = 
         FSharpCompilerEventSource.Instance.Log(functionId)
 
     let LogMessage message functionId = 
         FSharpCompilerEventSource.Instance.LogMessage(message, functionId)
 
-    let LogBlockStart(functionId) = 
+    let LogBlockStart functionId = 
         FSharpCompilerEventSource.Instance.BlockStart(functionId)
 
-    let LogBlockStop(functionId) = 
+    let LogBlockStop functionId = 
         FSharpCompilerEventSource.Instance.BlockStop(functionId)
 
     let LogBlockMessageStart message functionId =
@@ -72,14 +74,14 @@ module Logger =
     let LogBlockMessageStop message functionId =
         FSharpCompilerEventSource.Instance.BlockMessageStop(message, functionId)
 
-    let LogBlock(functionId) =
+    let LogBlock functionId =
         FSharpCompilerEventSource.Instance.BlockStart(functionId)
         { new IDisposable with
-            member __.Dispose() =
+            member _.Dispose() =
                 FSharpCompilerEventSource.Instance.BlockStop(functionId) }
 
     let LogBlockMessage message functionId =
         FSharpCompilerEventSource.Instance.BlockMessageStart(message, functionId)
         { new IDisposable with
-            member __.Dispose() =
+            member _.Dispose() =
                 FSharpCompilerEventSource.Instance.BlockMessageStop(message, functionId) }

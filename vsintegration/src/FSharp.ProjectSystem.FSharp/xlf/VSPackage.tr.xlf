@@ -159,7 +159,7 @@
       </trans-unit>
       <trans-unit id="5003">
         <source>Script.fsx</source>
-        <target state="translated">Script.fsx</target>
+        <target state="new">Script.fsx</target>
         <note />
       </trans-unit>
       <trans-unit id="5005">
@@ -199,7 +199,7 @@
       </trans-unit>
       <trans-unit id="5013">
         <source>File.fs</source>
-        <target state="translated">File.fs</target>
+        <target state="new">File.fs</target>
         <note />
       </trans-unit>
       <trans-unit id="5014">
@@ -433,13 +433,13 @@
         <note />
       </trans-unit>
       <trans-unit id="ProductDetails">
-        <source>Microsoft Visual F# Tools {{FSProductVersion}} for F# {{FSLanguageVersion}}</source>
-        <target state="needs-review-translation">F# {{FSLanguageVersion}} için Microsoft Visual F# Tools {{FSProductVersion}}</target>
+        <source>Microsoft Visual F# Tools</source>
+        <target state="translated">Microsoft Visual F# Tools</target>
         <note />
       </trans-unit>
       <trans-unit id="9002">
-        <source>Microsoft Visual F# Tools {{FSProductVersion}} for F# {{FSLanguageVersion}}</source>
-        <target state="needs-review-translation">F# {{FSLanguageVersion}} için Microsoft Visual F# Tools {{FSProductVersion}}</target>
+        <source>Microsoft Visual F# Tools</source>
+        <target state="translated">Microsoft Visual F# Tools</target>
         <note />
       </trans-unit>
       <trans-unit id="ProductID">
@@ -453,8 +453,8 @@
         <note />
       </trans-unit>
       <trans-unit id="9001">
-        <source>Visual F# Tools {{FSProductVersion}} for F# {{FSLanguageVersion}}</source>
-        <target state="needs-review-translation">F# {{FSLanguageVersion}} için Visual F# Araçları {{FSProductVersion}}</target>
+        <source>Visual F# Tools</source>
+        <target state="translated">Visual F# Tools</target>
         <note />
       </trans-unit>
       <trans-unit id="9027">
@@ -499,7 +499,7 @@
       </trans-unit>
       <trans-unit id="NeedReloadToChangeTargetFx">
         <source>Changing the Target Framework requires that the current project be closed and then reopened.\nAny unsaved changes within the project will be automatically saved.\n\nChanging Target Framework may require manual modification of project files in order to build.\n\nAre you sure you want to change the Target Framework for this project?</source>
-        <target state="translated">Hedef Framework'ü değiştirmek geçerli projenin kapatılıp yeniden açılmasını gerektiriyor.\nProje içindeki tüm kaydedilmemiş değişiklikler otomatik olarak kaydedilecek.\n\nHedef Framework'ü değiştirmek, yapı için proje dosyalarının el ile değiştirilmesini gerektirebilir.\nHedef Framework'ü bu proje için değiştirmek istediğinizden emin misiniz?</target>
+        <target state="translated">Hedef Framework'ü değiştirmek geçerli projenin kapatılıp yeniden açılmasını gerektiriyor.\nProje içindeki tüm kaydedilmemiş değişiklikler otomatik olarak kaydedilecek.\n\nHedef Framework'ü değiştirmek, yapı için proje dosyalarının el ile değiştirilmesini gerektirebilir.\n\nHedef Framework'ü bu proje için değiştirmek istediğinizden emin misiniz?</target>
         <note />
       </trans-unit>
       <trans-unit id="AddReferenceDialogTitle">

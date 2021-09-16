@@ -1588,7 +1588,7 @@ module DeepGenericInterfaceInheritance = begin
 end
 
 
-module PointTest =  struct
+module PointTest = begin
 
 
   type Point =
@@ -3038,6 +3038,7 @@ module ContraintTest = begin
     open System.Numerics
     let check s p = printf "Test %s: %s\n" s (if p then "pass" else "fail")
     do check "d3oc001" (LanguagePrimitives.GenericZero<BigInteger> = 0I)
+    do check "d3oc002" (LanguagePrimitives.GenericZero<char> = '\000')
     do check "d3oc003a" (LanguagePrimitives.GenericZero<int> = 0)
     do check "d3oc003b" (LanguagePrimitives.GenericZero<unativeint> = 0un)
     do check "d3oc003c" (LanguagePrimitives.GenericZero<uint64> = 0UL)
@@ -3051,7 +3052,8 @@ module ContraintTest = begin
     do check "d3oc003k" (LanguagePrimitives.GenericZero<sbyte> = 0y)
     do check "d3oc003l" (LanguagePrimitives.GenericZero<decimal> = 0M)
 
-    do check "d3oc001q" (LanguagePrimitives.GenericOne<BigInteger> = 1I)
+    do check "d3oc113q" (LanguagePrimitives.GenericOne<BigInteger> = 1I)
+    do check "d3oc113w" (LanguagePrimitives.GenericOne<char> = '\001')
     do check "d3oc113e" (LanguagePrimitives.GenericOne<int> = 1)
     do check "d3oc113r" (LanguagePrimitives.GenericOne<unativeint> = 1un)
     do check "d3oc113t" (LanguagePrimitives.GenericOne<uint64> = 1UL)
@@ -3466,7 +3468,12 @@ module AutoProps_2 = begin
     check "autoprops_262" c61.Property 44      
 end
 
+module MoreKindInferenceTests = 
 
+
+    type C1<'a> = class member _.Foo(x:'a) = x end
+
+ 
 #if TESTS_AS_APP
 let RUN() = !failures
 #else

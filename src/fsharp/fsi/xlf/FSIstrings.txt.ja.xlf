@@ -2,14 +2,19 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
   <file datatype="xml" source-language="en" target-language="ja" original="../FSIstrings.resx">
     <body>
+      <trans-unit id="fsiIntroPackageSourceUriInfo">
+        <source>Include package source uri when searching for packages</source>
+        <target state="translated">パッケージの検索時にパッケージ ソースの URI を含める</target>
+        <note />
+      </trans-unit>
       <trans-unit id="fsiOperationCouldNotBeCompleted">
         <source>Operation could not be completed due to earlier error</source>
         <target state="translated">以前のエラーが原因で操作を完了できませんでした</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiOperationFailed">
-        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpErrorInfo use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
-        <target state="translated">操作に失敗しました。エラー テキストがエラー ストリームで印刷されました。対応する FSharpErrorInfo を戻すには、EvalInteractionNonThrowing、EvalScriptuNonThrowing、または EvalExpressionNonThrowing を使用します</target>
+        <source>Operation failed. The error text has been printed in the error stream. To return the corresponding FSharpDiagnostic use the EvalInteractionNonThrowing, EvalScriptNonThrowing or EvalExpressionNonThrowing</source>
+        <target state="translated">操作に失敗しました。エラー テキストがエラー ストリームに出力されました。対応する FSharpDiagnostic を戻すには、EvalInteractionNonThrowing、EvalScriptNonThrowing、または EvalExpressionNonThrowing を使用します</target>
         <note />
       </trans-unit>
       <trans-unit id="stoppedDueToError">
@@ -120,11 +125,6 @@
       <trans-unit id="fsiDirectoryDoesNotExist">
         <source>Directory '{0}' doesn't exist</source>
         <target state="translated">ディレクトリ "{0}" は存在しません</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="fsiInvalidDirective">
-        <source>Invalid directive '#{0} {1}'</source>
-        <target state="translated">無効なディレクティブ '#{0} {1}'</target>
         <note />
       </trans-unit>
       <trans-unit id="fsiLineTooLong">

@@ -1,34 +1,22 @@
 ﻿[<AutoOpen>]
 module internal Microsoft.VisualStudio.FSharp.Editor.Symbols
 
-open System
-open System.Collections.Generic
-open System.Threading
-open System.Threading.Tasks
-open System.Runtime.CompilerServices
-
-open Microsoft.CodeAnalysis
-open Microsoft.CodeAnalysis.Classification
-open Microsoft.CodeAnalysis.Text
-
-open FSharp.Compiler
-open FSharp.Compiler.Ast
-open FSharp.Compiler.SourceCodeServices
 open System.IO
-
+open Microsoft.CodeAnalysis
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Symbols
 
 [<RequireQualifiedAccess; NoComparison>] 
 type SymbolDeclarationLocation = 
     | CurrentDocument
     | Projects of Project list * isLocalForProject: bool
 
-
 [<NoComparison>]
 type SymbolUse =
     { SymbolUse: FSharpSymbolUse 
       IsUsed: bool
-      FullNames: Idents[] }
-
+      FullNames: ShortIdent[] }
 
 type FSharpSymbol with
     member this.IsInternalToProject =
@@ -76,44 +64,6 @@ type FSharpSymbolUse with
                     | [] -> None
                     | projects -> Some (SymbolDeclarationLocation.Projects (projects, isSymbolLocalForProject))
             | None -> None
-
-    member this.IsPrivateToFile = 
-        let isPrivate =
-            match this.Symbol with
-            | :? FSharpMemberOrFunctionOrValue as m -> not m.IsModuleValueOrMember || m.Accessibility.IsPrivate
-            | :? FSharpEntity as m -> m.Accessibility.IsPrivate
-            | :? FSharpGenericParameter -> true
-            | :? FSharpUnionCase as m -> m.Accessibility.IsPrivate
-            | :? FSharpField as m -> m.Accessibility.IsPrivate
-            | _ -> false
-            
-        let declarationLocation =
-            match this.Symbol.SignatureLocation with
-            | Some x -> Some x
-            | _ ->
-                match this.Symbol.DeclarationLocation with
-                | Some x -> Some x
-                | _ -> this.Symbol.ImplementationLocation
-            
-        let declaredInTheFile = 
-            match declarationLocation with
-            | Some declRange -> declRange.FileName = this.RangeAlternate.FileName
-            | _ -> false
-            
-        isPrivate && declaredInTheFile   
-
-
-type FSharpMemberOrFunctionOrValue with
-        
-    member x.IsConstructor = x.CompiledName = ".ctor"
-        
-    member x.IsOperatorOrActivePattern =
-        let name = x.DisplayName
-        if name.StartsWith "( " && name.EndsWith " )" && name.Length > 4
-        then name.Substring (2, name.Length - 4) |> String.forall (fun c -> c <> ' ')
-        else false
-        
-
 
 type FSharpEntity with
     member x.AllBaseTypes =

@@ -3,18 +3,11 @@
 namespace Microsoft.VisualStudio.FSharp.Interactive
 
 open System
-open System.IO
-open System.Diagnostics
-open System.Globalization
-open System.Windows.Forms
 open System.Runtime.InteropServices
-open System.ComponentModel.Design
-open Microsoft.Win32
 open Microsoft.VisualStudio
 open Microsoft.VisualStudio.FSharp.Interactive
 open Microsoft.VisualStudio.OLE.Interop
 open Microsoft.VisualStudio.Shell
-open Microsoft.VisualStudio.Shell.Interop
 open Microsoft.VisualStudio.Package
 open Microsoft.VisualStudio.TextManager.Interop
 open System.ComponentModel.Composition
@@ -36,30 +29,40 @@ module internal ContentType =
 [<ClassInterface(ClassInterfaceType.AutoDual)>]
 [<Guid("4489e9de-6ac1-3cd6-bff8-a904fd0e82d4")>]
 type FsiPropertyPage() = 
-    inherit DialogPage()    
-       
+    inherit DialogPage()
+
     [<ResourceCategory(SRProperties.FSharpInteractiveMisc)>]
-    [<ResourceDisplayName(SRProperties.FSharpInteractive64Bit)>] 
-    [<ResourceDescription(SRProperties.FSharpInteractive64BitDescr)>] 
+    [<ResourceDisplayName(SRProperties.FSharpInteractive64Bit)>]
+    [<ResourceDescription(SRProperties.FSharpInteractive64BitDescr)>]
     member this.FsiPreferAnyCPUVersion with get() = SessionsProperties.useAnyCpuVersion and set (x:bool) = SessionsProperties.useAnyCpuVersion <- x
 
     [<ResourceCategory(SRProperties.FSharpInteractiveMisc)>]
     [<ResourceDisplayName(SRProperties.FSharpInteractiveOptions)>]
-    [<ResourceDescription(SRProperties.FSharpInteractiveOptionsDescr)>] 
+    [<ResourceDescription(SRProperties.FSharpInteractiveOptionsDescr)>]
     member this.FsiCommandLineArgs with get() = SessionsProperties.fsiArgs and set (x:string) = SessionsProperties.fsiArgs <- x
 
     [<ResourceCategory(SRProperties.FSharpInteractiveMisc)>]
     [<ResourceDisplayName(SRProperties.FSharpInteractiveShadowCopy)>]
-    [<ResourceDescription(SRProperties.FSharpInteractiveShadowCopyDescr)>] 
+    [<ResourceDescription(SRProperties.FSharpInteractiveShadowCopyDescr)>]
     member this.FsiShadowCopy with get() = SessionsProperties.fsiShadowCopy and set (x:bool) = SessionsProperties.fsiShadowCopy <- x
 
     [<ResourceCategory(SRProperties.FSharpInteractiveDebugging)>]
     [<ResourceDisplayName(SRProperties.FSharpInteractiveDebugMode)>]
-    [<ResourceDescription(SRProperties.FSharpInteractiveDebugModeDescr)>] 
+    [<ResourceDescription(SRProperties.FSharpInteractiveDebugModeDescr)>]
     member this.FsiDebugMode with get() = SessionsProperties.fsiDebugMode and set (x:bool) = SessionsProperties.fsiDebugMode <- x
 
+    [<ResourceCategory(SRProperties.FSharpInteractivePreview)>]
+    [<ResourceDisplayName(SRProperties.FSharpInteractivePreviewMode)>]
+    [<ResourceDescription(SRProperties.FSharpInteractivePreviewModeDescr)>]
+    member this.FsiPreview with get() = SessionsProperties.fsiPreview and set (x:bool) = SessionsProperties.fsiPreview <- x
+
+    [<ResourceCategory(SRProperties.FSharpInteractivePreview)>]
+    [<ResourceDisplayName(SRProperties.FSharpInteractiveUseNetCore)>]
+    [<ResourceDescription(SRProperties.FSharpInteractiveUseNetCoreDescr)>]
+    member this.FsiUseNetCore with get() = SessionsProperties.fsiUseNetCore and set (x:bool) = SessionsProperties.fsiUseNetCore <- x
+
 // CompletionSet
-type internal FsiCompletionSet(imageList,source:Source) = 
+type internal FsiCompletionSet(imageList,source:Source) =
     inherit CompletionSet(imageList, source)
 
 // Declarations
@@ -114,26 +117,7 @@ type internal FsiAuthoringScope(sessions:FsiSessions option,readOnlySpanGetter:u
         null
 
     override this.GetDeclarations(_snapshot,line:int,col:int,info:TokenInfo,reason:ParseReason) =
-        match sessions with
-        | None -> (new FsiDeclarations() :> Declarations)
-        | Some sessions ->
-#if FSI_SERVER_INTELLISENSE
-          if Guids.enable_fsi_intellisense then
-            let lines = view.GetBuffer()                   |> throwOnFailure1
-            //NOTE:
-            //  There is an issue of how much preceeding text to grab for the intellisense.
-            //  Ideally, we want all text from the end of the last executed interaction.
-            //  However, we do not have an interactive "scanner" yet.
-            //------
-            // The decision is use the current "input area" as the source context.
-            // Multiline input is available to a limited degree (and could be improved).
-            let span = readOnlySpanGetter()
-            let str   = lines.GetLineText(span.iEndLine,span.iEndIndex,line,col) |> throwOnFailure1           
-            let declInfos = sessions.GetDeclarationInfos (str:string)
-            new FsiDeclarations(declInfos) :> Declarations
-          else
-#endif
-            (new FsiDeclarations() :> Declarations)
+        (new FsiDeclarations() :> Declarations)
 
     override this.GetMethods(line:int,col:int,name:string) = 
         new FsiMethods() :> Methods

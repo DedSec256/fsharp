@@ -3,8 +3,9 @@
 namespace FSharp.Compiler.UnitTests
 
 open System
-open FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.Diagnostics
 open NUnit.Framework
+open FSharp.Test
 
 #if NETCOREAPP
 [<TestFixture>]
@@ -29,6 +30,45 @@ test ()
             """
         
         CompilerAssert.RunScript script []
+    [<Test>]
+    let Script_SpanForInBoundsDo() =
+        let script = 
+            """
+open System
+
+let test () : unit =
+    let span = Span([|1;2;3;4|])
+    let result = ResizeArray()
+    for i in 0 .. span.Length-1 do
+        result.Add(span.[i])
+    
+    if result.[0] <> 1 || result.[1] <> 2 || result.[2] <> 3 || result.[3] <> 4 then
+        failwith "SpanForInBoundsDo didn't work properly"
+
+test ()
+            """
+        
+        CompilerAssert.RunScript script []
+
+    [<Test>]
+    let Script_EmptySpanForInBoundsDo() =
+        let script = 
+            """
+open System
+
+let test () : unit =
+    let span = Span([||])
+    let result = ResizeArray()
+    for i in 0 .. span.Length-1 do
+        result.Add(span.[i])
+    
+    if result.Count <> 0 then
+        failwith "EmptySpanForInBoundsDo didn't work properly"
+
+test ()
+            """
+        
+        CompilerAssert.RunScript script []
 
     [<Test>]
     let Script_ReadOnlySpanForInDo() =
@@ -48,9 +88,27 @@ let test () : unit =
 test ()
             """
     
-        // We expect this error until System.Reflection.Emit gets fixed for emitting `modreq` on method calls.
-        // See: https://github.com/dotnet/corefx/issues/29254
-        CompilerAssert.RunScript script [ "Method not found: '!0 ByRef System.ReadOnlySpan`1.get_Item(Int32)'." ]
+        CompilerAssert.RunScript script []
+
+    [<Test>]
+    let Script_ReadOnlySpanForInBoundsDo() =
+        let script = 
+            """
+open System
+
+let test () : unit =
+    let span = ReadOnlySpan([|1;2;3;4|])
+    let result = ResizeArray()
+    for i in 0 .. span.Length-1 do
+        result.Add(span.[i])
+
+    if result.[0] <> 1 || result.[1] <> 2 || result.[2] <> 3 || result.[3] <> 4 then
+        failwith "Script_ReadOnlySpanForInBoundsDo didn't work properly"
+
+test ()
+            """
+    
+        CompilerAssert.RunScript script []
 
 
     [<Test>]
@@ -85,9 +143,9 @@ let test () =
     0
             """
             [|
-                FSharpErrorSeverity.Error, 412, (11, 17, 11, 28), "A type instantiation involves a byref type. This is not permitted by the rules of Common IL."
-                FSharpErrorSeverity.Error, 412, (19, 17, 19, 29), "A type instantiation involves a byref type. This is not permitted by the rules of Common IL."
-                FSharpErrorSeverity.Error, 412, (19, 27, 19, 29), "A type instantiation involves a byref type. This is not permitted by the rules of Common IL."
+                FSharpDiagnosticSeverity.Error, 412, (11, 17, 11, 28), "A type instantiation involves a byref type. This is not permitted by the rules of Common IL."
+                FSharpDiagnosticSeverity.Error, 412, (19, 17, 19, 29), "A type instantiation involves a byref type. This is not permitted by the rules of Common IL."
+                FSharpDiagnosticSeverity.Error, 412, (19, 27, 19, 29), "A type instantiation involves a byref type. This is not permitted by the rules of Common IL."
             |]
 
     [<Test>]
@@ -100,6 +158,6 @@ type TA = Span<int> * Span<int>
 let f (x: TA) = ()
             """
             [|
-                FSharpErrorSeverity.Error, 3300, (6, 8, 6, 9), "The parameter 'x' has an invalid type 'TA'. This is not permitted by the rules of Common IL."
+                FSharpDiagnosticSeverity.Error, 3300, (6, 8, 6, 9), "The parameter 'x' has an invalid type 'TA'. This is not permitted by the rules of Common IL."
             |]
 #endif

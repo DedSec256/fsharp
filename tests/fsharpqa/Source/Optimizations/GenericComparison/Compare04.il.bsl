@@ -1,5 +1,5 @@
 
-//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.6.1055.0
+//  Microsoft (R) .NET Framework IL Disassembler.  Version 4.8.3928.0
 //  Copyright (c) Microsoft Corporation.  All rights reserved.
 
 
@@ -13,7 +13,12 @@
 .assembly extern FSharp.Core
 {
   .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A )                         // .?_....:
-  .ver 4:4:1:0
+  .ver 5:0:0:0
+}
+.assembly extern netstandard
+{
+  .publickeytoken = (CC 7B 13 FF CD 2D DD 51 )                         // .{...-.Q
+  .ver 2:0:0:0
 }
 .assembly Compare04
 {
@@ -29,20 +34,20 @@
 }
 .mresource public FSharpSignatureData.Compare04
 {
-  // Offset: 0x00000000 Length: 0x00000237
+  // Offset: 0x00000000 Length: 0x00000233
 }
 .mresource public FSharpOptimizationData.Compare04
 {
-  // Offset: 0x00000240 Length: 0x000000B9
+  // Offset: 0x00000238 Length: 0x000000B9
 }
 .module Compare04.dll
-// MVID: {59B18AEE-053B-F88E-A745-0383EE8AB159}
+// MVID: {611C550D-053B-F88E-A745-03830D551C61}
 .imagebase 0x00400000
 .file alignment 0x00000200
 .stackreserve 0x00100000
 .subsystem 0x0003       // WINDOWS_CUI
 .corflags 0x00000001    //  ILONLY
-// Image base: 0x013E0000
+// Image base: 0x071C0000
 
 
 // =============== CLASS MEMBERS DECLARATION ===================
@@ -66,7 +71,7 @@
                [4] int32 V_4,
                [5] int32 V_5)
       .language '{AB4F38C9-B6E6-43BA-BE3B-58080B2CCCE3}', '{994B45C4-E6E9-11D2-903F-00C04FA302A1}', '{5A869D0B-6611-11D3-BD2A-0000F80849BD}'
-      .line 5,5 : 8,25 'C:\\GitHub\\dsyme\\visualfsharp\\tests\\fsharpqa\\Source\\Optimizations\\GenericComparison\\Compare04.fsx'
+      .line 5,5 : 8,25 'C:\\GitHub\\dsyme\\fsharp\\tests\\fsharpqa\\source\\Optimizations\\GenericComparison\\Compare04.fsx'
       IL_0000:  ldc.i4.1
       IL_0001:  stloc.0
       .line 8,8 : 8,32 ''
@@ -79,6 +84,7 @@
       IL_000a:  ldc.i4.1
       IL_000b:  cgt
       IL_000d:  stloc.2
+      .line 16707566,16707566 : 0,0 ''
       IL_000e:  ldloc.2
       IL_000f:  brfalse.s  IL_0018
 
@@ -93,6 +99,7 @@
       IL_0019:  ldc.i4.2
       IL_001a:  cgt
       IL_001c:  stloc.3
+      .line 16707566,16707566 : 0,0 ''
       IL_001d:  ldloc.3
       IL_001e:  brfalse.s  IL_0027
 
@@ -107,6 +114,7 @@
       IL_0028:  ldc.i4.4
       IL_0029:  cgt
       IL_002b:  stloc.s    V_4
+      .line 16707566,16707566 : 0,0 ''
       IL_002d:  ldloc.s    V_4
       IL_002f:  brfalse.s  IL_0039
 
@@ -119,9 +127,10 @@
       .line 16707566,16707566 : 0,0 ''
       IL_0039:  ldstr      "5"
       IL_003e:  ldstr      "5"
-      IL_0043:  call       int32 [mscorlib]System.String::CompareOrdinal(string,
-                                                                         string)
+      IL_0043:  call       int32 [netstandard]System.String::CompareOrdinal(string,
+                                                                            string)
       IL_0048:  stloc.s    V_5
+      .line 16707566,16707566 : 0,0 ''
       IL_004a:  ldloc.s    V_5
       IL_004c:  brfalse.s  IL_0053
 

@@ -2,12 +2,13 @@
 
 module internal FSharp.Compiler.AutoBox 
 
-open FSharp.Compiler.AbstractIL.Internal
+open Internal.Utilities.Collections
+open Internal.Utilities.Library.Extras
 open FSharp.Compiler 
 open FSharp.Compiler.ErrorLogger
-open FSharp.Compiler.Tast
-open FSharp.Compiler.Tastops
-open FSharp.Compiler.Lib
+open FSharp.Compiler.TypedTree
+open FSharp.Compiler.TypedTreeBasics
+open FSharp.Compiler.TypedTreeOps
 open FSharp.Compiler.TcGlobals
 open FSharp.Compiler.TypeRelations
 
@@ -22,12 +23,15 @@ type cenv =
 
 /// Find all the mutable locals that escape a method, function or lambda expression
 let DecideEscapes syntacticArgs body =
-    let cantBeFree v = 
+    let isMutableEscape v = 
         let passedIn = ListSet.contains valEq v syntacticArgs 
-        not passedIn && (v.IsMutable && v.ValReprInfo.IsNone) 
+        not passedIn &&
+        v.IsMutable &&
+        v.ValReprInfo.IsNone &&
+        not (Optimizer.IsKnownOnlyMutableBeforeUse (mkLocalValRef v))
 
     let frees = freeInExpr CollectLocals body
-    frees.FreeLocals |> Zset.filter cantBeFree 
+    frees.FreeLocals |> Zset.filter isMutableEscape 
 
 /// Find all the mutable locals that escape a lambda expression, ignoring the arguments to the lambda
 let DecideLambda exprF cenv topValInfo expr ety z   = 
@@ -56,10 +60,10 @@ let DecideExprOp exprF noInterceptF (z: Zset<Val>) (expr: Expr) (op, tyargs, arg
     | TOp.TryFinally _, [_], [Expr.Lambda (_, _, _, [_], e1, _, _); Expr.Lambda (_, _, _, [_], e2, _, _)] ->
         exprF (exprF z e1) e2
 
-    | TOp.For (_), _, [Expr.Lambda (_, _, _, [_], e1, _, _);Expr.Lambda (_, _, _, [_], e2, _, _);Expr.Lambda (_, _, _, [_], e3, _, _)] ->
+    | TOp.For _, _, [Expr.Lambda (_, _, _, [_], e1, _, _);Expr.Lambda (_, _, _, [_], e2, _, _);Expr.Lambda (_, _, _, [_], e3, _, _)] ->
         exprF (exprF (exprF z e1) e2) e3
 
-    | TOp.TryCatch _, [_], [Expr.Lambda (_, _, _, [_], e1, _, _); Expr.Lambda (_, _, _, [_], _e2, _, _); Expr.Lambda (_, _, _, [_], e3, _, _)] ->
+    | TOp.TryWith _, [_], [Expr.Lambda (_, _, _, [_], e1, _, _); Expr.Lambda (_, _, _, [_], _e2, _, _); Expr.Lambda (_, _, _, [_], e3, _, _)] ->
         exprF (exprF (exprF z e1) _e2) e3
         // In Check code it said
         //     e2; -- don't check filter body - duplicates logic in 'catch' body 
@@ -126,7 +130,6 @@ let DecideImplFile g amap implFile =
 
     z
 
-
 //----------------------------------------------------------------------------
 // Apply the transform
 
@@ -153,7 +156,6 @@ let TransformExpr g (nvs: ValMap<_>) exprF expr =
        Some (mkRecdFieldGetAddrViaExprAddr (readonly, nve, mkRefCellContentsRef g, [v.Type], m))
 
     | _ -> None
-
 
 /// Rewrite bindings for mutable locals which we are transforming
 let TransformBinding g (nvs: ValMap<_>) exprF (TBind(v, expr, m)) = 

@@ -3,20 +3,17 @@
 // Various tests for the:
 // Microsoft.FSharp.Control.MailboxProcessor type
 
-namespace FSharp.Core.UnitTests.FSharp_Core.Microsoft_FSharp_Control
+namespace FSharp.Core.UnitTests.Control
 
 open System
-open FSharp.Core.UnitTests.LibraryTestFx
-open NUnit.Framework
+open Xunit
 open System.Threading
-open System.Collections.Generic
 
 type Message = 
     | Increment of int 
     | Fetch of AsyncReplyChannel<int> 
     | Reset
 
-[<TestFixture>]
 type MailboxProcessorType() =
 
     let getSimpleMailbox() =
@@ -40,7 +37,7 @@ type MailboxProcessorType() =
             )
         mailbox
 
-    [<Test>]
+    [<Fact>]
     member this.DefaultTimeout() =
 
         let mailbox = getSimpleMailbox()
@@ -69,18 +66,24 @@ type MailboxProcessorType() =
 
         ()
 
-    [<Test>]
+    [<Fact>]
     member this.``Receive handles cancellation token``() =
-        let result = ref None
-
+        let mutable result = None
+        use mre1 = new ManualResetEventSlim(false)
+        use mre2 = new ManualResetEventSlim(false)
+    
         // https://github.com/Microsoft/visualfsharp/issues/3337
         let cts = new CancellationTokenSource ()
-
+    
         let addMsg msg =
-            match !result with
-            | Some text -> result := Some(text + " " + msg)
-            | None -> result := Some msg
-
+            match result with
+            | Some text ->
+                //printfn "Got some, adding %s" msg
+                result <- Some(text + " " + msg)
+            | None ->
+                //printfn "got none, setting %s" msg
+                result <- Some msg
+    
         let mb =
             MailboxProcessor.Start (
                 fun inbox -> async {
@@ -88,32 +91,41 @@ type MailboxProcessorType() =
                         { new IDisposable with
                             member this.Dispose () =
                                 addMsg "Disposed"
+                                mre2.Set()
                         }
-
+    
                     while true do
-                        let! (msg : int) = inbox.Receive ()
+                        let! (msg : int) = inbox.Receive()
                         addMsg (sprintf "Received %i" msg)
+                        mre1.Set()
                 }, cancellationToken = cts.Token)
+    
+        mb.Post(1)
+        mre1.Wait()
+    
+        cts.Cancel()
+        mre2.Wait()
 
-        mb.Post 1
-        Thread.Sleep 1000
-        cts.Cancel ()
-        Thread.Sleep 4000
+        Assert.AreEqual(Some("Received 1 Disposed"), result)
 
-        Assert.AreEqual(Some("Received 1 Disposed"), !result)
-
-    [<Test>]
+    [<Fact>]
     member this.``Receive with timeout argument handles cancellation token``() =
-        let result = ref None
-
+        let mutable result = None
+        use mre1 = new ManualResetEventSlim(false)
+        use mre2 = new ManualResetEventSlim(false)
+    
         // https://github.com/Microsoft/visualfsharp/issues/3337
         let cts = new CancellationTokenSource ()
-
+    
         let addMsg msg =
-            match !result with
-            | Some text -> result := Some(text + " " + msg)
-            | None -> result := Some msg
-
+            match result with
+            | Some text ->
+                //printfn "Got some, adding %s" msg
+                result <- Some(text + " " + msg)
+            | None ->
+                //printfn "got none, setting %s" msg
+                result <- Some msg
+    
         let mb =
             MailboxProcessor.Start (
                 fun inbox -> async {
@@ -121,31 +133,40 @@ type MailboxProcessorType() =
                         { new IDisposable with
                             member this.Dispose () =
                                 addMsg "Disposed"
+                                mre2.Set()
                         }
-
+    
                     while true do
-                        let! (msg : int) = inbox.Receive (100000)
+                        let! (msg : int) = inbox.Receive(100000)
                         addMsg (sprintf "Received %i" msg)
+                        mre1.Set()
                 }, cancellationToken = cts.Token)
+    
+        mb.Post(1)
+        mre1.Wait()
+    
+        cts.Cancel()
+        mre2.Wait()
 
-        mb.Post 1
-        Thread.Sleep 1000
-        cts.Cancel ()
-        Thread.Sleep 4000
+        Assert.AreEqual(Some("Received 1 Disposed"), result)
 
-        Assert.AreEqual(Some("Received 1 Disposed"),!result)
-
-    [<Test>]
+    [<Fact>]
     member this.``Scan handles cancellation token``() =
-        let result = ref None
+        let mutable result = None
+        use mre1 = new ManualResetEventSlim(false)
+        use mre2 = new ManualResetEventSlim(false)
 
         // https://github.com/Microsoft/visualfsharp/issues/3337
         let cts = new CancellationTokenSource ()
 
         let addMsg msg =
-            match !result with
-            | Some text -> result := Some(text + " " + msg)
-            | None -> result := Some msg
+            match result with
+            | Some text ->
+                //printfn "Got some, adding %s" msg
+                result <- Some(text + " " + msg)
+            | None ->
+                //printfn "got none, setting %s" msg
+                result <- Some msg
 
         let mb =
             MailboxProcessor.Start (
@@ -154,21 +175,24 @@ type MailboxProcessorType() =
                         { new IDisposable with
                             member this.Dispose () =
                                 addMsg "Disposed"
+                                mre2.Set()
                         }
 
                     while true do
                         let! (msg : int) = inbox.Scan (fun msg -> Some(async { return msg }) )
                         addMsg (sprintf "Scanned %i" msg)
+                        mre1.Set()
                 }, cancellationToken = cts.Token)
 
-        mb.Post 1
-        Thread.Sleep 1000
-        cts.Cancel ()
-        Thread.Sleep 4000
+        mb.Post(1)
+        mre1.Wait()
 
-        Assert.AreEqual(Some("Scanned 1 Disposed"), !result)
+        cts.Cancel()
+        mre2.Wait()
 
-    [<Test>]
+        Assert.AreEqual(Some("Scanned 1 Disposed"), result)
+
+    [<Fact>]
     member this.``Receive Races with Post``() =
         let receiveEv = new ManualResetEvent(false)
         let postEv = new ManualResetEvent(false)
@@ -200,7 +224,7 @@ type MailboxProcessorType() =
             finishedEv.WaitOne() |> ignore
             finishedEv.Reset() |> ignore
 
-    [<Test>]
+    [<Fact>]
     member this.``Receive Races with Post on timeout``() =
         let receiveEv = new ManualResetEvent(false)
         let postEv = new ManualResetEvent(false)
@@ -239,7 +263,7 @@ type MailboxProcessorType() =
 
             finishedEv.Reset() |> ignore
 
-    [<Test>]
+    [<Fact>]
     member this.``TryReceive Races with Post on timeout``() =
         let receiveEv = new ManualResetEvent(false)
         let postEv = new ManualResetEvent(false)
@@ -278,7 +302,7 @@ type MailboxProcessorType() =
 
             finishedEv.Reset() |> ignore
 
-    [<Test>]
+    [<Fact>]
     member this.Dispose() =
 
         // No unit test actually hit the Dispose method for the Mailbox...
@@ -292,7 +316,7 @@ type MailboxProcessorType() =
 
         test()
 
-    //[<Test>] // need to re-visit this
+    [<Fact(Skip="This test fails all the time in CI, likely due to magic sleeps. Need to re-evaluate.")>]
     member this.PostAndAsyncReply_Cancellation() =
 
         use cancel = new CancellationTokenSource(500)

@@ -1,6 +1,5 @@
 
-neg06.fs(3,40,3,45): typecheck error FS0039: The field, constructor or member 'Ascii' is not defined. Maybe you want one of the following:
-
+neg06.fs(3,40,3,45): typecheck error FS0039: The type 'Encoding' does not define the field, constructor or member 'Ascii'. Maybe you want one of the following:
    ASCII
 
 neg06.fs(12,6,12,31): typecheck error FS0942: Struct types are always sealed
@@ -91,7 +90,7 @@ neg06.fs(124,9,124,10): typecheck error FS0953: This type definition involves an
 
 neg06.fs(128,19,128,46): typecheck error FS0700: 'new' constraints must take one argument of type 'unit' and return the constructed type
 
-neg06.fs(128,53,128,61): typecheck error FS0043: A type parameter is missing a constraint 'when 'a : (new : unit -> 'a)'
+neg06.fs(128,53,128,61): typecheck error FS0043: A type parameter is missing a constraint 'when 'a: (new: unit -> 'a)'
 
 neg06.fs(141,10,141,18): typecheck error FS0954: This type definition involves an immediate cyclic reference through a struct field or inheritance relation
 
@@ -139,6 +138,12 @@ neg06.fs(350,13,350,21): typecheck error FS0039: The value or constructor 'BadTy
 
 neg06.fs(375,9,375,10): typecheck error FS1197: The parameter 'x' was inferred to have byref type. Parameters of byref type must be given an explicit type annotation, e.g. 'x1: byref<int>'. When used, a byref parameter is implicitly dereferenced.
 
-neg06.fs(382,13,382,19): typecheck error FS0041: A unique overload for method 'M1' could not be determined based on type information prior to this program point. A type annotation may be needed. Candidates: static member C.M1 : x:int -> int, static member C.M1 : x:string -> int
+neg06.fs(382,13,382,19): typecheck error FS0041: A unique overload for method 'M1' could not be determined based on type information prior to this program point. A type annotation may be needed.
+
+Known type of argument: 'a
+
+Candidates:
+ - static member C.M1: x: int -> int
+ - static member C.M1: x: string -> int
 
 neg06.fs(398,13,398,14): typecheck error FS0025: Incomplete pattern matches on this expression. For example, the value '0' may indicate a case not covered by the pattern(s). Unmatched elements will be ignored.
