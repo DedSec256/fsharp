@@ -1116,6 +1116,9 @@
   <data name="ArgumentsInSigAndImplMismatch" xml:space="preserve">
     <value>The argument names in the signature '{0}' and implementation '{1}' do not match. The argument name from the signature file will be used. This may cause problems when debugging or profiling.</value>
   </data>
+  <data name="MultipleRecordTypeChoice" xml:space="preserve">
+    <value>Multiple type matches were found:\n{0}\nThe type '{1}' was used. Due to the overlapping field names\n{2}\nconsider using type annotations or change the order of open statements.</value>
+  </data>
   <data name="Parser.TOKEN.WHILE.BANG" xml:space="preserve">
     <value>keyword 'while!'</value>
   </data>

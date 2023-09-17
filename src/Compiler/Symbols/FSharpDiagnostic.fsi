@@ -103,6 +103,14 @@ module public ExtendedData =
 
 open ExtendedData
 
+/// Stuff for MultipleRecordTypeChoice
+[<Class; Experimental("This FCS API is experimental and subject to change.")>]
+type MultipleRecordTypeChoiceExtendedData =
+    interface IFSharpDiagnosticExtendedData
+    member ResolvedType: FSharpEntity
+    member Candidates: FSharpEntity list
+    member OverlappingMembers: string list
+
 /// Represents a diagnostic produced by the F# compiler
 [<Class>]
 type public FSharpDiagnostic =

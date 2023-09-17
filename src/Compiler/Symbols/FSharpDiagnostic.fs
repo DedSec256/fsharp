@@ -22,6 +22,7 @@ open Internal.Utilities.Library.Extras
 
 open FSharp.Core.Printf
 open FSharp.Compiler
+open FSharp.Compiler.NameResolution
 open FSharp.Compiler.CompilerDiagnostics
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.DiagnosticsLogger
@@ -109,6 +110,15 @@ module ExtendedData =
 
 open ExtendedData
 
+/// Stuff for MultipleRecordTypeChoice
+[<Class; Experimental("This FCS API is experimental and subject to change.")>]
+type MultipleRecordTypeChoiceExtendedData
+    internal (resolvedType, candidates, overlappingMembers) =
+    interface IFSharpDiagnosticExtendedData
+    member _.ResolvedType: FSharpEntity = resolvedType
+    member _.Candidates: FSharpEntity list = candidates
+    member _.OverlappingMembers: string list = overlappingMembers
+
 type FSharpDiagnostic(m: range, severity: FSharpDiagnosticSeverity, message: string, subcategory: string, errorNum: int, numberPrefix: string, extendedData: IFSharpDiagnosticExtendedData option) =
     member _.Range = m
 
@@ -191,6 +201,11 @@ type FSharpDiagnostic(m: range, severity: FSharpDiagnosticSeverity, message: str
             | ArgumentsInSigAndImplMismatch(sigArg, implArg) ->
                 Some(ArgumentsInSigAndImplMismatchExtendedData(sigArg, implArg))
 
+            | MultipleRecordTypeChoice(_, candidates, resolvedType, overlappingNames, _) ->
+                let rt = FSharpEntity(symbolEnv, resolvedType)
+                let c = candidates |> List.map (fun c -> FSharpEntity(symbolEnv, c))
+                Some (MultipleRecordTypeChoiceExtendedData(rt, c, overlappingNames))
+            
             | _ -> None
 
         let msg =

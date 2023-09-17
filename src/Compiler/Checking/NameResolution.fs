@@ -34,6 +34,8 @@ open FSharp.Compiler.TypedTreeBasics
 open FSharp.Compiler.TypedTreeOps
 open FSharp.Compiler.TypeHierarchy
 
+exception MultipleRecordTypeChoice of g: TcGlobals * candidates: TyconRef list * resolvedType: TyconRef * overlappingNames: string list * range: range
+
 #if !NO_TYPEPROVIDERS
 open FSharp.Compiler.TypeProviders
 #endif
@@ -2719,22 +2721,32 @@ let rec ResolveLongIdentInTypePrim (ncenv: NameResolver) nenv lookupKind (resInf
                     let intersect = Set.intersect fieldsOfAlternatives fieldsOfResolvedType
 
                     if not intersect.IsEmpty then
-                        let resolvedTypeName = NicePrint.fqnOfEntityRef g tcref
-                        let namesOfAlternatives =
-                            fieldLabels
-                            |> List.map (fun l -> $"    %s{NicePrint.fqnOfEntityRef g l.TyconRef}")
-                            |> fun names -> $"    %s{resolvedTypeName}" :: names
-                        let candidates = System.String.Join("\n", namesOfAlternatives)
-                        let overlappingNames =
-                            intersect
-                            |> Set.toArray
-                            |> Array.sort
-                            |> Array.map (fun s -> $"    %s{s}")
-                            |> fun a -> System.String.Join("\n", a)
+                        // let resolvedTypeName = NicePrint.fqnOfEntityRef g tcref
+                        
+
                         if g.langVersion.SupportsFeature(LanguageFeature.WarningWhenMultipleRecdTypeChoice) then
-                            warning(Error(FSComp.SR.tcMultipleRecdTypeChoice(candidates, resolvedTypeName, overlappingNames), m))
+                            let candidates = fieldLabels |> List.map (fun l -> l.TyconRef)
+                            let overlappingNames =
+                                intersect
+                                |> Set.toList
+                                |> List.sort
+                            warning(MultipleRecordTypeChoice(g, candidates, tcref, overlappingNames, m))
+                            // warning(Error(FSComp.SR.tcMultipleRecdTypeChoice(candidates, resolvedTypeName, overlappingNames), m))
                         else
-                            informationalWarning(Error(FSComp.SR.tcMultipleRecdTypeChoice(candidates, resolvedTypeName, overlappingNames), m))
+                            failwith "Yeah this part doesn't work anymore"
+                            // let resolvedTypeName = NicePrint.fqnOfEntityRef g tcref
+                            // let namesOfAlternatives =
+                            //     fieldLabels
+                            //     |> List.map (fun l -> $"    %s{NicePrint.fqnOfEntityRef g l.TyconRef}")
+                            //     |> fun names -> $"    %s{resolvedTypeName}" :: names
+                            // let candidates = System.String.Join("\n", namesOfAlternatives)
+                            // let overlappingNames =
+                            //     intersect
+                            //     |> Set.toArray
+                            //     |> Array.sort
+                            //     |> Array.map (fun s -> $"    %s{s}")
+                            //     |> fun a -> System.String.Join("\n", a)
+                            // informationalWarning(Error(FSComp.SR.tcMultipleRecdTypeChoice(candidates, resolvedTypeName, overlappingNames), m))
                 | _ -> ()
                 FSComp.SR.undefinedNameFieldConstructorOrMemberWhenTypeIsKnown(tcref.DisplayNameWithStaticParametersAndUnderscoreTypars, s)
             | ValueSome tcref ->

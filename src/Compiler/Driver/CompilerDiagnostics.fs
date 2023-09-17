@@ -80,6 +80,7 @@ type Exception with
     member exn.DiagnosticRange =
         match exn with
         | ArgumentsInSigAndImplMismatch (_, implArg) -> Some implArg.idRange
+        | MultipleRecordTypeChoice(range = m) -> Some m
         | ErrorFromAddingConstraint (_, exn2, _) -> exn2.DiagnosticRange
 #if !NO_TYPEPROVIDERS
         | TypeProviders.ProvidedTypeResolutionNoRange exn -> exn.DiagnosticRange
@@ -321,6 +322,7 @@ type Exception with
         | HashLoadedScriptConsideredSource _ -> 92
         | UnresolvedConversionOperator _ -> 93
         | ArgumentsInSigAndImplMismatch _ -> 3218
+        | MultipleRecordTypeChoice _ -> 3566
         // avoid 94-100 for safety
         | ObsoleteError _ -> 101
 #if !NO_TYPEPROVIDERS
@@ -603,6 +605,7 @@ module OldStyleMessages =
     let MSBuildReferenceResolutionErrorE () = Message("MSBuildReferenceResolutionError", "%s%s")
     let TargetInvocationExceptionWrapperE () = Message("TargetInvocationExceptionWrapper", "%s")
     let ArgumentsInSigAndImplMismatchE () = Message("ArgumentsInSigAndImplMismatch", "%s%s")
+    let MultipleRecordTypeChoiceE () = Message("MultipleRecordTypeChoice", "%s%s%s")
 
 #if DEBUG
 let mutable showParserStackOnParseError = false
@@ -1876,6 +1879,19 @@ type Exception with
         | ArgumentsInSigAndImplMismatch (sigArg, implArg) ->
             os.AppendString(ArgumentsInSigAndImplMismatchE().Format sigArg.idText implArg.idText)
 
+        | MultipleRecordTypeChoice(g, candidates, resolvedType, overlappingNames, _) ->
+            let resolvedTypeName = NicePrint.fqnOfEntityRef g resolvedType
+            let namesOfAlternatives =
+                candidates
+                |> List.map (fun c -> $"    %s{NicePrint.fqnOfEntityRef g c}")
+                |> fun names -> $"    %s{resolvedTypeName}" :: names
+            let candidates = System.String.Join("\n", namesOfAlternatives)
+            let overlappingNames =
+                overlappingNames
+                |> List.map (fun s -> $"    %s{s}")
+                |> String.concat "\n"
+            os.AppendString(MultipleRecordTypeChoiceE().Format candidates resolvedTypeName overlappingNames)
+        
         // Strip TargetInvocationException wrappers
         | :? TargetInvocationException as exn -> exn.InnerException.Output(os, suggestNames)
 
